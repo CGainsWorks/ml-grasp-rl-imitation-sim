@@ -116,10 +116,24 @@ level actually on the config.
 
 ## Still not done
 
-1. **Nothing trained at scale here.** `scripts/isaac_train.py` runs this
-   repository's own SAC against the vectorised environment, and a short run
-   learns to grasp, but every headline number in the README still comes from
-   MuJoCo.
+1. **Nothing trained to success here.** `scripts/isaac_train.py` runs this
+   repository's own SAC against the vectorised environment. A 15 000-step run
+   with 32 environments (480 000 transitions, 29 minutes on the 4060) learned to
+   grasp almost perfectly and never learned to lift:
+
+   | env steps | grasp rate | mean peak lift | success |
+   | ---: | ---: | ---: | ---: |
+   | 2 500 | 0.63 | 0.008 m | 0.00 |
+   | 5 000 | 0.91 | 0.005 m | 0.00 |
+   | 10 000 | 1.00 | 0.006 m | 0.00 |
+   | 15 000 | 0.94 | 0.053 m | 0.00 |
+
+   That is the *same* local optimum the stalled MuJoCo seeds fall into — grasp
+   the box, hold it on the table, collect 0.73 per step instead of the 9.75
+   available at the hold point. Reproducing it in a different physics engine,
+   with a different embodiment, says the trap belongs to the task and the reward
+   rather than to MuJoCo. `experiments/runs/isaac_sac_none/progress.csv` has the
+   curve. Every headline number in the top-level README still comes from MuJoCo.
 2. **The unmapped randomisation parameters** listed above.
 3. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.

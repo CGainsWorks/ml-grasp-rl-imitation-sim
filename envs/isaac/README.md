@@ -1,73 +1,134 @@
 # Isaac Lab port
 
-**Status: written and reviewed, never executed.**
+**Status: runs. Four of five bring-up checks pass. The fifth does not, and the
+reason is understood and measured.**
 
-There is no Isaac Sim installation on the machine this repository was built on.
-`grasp_task.py` has never been run, no number in the top-level README comes from
-it, and CI does not import it beyond the parity test described below. It is a
-port waiting for its first bring-up, and it is listed here as such rather than
-quietly implied to work.
+Brought up against **Isaac Sim 5.1.0** and **Isaac Lab 2.3.2**, Python 3.11,
+CUDA 12.8, on an RTX 4060. Reproduce with:
 
-## What is genuinely shared with the MuJoCo task
+```bash
+python scripts/isaac_bringup.py --num-envs 8 --episodes 2 --randomisation none
+```
 
-The reward, the success condition and the randomisation ranges are imported,
-not copied:
+| # | Check | Result |
+| --- | --- | --- |
+| 1 | Environment constructs and resets, `num_envs` worlds | **pass** |
+| 2 | Box stays on the table under zero actions | **pass** (8/8 envs at 0.422 m) |
+| 3 | Observation layout matches the MuJoCo table, index by index | **pass** |
+| 4 | Reward inside Isaac matches the shared numpy implementation | **pass** (max difference 5.1e-08) |
+| 5 | Scripted expert grasps and lifts reliably | **fail** (see below) |
 
-| Shared thing | File |
+Check 4 is the one that matters most. The claim this port exists to support is
+"it is the same task, not a similar one", and that claim is now measured inside
+the running simulator rather than asserted: the reward computed on the GPU from
+torch tensors agrees with the numpy implementation the MuJoCo environment uses
+to eight decimal places, on the same states.
+
+## What was wrong when this file was written blind
+
+It was written against the documentation before Isaac Sim was installed, and
+none of it survived contact. Recorded because the list is the honest content of
+"ported but never run":
+
+| Written | Actually required |
+| --- | --- |
+| Assets declared inside a custom `InteractiveSceneCfg` subclass | Assets are fields on the *env* config; the scene config only carries `num_envs`/`env_spacing` |
+| No `_setup_scene` | Mandatory: instantiate the assets, register them on `self.scene`, clone the environments, add a light |
+| `omniverse://localhost/NVIDIA/Assets/...` USD path | `FRANKA_PANDA_HIGH_PD_CFG` from `isaaclab_assets`; the high-PD variant, because the default gains track an IK target too softly to grasp |
+| Grip point = `panda_hand` origin | The fingertips are 0.107 m along the hand's local z; without the offset the controller servos the wrist to the box and the fingers close 10 cm short |
+| IK in relative *position* mode | Relative position leaves orientation to drift, and the Franka's home pose holds the gripper at 45°, which cannot do a top-down grasp. Absolute *pose* mode with a fixed downward quaternion reproduces the MuJoCo hand, whose orientation is pinned by its weld |
+| Target recomputed from the measured pose each step | A persistent setpoint, like the MuJoCo mocap body. Recomputing from the measurement makes a zero action mean "stay wherever gravity has dragged me", and the arm sags out of the workspace in about two seconds |
+| Setpoint floor at the table top | The floor has to sit *below* the table, because the achieved pose lags the setpoint (see below); clamping at the table top makes the fingertips unable to reach a box resting on it |
+| Franka's shipped home pose | Puts the fingertips at z = 0.383, below the 0.40 m table top: the arm starts inside the table and flicks the box off it. `scripts/isaac_pregrasp.py` solves a pose that matches the reset setpoint |
+
+## The open problem: standing IK error
+
+The arm's implicit PD holds against gravity with a finite stiffness, so the
+achieved grip point lags the commanded setpoint by a standing offset that grows
+as the arm extends:
+
+| Commanded setpoint z | Achieved grip z | Error |
+| ---: | ---: | ---: |
+| 0.60 | 0.673 | 0.073 |
+| 0.52 | 0.635 | 0.115 |
+
+At the lower setpoint the wrist also tilts off vertical (finger axis
+`(-0.29, 0.01, -0.96)` instead of `(0, 0, -1)`).
+
+The MuJoCo hand tracks its mocap setpoint to within a millimetre, so the
+scripted expert — a state machine with 12 mm phase tolerances — assumes an
+accurate servo. Against a Franka that lags by 70-115 mm, its DESCEND phase
+times out and the gripper closes above the box.
+
+This is not a tuning problem and loosening the expert's tolerances made it worse
+(0/8 against 1/8). It needs a control path that actually reaches its setpoint:
+gravity compensation, stiffer joint gains, or an operational-space controller
+instead of position-mode IK. That is the next piece of work, and it is not done.
+
+**The mechanism itself is fine.** With a favourable spawn the whole sequence
+executes correctly — here is a trace of the gripper closing on the box and
+lifting it to the hold point:
+
+```
+step ph  grip                  obj                   width
+ 56  1  [0.480 0.085 0.451]  [0.484 0.084 0.422]   0.080
+ 64  2  [0.487 0.084 0.422]  [0.484 0.084 0.422]   0.043   <- closed on the box
+ 72  3  [0.487 0.083 0.439]  [0.484 0.084 0.439]   0.043   <- lifting
+ 80  3  [0.487 0.084 0.506]  [0.484 0.084 0.507]   0.043
+ 88  3  [0.487 0.084 0.550]  [0.484 0.084 0.551]   0.043   <- at the hold point
+```
+
+## What is shared with the MuJoCo task, and what is not
+
+Shared by import, not by copy — `tests/test_isaac_port.py` asserts this:
+
+| Shared | File |
 | --- | --- |
 | Reward terms and weights | `src/rewards/grasp_reward.py` |
 | Success and drop conditions | `src/rewards/grasp_reward.py` |
 | Randomisation ranges per level | `src/randomisation/configs/*.json` |
 
-`grasp_reward` dispatches on the array library it is given, so the same code
-scores one MuJoCo world with numpy and `num_envs` Isaac worlds with torch on the
-GPU. `tests/test_reward_parity.py` runs both backends on identical inputs and
-asserts they agree to single precision. That test runs in CI and does not need
-Isaac; it is the one part of the port that can be verified without a simulator.
-
-## What is deliberately different
+Deliberately different:
 
 | | MuJoCo | Isaac Lab |
 | --- | --- | --- |
-| Embodiment | free-floating parallel-jaw hand | Franka Panda arm and gripper |
-| Cartesian control | mocap body plus a weld constraint | differential IK (damped least squares) |
+| Embodiment | free-floating parallel-jaw hand | Franka Panda |
+| Cartesian control | mocap body plus a weld | differential IK, absolute pose mode |
 | Vectorisation | one world | `num_envs` worlds, partial resets |
-| Randomisation mechanism | model fields edited in place at reset | Isaac Lab event manager |
-| Grasp test | contact list, both pads on the object | geometric proximity plus finger closure |
+| Grasp test | contact list, both pads | geometric proximity plus finger closure |
+| Control period | 0.04 s (20 substeps of 2 ms) | 0.04 s (decimation 8 of 5 ms) |
 
-The last row is the weakest part of the port. A geometric test reports a grasp
-for a pinch that is merely close, which is exactly the failure the MuJoCo
-version avoids by reading contacts. Adding a `ContactSensor` to each finger in
-`GraspSceneCfg` and switching `_grasped` to read it is the first thing to fix.
+## Still not done
 
-Because the control path differs, a policy trained in MuJoCo is **not** expected
-to run in Isaac unchanged. Cross-simulator transfer is a separate experiment and
-it has not been done.
+1. **Fix the standing IK error** — the blocker for check 5.
+2. **Contact-sensor grasp test.** The geometric test reports a grasp for a pinch
+   that is merely close. Add a `ContactSensor` per finger and read it, as the
+   MuJoCo environment reads its contact list.
+3. **Wire up the randomisation.** The ranges are loaded from the shared configs
+   but are not yet applied through Isaac Lab's event manager, so every episode
+   currently runs at nominal.
+4. **Train something.** No policy has been trained in Isaac. Every learned
+   number in this repository comes from MuJoCo.
+5. **Cross-simulator evaluation.** Not attempted; the control paths differ, so a
+   MuJoCo policy is not expected to transfer unchanged.
 
-## First bring-up, in order
-
-1. `python -c "import isaaclab"` inside the Isaac Python environment. If the
-   import path is `omni.isaac.lab`, this is Isaac Lab 1.x and the imports at the
-   top of `grasp_task.py` need the older names.
-2. Instantiate with `num_envs=2` and step it with zero actions for 100 steps.
-   Nothing should explode, and the box should stay on the table.
-3. Check the observation layout against the table in `envs/mujoco/grasp_env.py`.
-   Index by index. A silently transposed rotation block will train to a
-   plausible-looking mediocre policy and cost a day.
-4. Replace `_grasped` with a contact sensor and confirm it agrees with the
-   geometric test on obvious cases, and disagrees on near misses.
-5. Drive it with the scripted expert from `src/policies/scripted_expert.py`. It
-   reads the observation vector and nothing else, so it should transfer. If the
-   expert cannot grasp, the environment is wrong, not the policy.
-6. Only then train.
-
-## Running it
+## Installing
 
 ```bash
-# Inside the Isaac Sim python environment
-${ISAACSIM_PATH}/python.sh scripts/isaac_train.py --task GraspLift-Direct-v0 --num_envs 4096
+python -m venv C:\isaac\venv311                      # Python 3.11 specifically
+C:\isaac\venv311\Scripts\python -m pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+C:\isaac\venv311\Scripts\python -m pip install "isaacsim[all,extscache]==5.1.0" --extra-index-url https://pypi.nvidia.com
+C:\isaac\venv311\Scripts\python -m pip install "setuptools<81"    # see below
+C:\isaac\venv311\Scripts\python -m pip install "isaaclab[isaacsim,all]==2.3.2" --extra-index-url https://pypi.nvidia.com --no-build-isolation
 ```
 
-`scripts/isaac_train.py` does not exist in this repository: training on Isaac
-would use Isaac Lab's own `train.py` with `rsl_rl` or `skrl`, and shipping a
-launcher that has never been executed would be worse than shipping none.
+Two things that will bite:
+
+* **`setuptools<81` and `--no-build-isolation`.** Isaac Lab pulls `flatdict`,
+  whose `setup.py` imports `pkg_resources`, which setuptools 81+ no longer
+  ships. Without the pin the install dies in metadata generation.
+* **Disk.** About 15 GB, and it wants a fast disk: on a drive writing at
+  0.26 MB/s the download alone projects to roughly 17 hours.
+
+Isaac Sim needs about 8 GB of VRAM. Everything above ran on an RTX 4060 with
+`num_envs=8`; the config default of 64 has not been tried on that card.

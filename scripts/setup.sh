@@ -43,5 +43,5 @@ then try:
 
     make demo          scripted expert, ten seconds
     make train-quick   a short SAC run, a few minutes
-    make experiments   the whole grid, a couple of hours
+    make experiments   the whole grid, about three hours on eight cores
 MSG

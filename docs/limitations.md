@@ -78,15 +78,30 @@ python src/train_rl.py --steps 100000 --seed 2 --randomisation none     --hidden
 **`shifted` is a proxy, not a robot.** See [sim-to-real.md](sim-to-real.md). No
 hardware was involved at any point.
 
-## The Isaac Lab port has never been run
+## The Isaac Lab port runs, but not completely
 
-`envs/isaac/grasp_task.py` is written and reviewed; there is no Isaac Sim
-installation here, so it has never been executed. It shares the reward and the
-randomisation ranges with the MuJoCo task through imports rather than copies,
-and `tests/test_reward_parity.py` verifies numpy and torch agree — which is the
-strongest claim available without a simulator to run it in. Its grasp test is
-currently geometric rather than contact-based, which is weaker than the MuJoCo
-version. `envs/isaac/README.md` lists the bring-up order.
+It was brought up against Isaac Sim 5.1.0 and Isaac Lab 2.3.2 on an RTX 4060.
+Four of its five bring-up checks pass, including the one the port exists for:
+the reward computed inside Isaac on the GPU agrees with the shared numpy
+implementation to 5.1e-08 on the same states, so "it is the same task" is now
+measured rather than asserted.
+
+The check that fails is the scripted expert grasping reliably. The cause is
+measured, not guessed: the Franka's implicit PD leaves a standing 70-115 mm
+error between the commanded IK setpoint and the achieved pose, growing as the
+arm extends, while the expert is a state machine with 12 mm phase tolerances
+written for a MuJoCo hand that tracks its setpoint to the millimetre. The grasp
+mechanism itself works — `envs/isaac/README.md` has a trace of the gripper
+closing on the box and lifting it to the hold point — but not across arbitrary
+spawns. Fixing it needs a control path that reaches its setpoint (gravity
+compensation, stiffer gains, or operational-space control), which is real work
+and is not done.
+
+Also not done in Isaac: the randomisation ranges are loaded from the shared
+configs but not yet applied through Isaac Lab's event manager, so episodes run
+at nominal; the grasp test is geometric rather than contact-based; and **no
+policy has been trained there**. Every learned number in this repository comes
+from MuJoCo.
 
 **Cross-simulator transfer has not been attempted.** The control paths differ
 (mocap weld against differential IK on a Franka), so a MuJoCo policy is not

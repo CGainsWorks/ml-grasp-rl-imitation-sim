@@ -1,0 +1,86 @@
+{
+  "algorithm": "dagger",
+  "final_success_rate": 0.54,
+  "final_grasp_rate": 0.92,
+  "final_val_mse": 0.014150163158774376,
+  "transitions": 32500,
+  "demo_episodes": 200,
+  "history": [
+    {
+      "round": 0,
+      "transitions": 20000,
+      "train_mse": 0.0018650913794695492,
+      "val_mse": 0.006164938677102327,
+      "success_rate": 0.22,
+      "grasp_rate": 0.98
+    },
+    {
+      "round": 1,
+      "transitions": 22500,
+      "beta": 0.5,
+      "rollout_success": 0.28,
+      "train_mse": 0.0057545732663129455,
+      "val_mse": 0.01471118163317442,
+      "success_rate": 0.4,
+      "grasp_rate": 0.82
+    },
+    {
+      "round": 2,
+      "transitions": 25000,
+      "beta": 0.375,
+      "rollout_success": 0.36,
+      "train_mse": 0.0050960287957092405,
+      "val_mse": 0.014868903905153275,
+      "success_rate": 0.38,
+      "grasp_rate": 0.84
+    },
+    {
+      "round": 3,
+      "transitions": 27500,
+      "beta": 0.25,
+      "rollout_success": 0.44,
+      "train_mse": 0.005997318712053532,
+      "val_mse": 0.013308782130479813,
+      "success_rate": 0.44,
+      "grasp_rate": 0.88
+    },
+    {
+      "round": 4,
+      "transitions": 30000,
+      "beta": 0.125,
+      "rollout_success": 0.36,
+      "train_mse": 0.006305237414912795,
+      "val_mse": 0.014576963149011135,
+      "success_rate": 0.56,
+      "grasp_rate": 0.96
+    },
+    {
+      "round": 5,
+      "transitions": 32500,
+      "beta": 0.0,
+      "rollout_success": 0.44,
+      "train_mse": 0.00714106644179834,
+      "val_mse": 0.014150163158774376,
+      "success_rate": 0.54,
+      "grasp_rate": 0.92
+    }
+  ],
+  "seed": 2,
+  "randomisation": "shifted",
+  "demos": "demonstrations\\expert_low.npz",
+  "demo_meta": {
+    "episodes_requested": 200,
+    "episodes_attempted": 201,
+    "episodes_kept": 200,
+    "expert_success_rate": 0.9950248756218906,
+    "randomisation": "low",
+    "seed": 7,
+    "expert_noise": 0.02,
+    "keep_failures": false,
+    "max_steps": 100,
+    "wall_seconds": 13.2,
+    "source": "src/policies/scripted_expert.py"
+  },
+  "epochs": 60,
+  "wall_seconds": 85.4
+}

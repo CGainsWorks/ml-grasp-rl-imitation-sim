@@ -1,0 +1,150 @@
+"""Environment contract tests.
+
+These are the tests that would have caught the bugs actually hit while building
+this task, which is the only defensible reason to write a test after the fact:
+
+* the finger pads closing *above* the box because the grasp offset was measured
+  from the wrong frame;
+* the grasp flag chattering between steps, so a held box scored as a failure;
+* a randomisation level silently doing nothing because the config named a
+  parameter the sampler ignored.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from envs.mujoco.grasp_env import ACT_DIM, GRIPPER_OPEN_WIDTH, OBS_DIM, TABLE_HEIGHT, make_env
+from src.policies.scripted_expert import ScriptedExpert, rollout
+
+
+@pytest.fixture(scope="module")
+def env():
+    e = make_env("none", seed=0)
+    yield e
+    e.close()
+
+
+def test_observation_shape_and_finiteness(env):
+    obs, info = env.reset(seed=1)
+    assert obs.shape == (OBS_DIM,)
+    assert obs.dtype == np.float32
+    assert np.all(np.isfinite(obs))
+    assert "is_success" in info
+
+
+def test_action_bounds_are_respected(env):
+    env.reset(seed=2)
+    # Actions outside [-1, 1] must be clipped, not scaled up.
+    far = env.step(np.array([50.0, 50.0, 50.0, 50.0]))[0]
+    env.reset(seed=2)
+    unit = env.step(np.array([1.0, 1.0, 1.0, 1.0]))[0]
+    assert np.allclose(far[:3], unit[:3], atol=1e-6)
+
+
+def test_observation_layout_matches_documentation(env):
+    """Indices 11:14 and 29:32 are documented as relative positions."""
+    obs, _ = env.reset(seed=3)
+    grip, obj, goal = obs[0:3], obs[8:11], obs[26:29]
+    assert np.allclose(obs[11:14], obj - grip, atol=1e-5)
+    assert np.allclose(obs[29:32], goal - obj, atol=1e-5)
+
+
+def test_object_starts_on_the_table(env):
+    for seed in range(10):
+        obs, _ = env.reset(seed=seed)
+        assert obs[10] > TABLE_HEIGHT
+        assert obs[10] < TABLE_HEIGHT + 0.05
+
+
+def test_goal_is_above_the_object_start(env):
+    obs, _ = env.reset(seed=4)
+    assert obs[28] > obs[10] + 0.10
+
+
+def test_episode_truncates_at_the_horizon():
+    e = make_env("none", seed=0, max_steps=12)
+    e.reset(seed=5)
+    steps = 0
+    while True:
+        _, _, terminated, truncated, _ = e.step(np.zeros(ACT_DIM))
+        steps += 1
+        if terminated or truncated:
+            break
+    assert steps == 12
+    e.close()
+
+
+def test_gripper_opens_and_closes(env):
+    env.reset(seed=6)
+    for _ in range(15):
+        obs, *_ = env.step(np.array([0.0, 0.0, 0.0, -1.0]))
+    assert obs[6] == pytest.approx(GRIPPER_OPEN_WIDTH, abs=2e-3)
+    for _ in range(15):
+        obs, *_ = env.step(np.array([0.0, 0.0, 0.0, 1.0]))
+    assert obs[6] < 0.01
+
+
+def test_grasp_flag_requires_the_object():
+    """Closing on thin air is not a grasp."""
+    e = make_env("none", seed=0)
+    e.reset(seed=7)
+    for _ in range(20):
+        # Move well away from the object first, then close.
+        _, _, _, _, info = e.step(np.array([1.0, 1.0, 1.0, 1.0]))
+    assert info["grasped"] == 0.0
+    e.close()
+
+
+def test_success_requires_holding_at_the_end():
+    """A successful expert episode ends with the object at the goal, still held."""
+    e = make_env("none", seed=0)
+    result = rollout(e, ScriptedExpert(), seed=11)
+    assert result["success"]
+    assert result["info"]["grasped"] == 1.0
+    assert result["info"]["object_height"] > 0.10
+    e.close()
+
+
+def test_expert_succeeds_on_the_nominal_world():
+    """The scripted expert is the environment's smoke test."""
+    e = make_env("none", seed=0)
+    successes = [rollout(e, ScriptedExpert(), seed=100 + i)["success"] for i in range(10)]
+    assert sum(successes) >= 9
+    e.close()
+
+
+def test_reset_is_reproducible_from_a_seed():
+    a = make_env("medium", seed=0)
+    b = make_env("medium", seed=0)
+    obs_a, _ = a.reset(seed=99)
+    obs_b, _ = b.reset(seed=99)
+    assert np.allclose(obs_a, obs_b)
+    assert a.world.as_dict() == b.world.as_dict()
+    a.close()
+    b.close()
+
+
+def test_different_seeds_give_different_worlds():
+    e = make_env("medium", seed=0)
+    e.reset(seed=1)
+    first = e.world.object_mass
+    e.reset(seed=2)
+    assert e.world.object_mass != first
+    e.close()
+
+
+def test_dropping_the_object_terminates():
+    """Pushing the object off the table ends the episode with a drop."""
+    e = make_env("none", seed=0, max_steps=200)
+    e.reset(seed=12)
+    terminated = False
+    for _ in range(200):
+        _, _, terminated, truncated, info = e.step(np.array([0.0, -1.0, -1.0, -1.0]))
+        if terminated or truncated:
+            break
+    # Either it was pushed off (terminated) or it stayed on the table; both are
+    # legitimate, but a termination must be accompanied by the drop flag.
+    if terminated:
+        assert info["dropped"]

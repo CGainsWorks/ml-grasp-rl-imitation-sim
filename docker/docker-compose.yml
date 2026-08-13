@@ -1,0 +1,14 @@
+services:
+  grasp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ml-grasp-rl-imitation-sim
+    working_dir: /app
+    volumes:
+      # Training output lands on the host so runs survive the container.
+      - ../experiments:/app/experiments
+      - ../demonstrations:/app/demonstrations
+    environment:
+      OMP_NUM_THREADS: "1"
+    command: python scripts/offline_demo.py

@@ -1,0 +1,135 @@
+<mujoco model="grasp_cell">
+  <!--
+    Clean-room grasp scene. Written from scratch for this repository; no vendor
+    or employer assets. Geometry is deliberately primitive (boxes and a plane)
+    so the whole scene is readable and every dimension is stated here.
+
+    Frame convention: world Z is up, the table top is at z = 0.40 m, and the
+    gripper approaches along -Z.
+
+    The hand is a free body welded to a mocap body. The policy commands the
+    mocap target, the weld drags the hand towards it, and contact with the
+    object is therefore resolved by the solver rather than kinematically
+    imposed. That is what makes the grasp physical: a badly aligned finger
+    pair pushes the object away instead of teleporting through it.
+  -->
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.002" integrator="implicitfast" cone="elliptic" impratio="30"
+          gravity="0 0 -9.81"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="140" elevation="-25" offwidth="640" offheight="480"/>
+  </visual>
+
+  <default>
+    <geom solimp="0.95 0.99 0.001" solref="0.005 1"/>
+    <default class="finger">
+      <geom type="box" size="0.010 0.009 0.033" condim="4" friction="1.2 0.05 0.0005"
+            rgba="0.25 0.27 0.32 1" mass="0.02"/>
+    </default>
+    <default class="pad">
+      <!-- Pad on the inner face of each finger. Its friction is set below any
+         value the randomiser can draw for the object, on purpose: MuJoCo
+         combines the friction of two geoms by taking the elementwise maximum,
+         so a grippy pad would mask every object value and the friction
+         ablation would silently do nothing. With the pad this low, the
+         pad-object contact friction *is* the object friction. The pad is
+         slightly softer than the rest of the scene but not so soft that the
+         box sinks millimetres into it, which was enough to let a held box
+         squeeze its way out over a few seconds. -->
+      <geom type="box" size="0.002 0.009 0.018" condim="4" friction="0.05 0.10 0.002"
+            solimp="0.92 0.97 0.002" solref="0.008 1" rgba="0.85 0.45 0.20 1" mass="0.005"/>
+    </default>
+  </default>
+
+  <asset>
+    <texture name="skybox" type="skybox" builtin="gradient" rgb1="0.35 0.45 0.55"
+             rgb2="0.05 0.07 0.10" width="256" height="256"/>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.22 0.24 0.26"
+             rgb2="0.28 0.30 0.32" width="300" height="300"/>
+    <material name="grid" texture="grid" texrepeat="6 6" reflectance="0.05"/>
+    <material name="table" rgba="0.55 0.52 0.48 1" reflectance="0.02"/>
+    <material name="object" rgba="0.20 0.55 0.85 1"/>
+  </asset>
+
+  <worldbody>
+    <light name="key" pos="0.4 -0.4 1.6" dir="-0.3 0.3 -1" directional="true"/>
+    <geom name="floor" type="plane" size="2 2 0.05" material="grid"/>
+
+    <!-- Table: top face at z = 0.40 -->
+    <body name="table" pos="0 0 0.20">
+      <geom name="table_top" type="box" size="0.30 0.40 0.20" material="table"
+            friction="0.8 0.02 0.0002" condim="4"/>
+    </body>
+
+    <!-- Parallel-jaw hand. Free body, welded to "mocap" below. -->
+    <body name="hand" pos="0 0 0.60">
+      <freejoint name="hand_free"/>
+      <inertial pos="0 0 0" mass="0.6" diaginertia="0.002 0.002 0.002"/>
+      <!-- The palm sits 22 mm above the hand origin, which leaves 48 mm of
+           clearance above the grip point. It used to sit lower, and the top
+           face of a large box would foul it during the descent: the box was
+           then squeezed downwards out of the pads instead of being held. -->
+      <geom name="palm" type="box" size="0.056 0.020 0.018" pos="0 0 0.022"
+            rgba="0.35 0.38 0.44 1" mass="0.3" contype="1" conaffinity="1"/>
+      <site name="grip_site" pos="0 0 -0.046" size="0.005" rgba="1 0 0 0.0"/>
+
+      <body name="left_finger" pos="-0.052 0 -0.033">
+        <joint name="left_slide" type="slide" axis="1 0 0" range="0 0.040"
+               damping="8" armature="0.002"/>
+        <geom name="left_finger" class="finger"/>
+        <geom name="left_pad" class="pad" pos="0.011 0 -0.013"/>
+      </body>
+
+      <body name="right_finger" pos="0.052 0 -0.033">
+        <joint name="right_slide" type="slide" axis="-1 0 0" range="0 0.040"
+               damping="8" armature="0.002"/>
+        <geom name="right_finger" class="finger"/>
+        <geom name="right_pad" class="pad" pos="-0.011 0 -0.013"/>
+      </body>
+    </body>
+
+    <!-- Mocap target the policy commands. -->
+    <body name="mocap" mocap="true" pos="0 0 0.60">
+      <geom name="mocap_marker" type="box" size="0.004 0.004 0.004" rgba="0.9 0.9 0.2 0.25"
+            contype="0" conaffinity="0"/>
+    </body>
+
+    <!-- Object to grasp. Size, mass and friction are overwritten at reset by
+         the domain randomiser; the values here are the nominal ones. -->
+    <body name="object" pos="0 0 0.425">
+      <freejoint name="object_free"/>
+      <geom name="object" type="box" size="0.022 0.022 0.022" material="object"
+            mass="0.08" friction="1.0 0.05 0.0005" condim="4"/>
+    </body>
+
+    <!-- Goal marker, moved at reset. Visual only. -->
+    <site name="goal" pos="0 0 0.55" type="sphere" size="0.018"
+          rgba="0.20 0.85 0.35 0.35"/>
+
+    <!-- Both cameras are aimed at (0, 0, 0.50), the middle of the volume the
+         hand actually works in. Framed tight enough that a 44 mm box is
+         legible in a 320-pixel-wide GIF. -->
+    <camera name="scene_cam" pos="0.62 -0.62 0.78" xyaxes="0.707 0.707 0 -0.215 0.215 0.953"/>
+    <camera name="front_cam" pos="0 -0.70 0.60" xyaxes="1 0 0 0 0.158 0.988"/>
+  </worldbody>
+
+  <equality>
+    <!-- Drags the hand to the commanded mocap pose. solref is soft enough that
+         contact forces can visibly resist the command. -->
+    <weld body1="mocap" body2="hand" solref="0.02 1" solimp="0.9 0.95 0.001"/>
+  </equality>
+
+  <actuator>
+    <position name="left_drive"  joint="left_slide"  kp="300" ctrlrange="0 0.040" forcerange="-60 60"/>
+    <position name="right_drive" joint="right_slide" kp="300" ctrlrange="0 0.040" forcerange="-60 60"/>
+  </actuator>
+
+  <sensor>
+    <framepos name="grip_pos" objtype="site" objname="grip_site"/>
+    <framepos name="object_pos" objtype="body" objname="object"/>
+  </sensor>
+</mujoco>

@@ -1,0 +1,99 @@
+{
+  "source_run": "experiments/runs/bcrl_none_s1",
+  "checkpoint": "policy.pt",
+  "observation_dim": 32,
+  "action_dim": 4,
+  "observation_layout": [
+    {
+      "name": "grip_pos",
+      "start": 0,
+      "stop": 3,
+      "units": "grip site position, world frame, metres"
+    },
+    {
+      "name": "grip_vel",
+      "start": 3,
+      "stop": 6,
+      "units": "grip site linear velocity, m/s"
+    },
+    {
+      "name": "gripper_width",
+      "start": 6,
+      "stop": 7,
+      "units": "distance between the finger pads, metres"
+    },
+    {
+      "name": "gripper_width_rate",
+      "start": 7,
+      "stop": 8,
+      "units": "rate of change of that width, m/s"
+    },
+    {
+      "name": "object_pos",
+      "start": 8,
+      "stop": 11,
+      "units": "object position, world frame, metres"
+    },
+    {
+      "name": "object_rel_pos",
+      "start": 11,
+      "stop": 14,
+      "units": "object position minus grip position"
+    },
+    {
+      "name": "object_rot6",
+      "start": 14,
+      "stop": 20,
+      "units": "first two columns of the object rotation matrix"
+    },
+    {
+      "name": "object_linvel",
+      "start": 20,
+      "stop": 23,
+      "units": "object linear velocity, m/s"
+    },
+    {
+      "name": "object_angvel",
+      "start": 23,
+      "stop": 26,
+      "units": "object angular velocity, rad/s"
+    },
+    {
+      "name": "goal_pos",
+      "start": 26,
+      "stop": 29,
+      "units": "hold point, world frame, metres"
+    },
+    {
+      "name": "goal_rel_pos",
+      "start": 29,
+      "stop": 32,
+      "units": "hold point minus object position"
+    }
+  ],
+  "action_layout": [
+    {
+      "name": "delta_xyz",
+      "start": 0,
+      "stop": 3,
+      "meaning": "Cartesian displacement command, multiplied by 0.02 m"
+    },
+    {
+      "name": "gripper",
+      "start": 3,
+      "stop": 4,
+      "meaning": "-1 fully open, +1 fully closed"
+    }
+  ],
+  "action_range": [
+    -1.0,
+    1.0
+  ],
+  "control_period_seconds": 0.04,
+  "position_step_metres": 0.02,
+  "trained_with_randomisation": "none",
+  "training_steps": 200000,
+  "seed": 1,
+  "final_success_rate_training_distribution": 1.0,
+  "deployment_note": "This policy was trained on a free-floating hand with no arm. A real deployment must put a reachability and joint-limit check between this output and any servo loop. See docs/limitations.md."
+}

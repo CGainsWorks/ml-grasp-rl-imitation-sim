@@ -100,11 +100,17 @@ the MuJoCo weld with no analogue, action latency would need a command queue in
 the task, and gravity is per-scene rather than per-environment. Those four are
 listed in `envs/isaac/README.md` rather than quietly omitted.
 
-**Cross-simulator transfer has been measured, once.** A MuJoCo-trained policy
-scores 0.500 [0.314, 0.686] in Isaac with no adaptation, against 1.000 for the
-scripted expert in the same environment — across a different physics engine,
-contact solver and embodiment. That is one policy on one distribution, not an
-ablation, and it is not a substitute for hardware.
+**Cross-simulator transfer has been measured properly, and it is poor.** Twenty
+policies — five seeds at each of four randomisation levels — run in Isaac with
+no adaptation score 0.05 to 0.08, with every interval including zero, against
+1.000 for the scripted expert in the same environment. No randomisation level
+helps reliably.
+
+The first version of this measurement used one seed per level and appeared to
+show wide randomisation transferring at 0.41–0.50. It does not: that was seed 0
+of `high`, and the other four seeds scored zero. The single-seed reading was
+wrong in exactly the way this repository warns about everywhere else, which is
+why the five-seed version replaced it.
 
 ## Things that would be next, in order of value
 

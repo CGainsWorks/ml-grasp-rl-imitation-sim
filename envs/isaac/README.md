@@ -29,21 +29,46 @@ to eight decimal places, on the same states.
 
 ## Cross-simulator transfer
 
-A policy trained in MuJoCo, exported to TorchScript and dropped into Isaac with
-no adaptation:
+Policies trained in MuJoCo, exported to TorchScript and run here with no
+adaptation. Five seeds per randomisation level, 32 episodes each
+(`scripts/isaac_cross_sim_ablation.py`, results in
+`experiments/results/cross_sim_ablation.json`):
 
-| | success on Isaac | 95% Wilson |
-| --- | ---: | --- |
-| Scripted expert (reference) | 1.000 | [0.862, 1.000] |
-| `bcrl_high_s0`, trained in MuJoCo | **0.500** | [0.314, 0.686] |
+| trained with | per-seed success | across seeds | 95% t |
+| --- | --- | ---: | --- |
+| `none` | 0.06, 0.13, 0.00, 0.00, 0.16 | 0.069 | [0.000, 0.157] |
+| `low` | 0.13, 0.16, 0.00, 0.00, 0.00 | 0.056 | [0.000, 0.153] |
+| `medium` | 0.00, 0.00, 0.25, 0.00, 0.00 | 0.050 | [0.000, 0.189] |
+| `high` | 0.41, 0.00, 0.00, 0.00, 0.00 | 0.081 | [0.000, 0.307] |
+| scripted expert (reference) | — | **1.000** | — |
 
-24 episodes each, `scripts/isaac_cross_sim.py`, results in
-`experiments/results/cross_sim.json`. Different physics engine, different
-contact solver, different embodiment — a Franka driven by differential IK
-against a free-floating hand dragged by a mocap weld — and half the episodes
-still succeed with no fine-tuning. This is a stronger transfer result than the
-`shifted` proxy, and unlike that proxy it is not a distribution this repository
-designed.
+They mostly do not transfer, and no randomisation level reliably helps. The
+expert scores 1.000 in the same environment, so this is not a broken task — the
+learned behaviour is what fails.
+
+Worth recording how this nearly went wrong: the first version used one seed per
+level and showed `high` at 0.41 against ≤0.08 for the rest, which reads as a
+clean "wide randomisation transfers across simulators" result. It was seed 0 of
+`high` and the other four scored zero.
+
+## Training here
+
+`scripts/isaac_train.py` runs this repository's own SAC against the vectorised
+environment — not a framework wrapper, so a difference between the simulators
+cannot be blamed on the algorithm.
+
+| run | steps x envs | result |
+| --- | --- | ---: |
+| SAC from scratch | 15 000 x 32 = 480 000 transitions | **0.000** (grasp rate 1.00, never lifts) |
+| BC-seeded, coefficient decaying | 8 000 x 32 | peaks **1.000**, collapses to 0.000 at the decay point |
+| BC-seeded, coefficient held | 8 000 x 32 | **0.938** final, 1.000 best |
+
+Demonstrations are recorded here rather than reused from MuJoCo
+(`scripts/isaac_record_demos.py`); the expert succeeded on 128 of 128 attempts.
+The middle row is the cleanest evidence in the repository that the
+behaviour-cloning anchor cannot simply be annealed away on a fixed schedule:
+identical seed and configuration, and the only difference is whether the
+coefficient reaches zero at step 4 000.
 
 ## What was wrong when this file was written blind
 
@@ -86,25 +111,43 @@ Wired through Isaac Lab's event manager, driven by the same JSON the MuJoCo
 environment uses, with the same interval arithmetic (`_scaled` reproduces
 `ParamSpec.sample`):
 
+All eleven parameters are mapped:
+
 | Parameter | How it is applied in Isaac |
 | --- | --- |
 | `object_mass` | `randomize_rigid_body_mass`, scale operation |
+| `object_half_size` | `randomize_rigid_body_scale`, pre-startup |
 | `object_friction` | `randomize_rigid_body_material` on the box |
 | `table_friction` | `randomize_rigid_body_material` on the table |
 | `gripper_gain` | `randomize_actuator_gains` on the finger joints |
+| `hand_compliance` | `randomize_actuator_gains` on the *arm* joints, inverted |
+| `action_latency` | a per-environment command queue in the task |
+| `gravity` | `randomize_physics_scene_gravity`, per scene |
 | `action_noise` | the environment's action noise model |
 | `obs_noise_pos`, `obs_noise_vel` | applied in `_get_observations`, *not* through Isaac's observation noise model — see below |
+
+Two of those are analogues rather than translations, and are labelled as such:
+
+* **`hand_compliance`** is the `solref` of the MuJoCo weld that drags the hand —
+  how softly the hand follows its setpoint. There is no weld here. The closest
+  honest analogue is the arm's joint stiffness, which governs the same thing:
+  how hard the arm insists on reaching the pose it was told. The mapping is
+  inverted, because a more compliant weld is a less stiff arm.
+* **`gravity`** is per *scene* in Isaac, not per environment, so all
+  environments share one draw. MuJoCo draws one per episode per world. Same
+  interval, coarser granularity.
+
+Randomising object scale is a USD-level edit, and Isaac refuses to combine it
+with scene replication: replicated instances share properties, so a
+per-environment size would silently apply to all of them. `replicate_physics`
+is therefore switched off exactly when the level randomises size. It costs
+scene-setup time; the alternative is a randomisation that lies.
 
 Sensing noise is applied by hand because Isaac's noise model perturbs every
 element of the observation independently, which breaks an invariant the MuJoCo
 environment maintains: a real system has one pose estimate, and the
 relative-position entries are derived from it. Noising them separately would
 hand the policy two inconsistent readings of the same quantity.
-
-Not mapped, and honestly so: `object_half_size` (needs a pre-startup scale
-term), `hand_compliance` (a property of the MuJoCo weld, no Isaac analogue),
-`action_latency` (would need a command queue in the task), and `gravity`
-(per-scene rather than per-environment in Isaac).
 
 Check 7 exists because a randomisation config that silently does nothing is the
 worst kind of bug: training still runs, curves still look fine, and the ablation
@@ -116,24 +159,9 @@ level actually on the config.
 
 ## Still not done
 
-1. **Nothing trained to success here.** `scripts/isaac_train.py` runs this
-   repository's own SAC against the vectorised environment. A 15 000-step run
-   with 32 environments (480 000 transitions, 29 minutes on the 4060) learned to
-   grasp almost perfectly and never learned to lift:
-
-   | env steps | grasp rate | mean peak lift | success |
-   | ---: | ---: | ---: | ---: |
-   | 2 500 | 0.63 | 0.008 m | 0.00 |
-   | 5 000 | 0.91 | 0.005 m | 0.00 |
-   | 10 000 | 1.00 | 0.006 m | 0.00 |
-   | 15 000 | 0.94 | 0.053 m | 0.00 |
-
-   That is the *same* local optimum the stalled MuJoCo seeds fall into — grasp
-   the box, hold it on the table, collect 0.73 per step instead of the 9.75
-   available at the hold point. Reproducing it in a different physics engine,
-   with a different embodiment, says the trap belongs to the task and the reward
-   rather than to MuJoCo. `experiments/runs/isaac_sac_none/progress.csv` has the
-   curve. Every headline number in the top-level README still comes from MuJoCo.
+1. **No multi-seed grid here.** The training runs above are one seed each. Every
+   headline number in the top-level README still comes from MuJoCo, where the
+   grid is five seeds per condition.
 2. **The unmapped randomisation parameters** listed above.
 3. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.

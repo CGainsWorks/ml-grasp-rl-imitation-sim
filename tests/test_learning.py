@@ -181,3 +181,34 @@ def test_exported_policy_matches_the_actor(tmp_path):
         direct = actor(obs, deterministic=True, with_logprob=False)[0]
         exported = loaded(obs)
     assert torch.allclose(direct, exported, atol=1e-6)
+
+
+def test_colored_noise_is_correlated_in_time():
+    """White noise is what SAC does by default; pink and red are progressively
+    more correlated. If this ordering breaks, the exploration ablation is
+    comparing three flavours of the same thing."""
+    from src.utils.exploration import colored_noise
+
+    rng = np.random.default_rng(0)
+    autocorr = {}
+    for name, beta in (("white", 0.0), ("pink", 1.0), ("red", 2.0)):
+        seq = colored_noise(beta, 512, 4, rng)
+        autocorr[name] = float(
+            np.mean([np.corrcoef(seq[:-1, d], seq[1:, d])[0, 1] for d in range(4)])
+        )
+        assert abs(seq.std() - 1.0) < 0.2, name
+    assert autocorr["white"] < 0.2
+    assert autocorr["white"] < autocorr["pink"] < autocorr["red"]
+
+
+def test_alpha_floor_holds_the_entropy_coefficient():
+    """Automatic tuning drives alpha to zero on a confident policy; the floor is
+    what stops that when the confidence is in a local optimum."""
+    agent = SAC(OBS, ACT, SACConfig(batch_size=32, alpha_floor=0.15, init_alpha=0.2), seed=0)
+    rng = np.random.default_rng(0)
+    for _ in range(200):
+        agent.buffer.add(rng.normal(size=OBS), rng.uniform(-1, 1, ACT), 0.0,
+                         rng.normal(size=OBS), 0.0)
+    for step in range(50):
+        agent.update(step)
+    assert float(agent.alpha) >= 0.15 - 1e-6

@@ -48,6 +48,7 @@ class SACConfig:
     updates_per_step: float = 1.0     # gradient steps per env step, on average
     target_entropy_scale: float = 1.0
     init_alpha: float = 0.1
+    alpha_floor: float = 0.0          # lower bound on the entropy coefficient
     critic_warmup_updates: int = 0    # critic-only updates before the actor moves
     hidden: Tuple[int, int] = (256, 256)
     # Imitation options, unused by the plain baseline
@@ -297,6 +298,14 @@ class SAC:
         self.alpha_opt.zero_grad(set_to_none=True)
         alpha_loss.backward()
         self.alpha_opt.step()
+        if cfg.alpha_floor > 0.0:
+            # A floor under the entropy coefficient. Automatic tuning drives
+            # alpha towards zero once the policy is confident, which is correct
+            # when the policy is confident about the *right* thing and fatal
+            # when it has settled into a local optimum: with alpha at 0.02 the
+            # policy is effectively deterministic and never tries anything else.
+            with torch.no_grad():
+                self.log_alpha.clamp_(min=float(np.log(cfg.alpha_floor)))
 
         # ---- target networks
         with torch.no_grad():

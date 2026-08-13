@@ -305,6 +305,7 @@ tests/               environment contract, reward parity, learning machinery
 | | |
 | --- | --- |
 | [docs/results.md](docs/results.md) | what the numbers say, including the parts that are unflattering |
+| [docs/exploration.md](docs/exploration.md) | why three seeds in five stalled, the hypothesis that was wrong, and the fix |
 | [docs/reward-design.md](docs/reward-design.md) | every term, and the two shapings that failed first |
 | [docs/architecture.md](docs/architecture.md) | how the pieces fit, and the seed blocks |
 | [docs/domain-randomisation.md](docs/domain-randomisation.md) | what is randomised, by how much, and the MuJoCo friction trap |

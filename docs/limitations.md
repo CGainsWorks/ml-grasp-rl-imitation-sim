@@ -45,33 +45,20 @@ eight cores. It is not enough for SAC from scratch under randomisation, and the
 results say so rather than quietly extending the budget for the conditions that
 needed it.
 
-**The from-scratch runs have an entropy-collapse failure mode, and it is not
-fixed.** The seeds that stall settle at an entropy coefficient around 0.025
-while the seeds that solve the task sit near 0.17 — an order of magnitude more
-exploration. The stalled policies grasp the box reliably and hold it on the
-table, which the reward pays 0.73 per step for against 9.75 at the hold point:
-a local optimum a nearly deterministic policy has no way out of.
-`docs/plots/entropy_collapse.png` plots it, one point per run.
+**The from-scratch runs have an entropy-collapse failure mode, and it is now
+fixed — but the headline tables predate the fix.** The seeds that stall settle
+at an entropy coefficient around 0.025 while the seeds that solve the task sit
+near 0.17. A floor under that coefficient rescues all five seeds at half the
+budget (0.993 mean, 95% t [0.975, 1.000], against 0.400 and [0.000, 1.000]
+without it). The investigation, including the hypothesis that turned out to be
+wrong, is in [exploration.md](exploration.md).
 
-The obvious remedy was tried and did not work. Three runs on the nominal world,
-using the three seeds that stalled, with the target entropy raised from
--dim(A) to -dim(A)/2 (`--target-entropy-scale 0.5`), 100 000 steps each:
-
-| run | final entropy coefficient | success |
-| --- | ---: | ---: |
-| `probe_entropy_s2` | 0.051 | 0.00 |
-| `probe_entropy_s3` | 0.050 | 0.00 |
-| `probe_entropy_s4` | 0.052 | 0.00 |
-
-The coefficient roughly doubled, against about 0.025 in the stalled baseline
-runs, and none of the three escaped. So the entropy coefficient is a reliable
-*marker* of the failure but raising it by this much is not a cure, and the
-honest state of the diagnosis is: mechanism identified, fix not found. The raw
-curves are in `experiments/runs/probe_entropy_s*/progress.csv`; reproduce with
-
-```bash
-python src/train_rl.py --steps 100000 --seed 2 --randomisation none     --hidden 128 --target-entropy-scale 0.5 --output experiments/runs/probe_entropy_s2
-```
+The grid in the README was run before this and is deliberately left alone: it is
+a fair record of what a standard SAC configuration does here, and rerunning
+three hours of compute to replace an honest result with a flattering one would
+not change either conclusion it supports. Read the from-scratch rows as a
+demonstration of seed variance and of what demonstrations buy, not as the best
+this algorithm can do on this task.
 
 **One task.** Lift-and-hold, one hold point, one box shape.
 

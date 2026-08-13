@@ -1,0 +1,33 @@
+{
+  "algorithm": "sac",
+  "simulator": "isaac-sim-5.1.0",
+  "sac": {
+    "gamma": 0.98,
+    "tau": 0.005,
+    "lr_actor": 0.0003,
+    "lr_critic": 0.0003,
+    "lr_alpha": 0.0003,
+    "batch_size": 256,
+    "buffer_size": 600000,
+    "start_steps": 0,
+    "update_every": 50,
+    "updates_per_step": 1.0,
+    "target_entropy_scale": 2.0,
+    "init_alpha": 0.02,
+    "alpha_floor": 0.0,
+    "critic_warmup_updates": 3000,
+    "hidden": [
+      128,
+      128
+    ],
+    "bc_coef": 50.0,
+    "bc_q_scale": 2.5,
+    "bc_q_filter": false,
+    "bc_decay_steps": 1000000,
+    "demo_sample_fraction": 0.25
+  },
+  "steps": 4000,
+  "num_envs": 32,
+  "seed": 1,
+  "randomisation": "none"
+}

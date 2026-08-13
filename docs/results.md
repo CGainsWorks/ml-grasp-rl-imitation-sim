@@ -61,10 +61,10 @@ noise — the other hypothesis, that the missing behaviour is temporally extende
 and white noise never samples it — rescues one seed of three: real, but not the
 explanation. The full investigation is in [exploration.md](exploration.md).
 
-The same floor does **not** rescue the randomised runs: five seeds at `medium`
-go from 0.120 to 0.160, with intervals that overlap almost entirely. Entropy
-collapse explains the nominal failure and not the randomised one, which remains
-a separate open question.
+Under randomisation the same floor works but needs roughly three times the
+budget: three seeds at `medium` reach 0.667 [0.448, 0.886] at 300 000 steps
+against 0.100 [0.000, 0.348] for the same seeds without it, while at a matched
+100 000 steps it looks inert. Slower, not different.
 
 The tables in this document were produced before that fix and are left as they
 are; they record what a standard SAC configuration does here.
@@ -176,10 +176,18 @@ holding the box on the table against 9.75 at the hold point, and a policy that
 has stopped exploring has no route between them. It is a property of the task
 and the shaping, not of the simulator.
 
-Seeding with demonstrations rescues it there too, exactly as in MuJoCo:
-demonstrations recorded in Isaac with the same scripted expert, pinned in the
-replay buffer, take the same SAC to **0.94** final and 1.00 best within 8 000
-steps — against 0.00 from scratch at nearly twenty times the data.
+Seeding with demonstrations rescues it there too, exactly as in MuJoCo. Five
+seeds per arm in Isaac:
+
+| arm | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| from scratch | 0.00, 0.00, 0.00, 0.00, 0.00 | **0.000** | [0.000, 0.000] |
+| demonstration-seeded | 0.88, 0.97, 1.00, 1.00, 1.00 | **0.969** | [0.902, 1.000] |
+
+The from-scratch arm fails on every seed — this is a reliable property of the
+task, not seed variance — and demonstrations take the same algorithm to 0.969.
+That is the MuJoCo headline finding reproduced in a second engine, with the same
+five-seed standard.
 
 ### The behaviour-cloning anchor, isolated
 

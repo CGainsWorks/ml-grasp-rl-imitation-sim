@@ -57,9 +57,24 @@ clean "wide randomisation transfers across simulators" result. It was seed 0 of
 environment — not a framework wrapper, so a difference between the simulators
 cannot be blamed on the algorithm.
 
+Five seeds per arm, 4 000 steps x 32 environments
+(`experiments/isaac_seed_grid.py`, results in
+`experiments/results/isaac_seed_grid.json`):
+
+| arm | per-seed | mean | 95% t across seeds |
+| --- | --- | ---: | --- |
+| from scratch | 0.00, 0.00, 0.00, 0.00, 0.00 | **0.000** | [0.000, 0.000] |
+| demonstration-seeded | 0.88, 0.97, 1.00, 1.00, 1.00 | **0.969** | [0.902, 1.000] |
+
+The from-scratch arm fails on every seed — a perfectly reliable failure, not
+variance — and a longer single run confirms why: 480 000 transitions produced
+grasp rate 1.00 and success 0.00, the box held on the table and never lifted.
+Demonstrations take the same algorithm to 0.969.
+
+Two single-seed runs isolate the behaviour-cloning schedule:
+
 | run | steps x envs | result |
 | --- | --- | ---: |
-| SAC from scratch | 15 000 x 32 = 480 000 transitions | **0.000** (grasp rate 1.00, never lifts) |
 | BC-seeded, coefficient decaying | 8 000 x 32 | peaks **1.000**, collapses to 0.000 at the decay point |
 | BC-seeded, coefficient held | 8 000 x 32 | **0.938** final, 1.000 best |
 
@@ -159,9 +174,9 @@ level actually on the config.
 
 ## Still not done
 
-1. **No multi-seed grid here.** The training runs above are one seed each. Every
-   headline number in the top-level README still comes from MuJoCo, where the
-   grid is five seeds per condition.
+1. **No randomised training grid here.** The five-seed grid is the nominal world
+   only; the randomisation levels have not been trained in Isaac. Every headline
+   number in the top-level README still comes from MuJoCo.
 2. **The unmapped randomisation parameters** listed above.
 3. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.

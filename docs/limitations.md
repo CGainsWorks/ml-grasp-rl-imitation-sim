@@ -53,10 +53,10 @@ budget (0.993 mean, 95% t [0.975, 1.000], against 0.400 and [0.000, 1.000]
 without it). The investigation, including the hypothesis that turned out to be
 wrong, is in [exploration.md](exploration.md).
 
-The floor fixes the nominal world only. Under `medium` randomisation it moves
-five seeds from 0.120 to 0.160, which does not survive its own confidence
-interval, so whatever stops from-scratch SAC learning under randomisation is a
-different problem and is still open.
+Under randomisation the floor also works, but needs about three times the
+budget: 0.667 [0.448, 0.886] at 300 000 steps against 0.100 [0.000, 0.348] for
+the same seeds without it. At a matched 100 000 steps it looks inert, which is
+what a first pass concluded before the longer runs corrected it.
 
 The grid in the README was run before this and is deliberately left alone: it is
 a fair record of what a standard SAC configuration does here, and rerunning

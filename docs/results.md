@@ -46,10 +46,23 @@ the table, which the reward pays 0.73 per step for against 9.75 at the hold
 point. A nearly deterministic policy in that basin has no route out.
 `docs/plots/entropy_collapse.png` is one point per run.
 
-Raising the target entropy — the obvious fix — was tried on the three stalled
-seeds and did not work: the coefficient roughly doubled and none of the three
-escaped within 100 000 steps. Mechanism identified, fix not found. Details in
-[limitations](limitations.md).
+Raising the target entropy — the obvious fix — was tried first and did not work:
+the coefficient roughly doubled, to about 0.05, and none of the three seeds
+escaped. A hard **floor** under the coefficient does work, and completely:
+
+| | per-seed | mean | 95% t | solved |
+| --- | --- | ---: | --- | ---: |
+| baseline, 200k steps | 1.0, 1.0, 0.0, 0.0, 0.0 | 0.400 | [0.000, 1.000] | 2/5 |
+| entropy floor, 100k steps | 0.97, 1.0, 1.0, 1.0, 1.0 | **0.993** | [0.975, 1.000] | **5/5** |
+
+Every stalled seed is rescued at half the budget that failed without it, and the
+interval goes from carrying no information to being tight. Pink exploration
+noise — the other hypothesis, that the missing behaviour is temporally extended
+and white noise never samples it — rescues one seed of three: real, but not the
+explanation. The full investigation is in [exploration.md](exploration.md).
+
+The tables in this document were produced before that fix and are left as they
+are; they record what a standard SAC configuration does here.
 
 Under randomisation, from-scratch SAC barely gets off the ground at all: 0.15,
 0.22 and 0.12 at low, medium and wide randomisation on the nominal world, and

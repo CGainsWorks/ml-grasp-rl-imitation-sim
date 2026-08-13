@@ -1,0 +1,91 @@
+{
+  "question": "does anything rescue the seeds that stall in the grasp-and-hold-on-the-table optimum?",
+  "seeds": [
+    2,
+    3,
+    4
+  ],
+  "arms": [
+    {
+      "arm": "baseline",
+      "seeds": [
+        2,
+        3,
+        4
+      ],
+      "final_per_seed": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "best_per_seed": [
+        0.0,
+        0.0,
+        0.03333333333333333
+      ],
+      "mean_final": 0.0,
+      "solved": 0
+    },
+    {
+      "arm": "alpha-floor",
+      "seeds": [
+        2,
+        3,
+        4
+      ],
+      "final_per_seed": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "best_per_seed": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_final": 1.0,
+      "solved": 3
+    },
+    {
+      "arm": "pink",
+      "seeds": [
+        2,
+        3,
+        4
+      ],
+      "final_per_seed": [
+        0.0,
+        0.0,
+        0.9
+      ],
+      "best_per_seed": [
+        0.0,
+        0.0,
+        0.9
+      ],
+      "mean_final": 0.3,
+      "solved": 1
+    },
+    {
+      "arm": "both",
+      "seeds": [
+        2,
+        3,
+        4
+      ],
+      "final_per_seed": [
+        1.0,
+        0.9333333333333333,
+        1.0
+      ],
+      "best_per_seed": [
+        1.0,
+        0.9666666666666667,
+        1.0
+      ],
+      "mean_final": 0.9777777777777779,
+      "solved": 3
+    }
+  ],
+  "baseline_note": "baseline is experiments/runs/sac_none_s* at 200k steps, twice the budget of the other arms"
+}

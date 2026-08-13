@@ -78,34 +78,33 @@ python src/train_rl.py --steps 100000 --seed 2 --randomisation none     --hidden
 **`shifted` is a proxy, not a robot.** See [sim-to-real.md](sim-to-real.md). No
 hardware was involved at any point.
 
-## The Isaac Lab port runs, but not completely
+## The Isaac Lab port works, but produces no headline number
 
-It was brought up against Isaac Sim 5.1.0 and Isaac Lab 2.3.2 on an RTX 4060.
-Four of its five bring-up checks pass, including the one the port exists for:
-the reward computed inside Isaac on the GPU agrees with the shared numpy
-implementation to 5.1e-08 on the same states, so "it is the same task" is now
-measured rather than asserted.
+It was brought up against Isaac Sim 5.1.0 and Isaac Lab 2.3.2 on an RTX 4060,
+and all seven of its bring-up checks now pass at both `none` and `medium`
+randomisation. That includes the one the port exists for: the reward computed
+inside Isaac on the GPU agrees with the shared numpy implementation to about
+5e-08 on the same states, so "it is the same task" is measured rather than
+asserted. Randomisation is driven through Isaac's event manager from the same
+JSON ranges, with the same interval arithmetic.
 
-The check that fails is the scripted expert grasping reliably. The cause is
-measured, not guessed: the Franka's implicit PD leaves a standing 70-115 mm
-error between the commanded IK setpoint and the achieved pose, growing as the
-arm extends, while the expert is a state machine with 12 mm phase tolerances
-written for a MuJoCo hand that tracks its setpoint to the millimetre. The grasp
-mechanism itself works — `envs/isaac/README.md` has a trace of the gripper
-closing on the box and lifting it to the hold point — but not across arbitrary
-spawns. Fixing it needs a control path that reaches its setpoint (gravity
-compensation, stiffer gains, or operational-space control), which is real work
-and is not done.
+What it does *not* do is produce any number quoted in this repository. Every
+success rate in the README was produced in MuJoCo. `scripts/isaac_train.py`
+runs the same SAC implementation against the vectorised Isaac environment and a
+short run does learn to grasp, but no full grid has been trained there, so
+there is no Isaac column in any table.
 
-Also not done in Isaac: the randomisation ranges are loaded from the shared
-configs but not yet applied through Isaac Lab's event manager, so episodes run
-at nominal; the grasp test is geometric rather than contact-based; and **no
-policy has been trained there**. Every learned number in this repository comes
-from MuJoCo.
+Four of the eleven randomisation parameters have no Isaac equivalent yet:
+object size needs a pre-startup scale term, hand compliance is a property of
+the MuJoCo weld with no analogue, action latency would need a command queue in
+the task, and gravity is per-scene rather than per-environment. Those four are
+listed in `envs/isaac/README.md` rather than quietly omitted.
 
-**Cross-simulator transfer has not been attempted.** The control paths differ
-(mocap weld against differential IK on a Franka), so a MuJoCo policy is not
-expected to run in Isaac unchanged.
+**Cross-simulator transfer has been measured, once.** A MuJoCo-trained policy
+scores 0.500 [0.314, 0.686] in Isaac with no adaptation, against 1.000 for the
+scripted expert in the same environment — across a different physics engine,
+contact solver and embodiment. That is one policy on one distribution, not an
+ablation, and it is not a substitute for hardware.
 
 ## Things that would be next, in order of value
 

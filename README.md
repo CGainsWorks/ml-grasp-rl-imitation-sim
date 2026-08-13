@@ -35,10 +35,11 @@ condition is being met. Blue bar: lift height.*
 
 Nothing here has touched hardware. `shifted` is a **proxy** for a real robot,
 never called a real-robot number: [docs/sim-to-real.md](docs/sim-to-real.md).
-The closest thing to an independent test is the Isaac port: a MuJoCo-trained
-policy scores **0.500** [0.314, 0.686] there with no adaptation, across a
-different physics engine, contact solver and embodiment, against 1.000 for the
-scripted expert in the same environment.
+The closest thing to an independent test is the Isaac port, and it is
+unflattering: across five seeds per randomisation level, MuJoCo-trained policies
+score **0.05 to 0.08** there with no adaptation, against **1.000** for the
+scripted expert in the same environment. One seed reached 0.41 and the other
+nineteen were at or near zero.
 
 ---
 
@@ -166,11 +167,17 @@ The short version, with the reasoning and the caveats in
 * **Behaviour cloning degrades faster than the expert it copies.** 1.00 in
   distribution, 0.24 on the shifted worlds against the expert's 0.47: the
   expert filters its pose estimate and the memoryless clone does not.
-* **A second simulator agrees.** Running the same SAC in Isaac Lab, from
-  scratch, for 480 000 transitions produced a policy that grasps the box on
-  essentially every episode and lifts it on none — the same local optimum three
-  of the five MuJoCo seeds fell into. The trap belongs to the task and the
-  reward shaping, not to MuJoCo.
+* **A second simulator agrees about the local optimum.** Running the same SAC in
+  Isaac Lab, from scratch, for 480 000 transitions produced a policy that grasps
+  the box on essentially every episode and lifts it on none — the same local
+  optimum three of the five MuJoCo seeds fell into. The trap belongs to the task
+  and the reward shaping, not to MuJoCo. Seeding with demonstrations reaches
+  0.94 there, exactly as it does in MuJoCo.
+* **Policies do not transfer between the simulators.** 0.05–0.08 across five
+  seeds per level, against 1.000 for the scripted expert in the same
+  environment. The observation and action layouts match, so what fails is the
+  behaviour, not the interface — and no randomisation level fixes it. See
+  [docs/results.md](docs/results.md).
 
 ---
 

@@ -40,6 +40,13 @@ parser.add_argument("--hidden", type=int, default=128)
 parser.add_argument("--start-steps", type=int, default=500)
 parser.add_argument("--eval-every", type=int, default=2_000)
 parser.add_argument("--eval-episodes", type=int, default=2)
+parser.add_argument("--demos", default=None,
+                    help="npz of Isaac demonstrations; pins them in the replay buffer "
+                         "and behaviour-clones the actor before RL starts")
+parser.add_argument("--bc-epochs", type=int, default=40)
+parser.add_argument("--bc-coef", type=float, default=50.0)
+parser.add_argument("--bc-decay-steps", type=int, default=0,
+                    help="defaults to half the run")
 parser.add_argument("--output", default="experiments/runs/isaac_sac")
 args = parser.parse_args()
 
@@ -53,6 +60,7 @@ import torch  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from envs.isaac.grasp_task import ACT_DIM, OBS_DIM, GraspTask, GraspTaskCfg  # noqa: E402
+from src.policies.behaviour_cloning import fit  # noqa: E402
 from src.policies.sac import SAC, SACConfig  # noqa: E402
 
 os.makedirs(args.output, exist_ok=True)
@@ -65,10 +73,36 @@ env = GraspTask(cfg)
 
 sac_cfg = SACConfig(
     hidden=(args.hidden, args.hidden),
-    start_steps=args.start_steps,
+    start_steps=0 if args.demos else args.start_steps,
     buffer_size=600_000,
+    bc_coef=args.bc_coef if args.demos else 0.0,
+    bc_decay_steps=(args.bc_decay_steps or args.steps // 2) if args.demos else 0,
+    demo_sample_fraction=0.25 if args.demos else 0.0,
+    critic_warmup_updates=3_000 if args.demos else 0,
+    target_entropy_scale=2.0 if args.demos else 1.0,
+    init_alpha=0.02 if args.demos else 0.1,
 )
 agent = SAC(OBS_DIM, ACT_DIM, sac_cfg, seed=args.seed)
+
+if args.demos:
+    # Same recipe the MuJoCo runs use: pin the demonstrations so the ring never
+    # overwrites them, clone the actor first, then let RL improve on it.
+    with np.load(args.demos, allow_pickle=True) as archive:
+        demos = {k: archive[k] for k in archive.files}
+    n_demo = agent.buffer.add_demonstrations(
+        demos["observations"], demos["actions"], demos["rewards"],
+        demos["next_observations"], demos["dones"],
+    )
+    agent.observe_normalisation(demos["observations"])
+    print("pinned {} demonstration transitions".format(n_demo), flush=True)
+
+    train_curve, val_curve = fit(
+        agent.actor, demos["observations"], demos["actions"],
+        epochs=args.bc_epochs, batch_size=256, lr=1e-3, weight_decay=1e-5,
+        rng=np.random.default_rng(args.seed),
+    )
+    print("behaviour cloning done: train mse {:.5f}, val mse {:.5f}".format(
+        train_curve[-1], val_curve[-1]), flush=True)
 
 with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
     json.dump({

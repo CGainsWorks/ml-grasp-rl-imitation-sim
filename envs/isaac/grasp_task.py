@@ -198,6 +198,54 @@ def build_events(level: str):
                 "num_buckets": 64,
             },
         )
+    if scale > 0.0 and "object_half_size" in params:
+        # Scale terms have to run before the simulation starts: geometry cannot
+        # be resized once physics is initialised.
+        low, high = _scaled(params["object_half_size"], scale)
+        terms["object_scale"] = EventTerm(
+            func=mdp.randomize_rigid_body_scale,
+            mode="prestartup",
+            params={
+                "asset_cfg": SceneEntityCfg("object"),
+                "scale_range": {"x": (low, high), "y": (low, high), "z": (low, high)},
+            },
+        )
+    if scale > 0.0 and "gravity" in params:
+        # Isaac applies gravity per scene rather than per environment, so this
+        # draws one value for all of them each interval. MuJoCo draws one per
+        # episode per world; the interval is the same, the granularity is not.
+        low, high = _scaled(params["gravity"], scale)
+        terms["gravity"] = EventTerm(
+            func=mdp.randomize_physics_scene_gravity,
+            mode="interval",
+            is_global_time=True,
+            interval_range_s=(4.0, 4.0),
+            params={
+                "gravity_distribution_params": ([0.0, 0.0, -9.81 * low],
+                                                [0.0, 0.0, -9.81 * high]),
+                "operation": "abs",
+                "distribution": "uniform",
+            },
+        )
+    if scale > 0.0 and "hand_compliance" in params:
+        # MuJoCo's hand_compliance is the solref of the weld that drags the
+        # hand: how softly the hand follows its setpoint. There is no weld here,
+        # and the closest honest analogue is the arm's joint stiffness, which
+        # governs exactly the same thing -- how hard the arm insists on reaching
+        # the pose it was told to. The mapping is inverted: a *more* compliant
+        # weld is a *less* stiff arm.
+        low, high = _scaled(params["hand_compliance"], scale)
+        terms["arm_compliance"] = EventTerm(
+            func=mdp.randomize_actuator_gains,
+            mode="reset",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", joint_names="panda_joint.*"),
+                "stiffness_distribution_params": (1.0 / max(high, 1e-6),
+                                                  1.0 / max(low, 1e-6)),
+                "operation": "scale",
+                "distribution": "uniform",
+            },
+        )
     if scale > 0.0 and "gripper_gain" in params:
         terms["gripper_gain"] = EventTerm(
             func=mdp.randomize_actuator_gains,
@@ -373,6 +421,15 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         _, act_noise = build_noise_models(cfg.randomisation_level)
         cfg.action_noise_model = act_noise
 
+        # Randomising object *scale* is a USD-level edit, and Isaac refuses to
+        # combine that with scene replication: replicated instances share their
+        # properties, so a per-environment size would silently apply to all of
+        # them. Replication is therefore switched off exactly when the level
+        # randomises size -- it costs scene-setup time, and the alternative is
+        # a randomisation that lies.
+        if cfg.events is not None and hasattr(cfg.events, "object_scale"):
+            cfg.scene.replicate_physics = False
+
         super().__init__(cfg, render_mode, **kwargs)
 
         self.reward_cfg = GraspRewardConfig()
@@ -422,6 +479,26 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         # workspace within a couple of seconds.
         self._target_pos = torch.zeros((self.num_envs, 3), device=self.device)
 
+        # Per-environment command queue, the equivalent of the MuJoCo latency
+        # deque. Row 0 is the newest command; an environment with latency k
+        # executes row k, so the queue depth is the largest latency the level
+        # can draw.
+        latency_spec = self.ranges.get("params", {}).get("action_latency")
+        rand_scale_l = float(self.ranges["scale"])
+        if latency_spec is not None and rand_scale_l > 0.0:
+            self._max_latency = int(round(_scaled(latency_spec, rand_scale_l)[1]))
+        else:
+            self._max_latency = 0
+        self._latency_range = (
+            _scaled(latency_spec, rand_scale_l)
+            if latency_spec is not None and rand_scale_l > 0.0
+            else (0.0, 0.0)
+        )
+        self._action_queue = torch.zeros(
+            (self.num_envs, self._max_latency + 1, ACT_DIM), device=self.device
+        )
+        self._latency = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
+
         self.goal_pos = torch.zeros((self.num_envs, 3), device=self.device)
         self.object_rest_z = torch.full(
             (self.num_envs,), TABLE_HEIGHT + OBJECT_HALF_SIZE, device=self.device
@@ -456,7 +533,13 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
 
     # ------------------------------------------------------------------
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
-        self.last_action = actions.clamp(-1.0, 1.0).to(self.device)
+        commanded = actions.clamp(-1.0, 1.0).to(self.device)
+        if self._max_latency > 0:
+            self._action_queue = torch.roll(self._action_queue, shifts=1, dims=1)
+            self._action_queue[:, 0] = commanded
+            index = self._latency.view(-1, 1, 1).expand(-1, 1, ACT_DIM)
+            commanded = torch.gather(self._action_queue, 1, index).squeeze(1)
+        self.last_action = commanded
         # Integrate once per control step, not once per physics substep.
         self._target_pos = torch.clamp(
             self._target_pos + self.last_action[:, :3] * POS_STEP,
@@ -605,6 +688,12 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
             dim=-1,
         )
         self._ik.reset(env_ids)
+        if self._max_latency > 0:
+            self._action_queue[env_ids] = 0.0
+            low, high = self._latency_range
+            self._latency[env_ids] = torch.randint(
+                int(round(low)), int(round(high)) + 1, (n,), device=self.device
+            )
         # Start the setpoint above the box, as the MuJoCo hand does.
         self._target_pos[env_ids] = torch.stack(
             [

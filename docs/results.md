@@ -137,20 +137,14 @@ overlap each other.
 
 ## 6. The same task in a second simulator
 
-The Isaac Lab port is not decoration: it is a second opinion, and it agrees with
-two of the findings above.
+The Isaac Lab port is not decoration: it is a second opinion. It confirms one
+finding, and it contradicts an optimistic reading of another.
 
-**Cross-simulator transfer.** A policy trained in MuJoCo (`bcrl_high_s0`),
-exported to TorchScript and dropped into Isaac with no adaptation, scores
-**0.500** [0.314, 0.686] against **1.000** for the scripted expert in the same
-environment. Different physics engine, different contact solver, and a Franka
-driven by differential IK instead of a free-floating hand on a mocap weld. Half
-the episodes still succeed. That is a far stronger statement than the `shifted`
-proxy can make, because Isaac is not a distribution this repository designed.
+### It confirms the local optimum
 
-**The local optimum is not a MuJoCo artefact.** Running the same SAC
-implementation in Isaac, from scratch, for 480 000 transitions produced a policy
-that grasps the box on essentially every episode and lifts it on none:
+Running the same SAC implementation in Isaac, from scratch, for 480 000
+transitions produced a policy that grasps the box on essentially every episode
+and lifts it on none:
 
 | env steps (x32 envs) | grasp rate | mean peak lift | success |
 | ---: | ---: | ---: | ---: |
@@ -159,10 +153,65 @@ that grasps the box on essentially every episode and lifts it on none:
 | 15 000 | 0.94 | 0.053 m | 0.00 |
 
 That is exactly the basin three of the five MuJoCo seeds settled into. Two
-different engines, two different embodiments, the same trap: the reward pays
-0.73 per step for holding the box on the table, and a policy that has stopped
-exploring has no route to the 9.75 available at the hold point. It is a property
-of the task and the shaping, not of the simulator.
+engines, two embodiments, the same trap: the reward pays 0.73 per step for
+holding the box on the table against 9.75 at the hold point, and a policy that
+has stopped exploring has no route between them. It is a property of the task
+and the shaping, not of the simulator.
+
+Seeding with demonstrations rescues it there too, exactly as in MuJoCo:
+demonstrations recorded in Isaac with the same scripted expert, pinned in the
+replay buffer, take the same SAC to **0.94** final and 1.00 best within 8 000
+steps — against 0.00 from scratch at nearly twenty times the data.
+
+### The behaviour-cloning anchor, isolated
+
+The Isaac runs also settle the question the MuJoCo curves only hinted at. Two
+runs, identical seed and configuration, differing only in whether the
+behaviour-cloning coefficient decays to zero half-way:
+
+| env steps | coefficient decaying | coefficient held |
+| ---: | ---: | ---: |
+| 1 000 | 1.000 | 1.000 |
+| 3 000 | 0.969 | 0.969 |
+| **4 000** | **0.000** | **0.906** |
+| 5 000 | 0.000 | 0.938 |
+| 8 000 | 0.000 | 0.938 |
+
+Step 4 000 is exactly where the coefficient reaches zero. The MuJoCo curves show
+the same cliff, softened: 0.95 down to 0.5, recovering to about 0.75. Here it is
+total and does not recover. The anchor is not a formality that can be annealed
+away on a schedule chosen in advance; removing it hands the policy back to a
+critic that is not ready for it.
+
+### It contradicts cross-simulator transfer
+
+Policies trained in MuJoCo, exported and run in Isaac with no adaptation, five
+seeds at each randomisation level, 32 episodes each:
+
+| trained with | per-seed success | across seeds | 95% t |
+| --- | --- | ---: | --- |
+| `none` | 0.06, 0.13, 0.00, 0.00, 0.16 | 0.069 | [0.000, 0.157] |
+| `low` | 0.13, 0.16, 0.00, 0.00, 0.00 | 0.056 | [0.000, 0.153] |
+| `medium` | 0.00, 0.00, 0.25, 0.00, 0.00 | 0.050 | [0.000, 0.189] |
+| `high` | 0.41, 0.00, 0.00, 0.00, 0.00 | 0.081 | [0.000, 0.307] |
+| scripted expert | — | **1.000** | — |
+
+MuJoCo policies mostly do not transfer to Isaac, and no randomisation level
+changes that: every interval includes zero and they overlap each other
+completely. The expert scores 1.000 in the same environment, so the Isaac task
+is not broken — what fails is the learned behaviour.
+
+This measurement was first run with **one seed per level**, and it looked like a
+clean result: wide randomisation transferring at 0.41 against ≤0.08 for the
+others. That reading was wrong. It was seed 0 of `high`, and its four siblings
+scored zero. The single-seed version of this table would have been the most
+quotable number in the repository and it would have been an artefact — which is
+the same lesson as section 3, arriving from the opposite direction.
+
+The honest conclusion: the `shifted` proxy overstates how transferable these
+policies are. Randomisation buys robustness *within* a simulator's contact and
+actuator model; it does not, at these ranges, buy robustness to a different
+model of contact altogether.
 
 ## 7. What would change these numbers
 

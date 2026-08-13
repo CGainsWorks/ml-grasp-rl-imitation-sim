@@ -157,6 +157,9 @@ The short version, with the reasoning and the caveats in
   with a cloned actor and demonstrations pinned in the replay buffer, goes from
   0.22 to 0.97 on the nominal world and from 0.13 to 0.73 at medium
   randomisation — and gets there inside 30 000 steps.
+* **A second engine reproduces it, five seeds deep.** In Isaac Lab, SAC from
+  scratch scores 0.000 on all five seeds — a reliable failure, not variance —
+  and demonstration-seeded SAC scores 0.969 [0.902, 1.000].
 * **Randomisation buys transfer, and here it costs nothing measurable.** A
   policy trained without it is perfect on its own worlds and scores 0.002 on the
   held-out ones; wide randomisation multiplies that by thirty, to 0.072 — still

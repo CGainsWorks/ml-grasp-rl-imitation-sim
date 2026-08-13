@@ -113,33 +113,43 @@ stall and we do not know why" is now "three of five seeds stall because the
 entropy coefficient collapses, and a floor of 0.15 fixes it in every seed at
 half the budget".
 
-## It does not transfer to the randomised case
+## Under randomisation it needs the floor *and* a longer budget
 
 The obvious next question — is this also why from-scratch SAC fails under
-randomisation? — was measured rather than assumed, five seeds at `medium`,
+randomisation? — took two rounds to answer, and the first round was misleading.
+
+At a matched budget the floor appears to do nothing. Five seeds at `medium`,
 100 000 steps:
 
 | condition | per-seed | mean | 95% t |
 | --- | --- | ---: | --- |
-| nominal, no floor (200k) | 1.0, 1.0, 0.0, 0.0, 0.0 | 0.400 | [0.000, 1.000] |
-| **nominal, floor (100k)** | 0.97, 1.0, 1.0, 1.0, 1.0 | **0.993** | [0.975, 1.000] |
 | medium, no floor (200k) | 0.2, 0.03, 0.0, 0.27, 0.1 | 0.120 | [0.000, 0.259] |
 | medium, floor (100k) | 0.0, 0.03, 0.37, 0.0, 0.4 | 0.160 | [0.000, 0.414] |
 
-The floor turns the nominal world from a coin flip into a solved task. Under
-randomisation it moves the mean from 0.120 to 0.160 with intervals that overlap
-almost entirely — nothing that survives five seeds.
+Two of those seeds were still climbing steeply when the run ended, which is the
+tell. Extending three seeds to 300 000 steps:
 
-So entropy collapse explains **one** of the two from-scratch failures. Whatever
-stops SAC learning under randomisation is a different problem, and naming the
-nominal mechanism does not name that one. The candidates are the obvious ones —
-a harder exploration problem, a value function that has to generalise across
-worlds, or simply more steps needed — and this repository has not distinguished
-between them.
+| condition | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| medium, no floor, 200k (seeds 0, 2, 4) | 0.2, 0.0, 0.1 | 0.100 | [0.000, 0.348] |
+| **medium, floor, 300k** | 0.60, 0.63, 0.77 | **0.667** | [0.448, 0.886] |
+
+The intervals do not overlap. The floor works under randomisation too; it simply
+needs about three times the budget to show it, because learning is slower when
+every episode is a different world. The trajectory is visible in the curves —
+seed 0 sat at 0.00 through 175 000 steps and reached 0.60 by 300 000.
+
+So the honest conclusion is not "a different mechanism" but "the same fix, and
+the nominal budget was never enough". Stopping at 100 000 steps would have
+recorded the opposite, which is worth remembering next time an intervention
+looks inert.
 
 Two caveats worth keeping:
 
 * The floor value, 0.15, was chosen from the successful seeds’ own coefficient
   (≈0.17) rather than searched. A value that works is not a tuned value.
-* Everything here is the nominal or `medium` world at 100 000 steps. The floor
-  was not retested at `low` or `high`.
+* The `low` and `high` levels were not retested with the floor, and the `medium`
+  budget test is three seeds rather than five.
+* 0.667 is well short of what demonstrations achieve under the same
+  randomisation (0.726 at 200k, and reached within 30 000 steps). The floor makes
+  from-scratch RL work here; it does not make it competitive.

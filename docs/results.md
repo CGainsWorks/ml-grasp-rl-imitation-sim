@@ -135,7 +135,36 @@ solving the shift at this budget. Second, on `shifted` only `none` versus `high`
 is separated by more than its confidence intervals; the `low` and `medium` rows
 overlap each other.
 
-## 6. What would change these numbers
+## 6. The same task in a second simulator
+
+The Isaac Lab port is not decoration: it is a second opinion, and it agrees with
+two of the findings above.
+
+**Cross-simulator transfer.** A policy trained in MuJoCo (`bcrl_high_s0`),
+exported to TorchScript and dropped into Isaac with no adaptation, scores
+**0.500** [0.314, 0.686] against **1.000** for the scripted expert in the same
+environment. Different physics engine, different contact solver, and a Franka
+driven by differential IK instead of a free-floating hand on a mocap weld. Half
+the episodes still succeed. That is a far stronger statement than the `shifted`
+proxy can make, because Isaac is not a distribution this repository designed.
+
+**The local optimum is not a MuJoCo artefact.** Running the same SAC
+implementation in Isaac, from scratch, for 480 000 transitions produced a policy
+that grasps the box on essentially every episode and lifts it on none:
+
+| env steps (x32 envs) | grasp rate | mean peak lift | success |
+| ---: | ---: | ---: | ---: |
+| 2 500 | 0.63 | 0.008 m | 0.00 |
+| 10 000 | 1.00 | 0.006 m | 0.00 |
+| 15 000 | 0.94 | 0.053 m | 0.00 |
+
+That is exactly the basin three of the five MuJoCo seeds settled into. Two
+different engines, two different embodiments, the same trap: the reward pays
+0.73 per step for holding the box on the table, and a policy that has stopped
+exploring has no route to the 9.75 available at the hold point. It is a property
+of the task and the shaping, not of the simulator.
+
+## 7. What would change these numbers
 
 In rough order of expected effect:
 

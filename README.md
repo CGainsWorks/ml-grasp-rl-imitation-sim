@@ -166,6 +166,11 @@ The short version, with the reasoning and the caveats in
 * **Behaviour cloning degrades faster than the expert it copies.** 1.00 in
   distribution, 0.24 on the shifted worlds against the expert's 0.47: the
   expert filters its pose estimate and the memoryless clone does not.
+* **A second simulator agrees.** Running the same SAC in Isaac Lab, from
+  scratch, for 480 000 transitions produced a policy that grasps the box on
+  essentially every episode and lifts it on none — the same local optimum three
+  of the five MuJoCo seeds fell into. The trap belongs to the task and the
+  reward shaping, not to MuJoCo.
 
 ---
 

@@ -1,0 +1,20 @@
+[flake8]
+max-line-length = 100
+extend-ignore =
+    E203,
+    W503,
+    E731
+exclude =
+    .git,
+    __pycache__,
+    experiments/runs,
+    videos,
+    .venv,
+    venv
+per-file-ignores =
+    envs/isaac/grasp_task.py:E402,F401,F811
+    envs/mujoco/grasp_env.py:E402
+    src/*.py:E402
+    experiments/*.py:E402
+    analysis/*.py:E402
+    tests/*.py:E402

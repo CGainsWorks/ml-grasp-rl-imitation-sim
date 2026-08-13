@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Training output. The per-run logs (progress.csv, config.json, result.json) are
+# small and are committed, so the training curves can be redrawn and any number
+# traced back to the run that produced it without a two-hour rerun. The network
+# weights are not: 50-odd checkpoints is tens of megabytes of history for files
+# that `make experiments` regenerates. Two exported policies live in
+# experiments/policies instead.
+experiments/runs/**/*.pt
+experiments/runs/_bc_sweep/
+experiments/logs/
+
+# Rendered media. The small GIFs in videos/ are committed; MP4s are not.
+videos/*.mp4
+*.mkv
+
+.DS_Store
+.idea/
+.vscode/

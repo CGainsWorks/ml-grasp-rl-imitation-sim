@@ -1,0 +1,51 @@
+{
+  "name": "shifted",
+  "scale": 1.0,
+  "params": {
+    "object_mass": {
+      "low": 3.2,
+      "high": 4.0,
+      "mode": "scale"
+    },
+    "object_friction": {
+      "low": 0.5,
+      "high": 0.62,
+      "mode": "scale"
+    },
+    "table_friction": {
+      "low": 0.4,
+      "high": 0.6,
+      "mode": "scale"
+    },
+    "gripper_gain": {
+      "low": 0.36,
+      "high": 0.46,
+      "mode": "scale"
+    },
+    "hand_compliance": {
+      "low": 2.5,
+      "high": 3.1,
+      "mode": "scale"
+    },
+    "action_latency": {
+      "low": 3.0,
+      "high": 4.0,
+      "mode": "absolute"
+    },
+    "obs_noise_pos": {
+      "low": 0.0075,
+      "high": 0.0095,
+      "mode": "absolute"
+    },
+    "obs_noise_vel": {
+      "low": 0.045,
+      "high": 0.06,
+      "mode": "absolute"
+    },
+    "action_noise": {
+      "low": 0.085,
+      "high": 0.105,
+      "mode": "absolute"
+    }
+  }
+}

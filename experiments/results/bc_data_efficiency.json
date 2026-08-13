@@ -1,0 +1,109 @@
+{
+  "demos": "demonstrations\\expert_low.npz",
+  "eval_level": "low",
+  "episodes_per_seed": 50,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "expert_success": 0.98,
+  "rows": [
+    {
+      "demo_episodes": 5,
+      "success": {
+        "point": 0.3666666666666667,
+        "low": 0.15980417148904605,
+        "high": 0.5735291618442874,
+        "n": 3,
+        "method": "t"
+      },
+      "per_seed_success": [
+        0.3,
+        0.46,
+        0.34
+      ],
+      "mean_val_mse": 0.01961434818804264
+    },
+    {
+      "demo_episodes": 10,
+      "success": {
+        "point": 0.7333333333333333,
+        "low": 0.3604066666666666,
+        "high": 1.0,
+        "n": 3,
+        "method": "t"
+      },
+      "per_seed_success": [
+        0.58,
+        0.74,
+        0.88
+      ],
+      "mean_val_mse": 0.015394358430057764
+    },
+    {
+      "demo_episodes": 25,
+      "success": {
+        "point": 0.8933333333333332,
+        "low": 0.7682910523062965,
+        "high": 1.0,
+        "n": 3,
+        "method": "t"
+      },
+      "per_seed_success": [
+        0.9,
+        0.94,
+        0.84
+      ],
+      "mean_val_mse": 0.008145196285719672
+    },
+    {
+      "demo_episodes": 50,
+      "success": {
+        "point": 0.9666666666666667,
+        "low": 0.9092933333333333,
+        "high": 1.0,
+        "n": 3,
+        "method": "t"
+      },
+      "per_seed_success": [
+        0.98,
+        0.98,
+        0.94
+      ],
+      "mean_val_mse": 0.008563097100704908
+    },
+    {
+      "demo_episodes": 100,
+      "success": {
+        "point": 0.9666666666666667,
+        "low": 0.9092933333333333,
+        "high": 1.0,
+        "n": 3,
+        "method": "t"
+      },
+      "per_seed_success": [
+        0.98,
+        0.98,
+        0.94
+      ],
+      "mean_val_mse": 0.007614356931298971
+    },
+    {
+      "demo_episodes": 200,
+      "success": {
+        "point": 0.96,
+        "low": 0.96,
+        "high": 0.96,
+        "n": 3,
+        "method": "t"
+      },
+      "per_seed_success": [
+        0.96,
+        0.96,
+        0.96
+      ],
+      "mean_val_mse": 0.007843755651265383
+    }
+  ]
+}

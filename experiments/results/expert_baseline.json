@@ -1,0 +1,52 @@
+{
+  "episodes": 100,
+  "seed_block": 900000,
+  "levels": {
+    "none": {
+      "success_rate": 1.0,
+      "wilson_low": 0.9630065017930143,
+      "wilson_high": 1.0,
+      "grasp_rate": 1.0,
+      "mean_return": 577.1716256911709,
+      "mean_max_lift": 0.12696685249542983,
+      "episodes": 100
+    },
+    "low": {
+      "success_rate": 0.98,
+      "wilson_low": 0.929988209271456,
+      "wilson_high": 0.9944980324498376,
+      "grasp_rate": 1.0,
+      "mean_return": 565.8479598580861,
+      "mean_max_lift": 0.12819648400292943,
+      "episodes": 100
+    },
+    "medium": {
+      "success_rate": 0.94,
+      "wilson_low": 0.8752318455410406,
+      "wilson_high": 0.9722138760368118,
+      "grasp_rate": 1.0,
+      "mean_return": 546.1827400791194,
+      "mean_max_lift": 0.12762270145116816,
+      "episodes": 100
+    },
+    "high": {
+      "success_rate": 0.84,
+      "wilson_low": 0.7557973061072976,
+      "wilson_high": 0.8990471151119521,
+      "grasp_rate": 1.0,
+      "mean_return": 510.9477238346801,
+      "mean_max_lift": 0.1288033493584723,
+      "episodes": 100
+    },
+    "shifted": {
+      "success_rate": 0.47,
+      "wilson_low": 0.3751081795934127,
+      "wilson_high": 0.5671114302990063,
+      "grasp_rate": 0.95,
+      "mean_return": 202.65296957335212,
+      "mean_max_lift": 0.08613889981505213,
+      "episodes": 100
+    }
+  },
+  "policy": "src/policies/scripted_expert.py"
+}

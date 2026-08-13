@@ -1,0 +1,36 @@
+{
+  "algorithm": "bc",
+  "final_success_rate": 0.96,
+  "final_grasp_rate": 1.0,
+  "final_val_mse": 0.008564845658838749,
+  "transitions": 20000,
+  "demo_episodes": 200,
+  "history": [
+    {
+      "round": 0,
+      "transitions": 20000,
+      "train_mse": 0.001890521072684197,
+      "val_mse": 0.008564845658838749,
+      "success_rate": 0.96,
+      "grasp_rate": 1.0
+    }
+  ],
+  "seed": 1,
+  "randomisation": "low",
+  "demos": "demonstrations\\expert_low.npz",
+  "demo_meta": {
+    "episodes_requested": 200,
+    "episodes_attempted": 201,
+    "episodes_kept": 200,
+    "expert_success_rate": 0.9950248756218906,
+    "randomisation": "low",
+    "seed": 7,
+    "expert_noise": 0.02,
+    "keep_failures": false,
+    "max_steps": 100,
+    "wall_seconds": 13.2,
+    "source": "src/policies/scripted_expert.py"
+  },
+  "epochs": 60,
+  "wall_seconds": 15.7
+}

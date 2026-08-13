@@ -1,0 +1,13 @@
+# Keep the build context small: training output and rendered media are
+# regenerated inside the container, never copied into it.
+.git
+experiments/runs
+experiments/logs
+videos/*.mp4
+docs/plots
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv

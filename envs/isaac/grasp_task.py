@@ -58,7 +58,12 @@ try:
     from isaaclab.assets import Articulation, ArticulationCfg, RigidObject, RigidObjectCfg
     from isaaclab.controllers import DifferentialIKController, DifferentialIKControllerCfg
     from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
+    import isaaclab.envs.mdp as mdp
+    from isaaclab.managers import EventTermCfg as EventTerm
+    from isaaclab.managers import SceneEntityCfg
     from isaaclab.scene import InteractiveSceneCfg
+    from isaaclab.sensors import ContactSensor, ContactSensorCfg
+    from isaaclab.utils.noise import GaussianNoiseCfg, NoiseModelWithAdditiveBiasCfg
     from isaaclab.sim import SimulationCfg
     from isaaclab.utils import configclass
     from isaaclab.utils.math import subtract_frame_transforms
@@ -92,7 +97,7 @@ OBS_DIM = 32
 ACT_DIM = 4
 POS_STEP = 0.02          # metres per unit action, matches MuJoCo
 OBJECT_HALF_SIZE = 0.022
-TABLE_CENTRE_X = 0.55    # in front of the Franka base, inside its reach
+TABLE_CENTRE_X = 0.48    # in front of the Franka base, inside its comfortable reach
 # Offset from the panda_hand frame to the point between the fingertips. Isaac
 # Lab's own Franka lift task uses the same number; without it the controller
 # servos the wrist to the box and the fingers close 10 cm short of it.
@@ -101,6 +106,8 @@ GRIP_OFFSET = 0.107
 # 11-19 cm above the box; matching that matters more here than it looks,
 # because the expert's descent is the phase with the tightest time budget.
 RESET_HEIGHT = 0.20
+# Newtons. Above sensor noise, well below the force needed to hold the box.
+CONTACT_FORCE_THRESHOLD = 0.05
 # Workspace box for the commanded *setpoint*, base frame. The floor sits below
 # the table top on purpose. The arm's implicit PD holds against gravity with a
 # finite stiffness, so the achieved pose lags the setpoint by several
@@ -116,6 +123,125 @@ def load_randomisation_ranges(level: str) -> dict:
     """Read the same JSON ranges the MuJoCo environment uses."""
     with open(os.path.join(CONFIG_DIR, "{}.json".format(level)), "r", encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def _scaled(spec: dict, scale: float) -> tuple:
+    """Turn one shared range spec into an Isaac (low, high) tuple.
+
+    Reproduces ``ParamSpec.sample`` from ``src/randomisation/domain_rand.py``:
+    multiplicative ranges are widened about 1.0 by the level's scale, additive
+    ones about their midpoint. Keeping the arithmetic identical is the point --
+    both simulators then randomise over the same interval.
+    """
+    if spec.get("mode", "scale") == "scale":
+        return (1.0 + (spec["low"] - 1.0) * scale, 1.0 + (spec["high"] - 1.0) * scale)
+    mid = 0.5 * (spec["low"] + spec["high"])
+    half = 0.5 * (spec["high"] - spec["low"]) * scale
+    return (mid - half, mid + half)
+
+
+def build_events(level: str):
+    """Build Isaac Lab event terms from the shared randomisation config.
+
+    Mapped through Isaac's own event manager: object mass, object and table
+    friction, and gripper actuator gains. Gravity is applied per-scene rather
+    than per-environment, so it is left at nominal. ``hand_compliance`` has no
+    Isaac analogue (it is a property of the MuJoCo weld), ``action_latency``
+    would need a command queue in this class, and ``object_half_size`` needs a
+    pre-startup scale term; those four are not mapped and are listed as such in
+    envs/isaac/README.md. Sensing and action noise are applied through the
+    environment's noise models rather than events -- see ``GraspTaskCfg``.
+    """
+    if not ISAAC_AVAILABLE:
+        return None
+    raw = load_randomisation_ranges(level)
+    scale, params = float(raw["scale"]), raw.get("params", {})
+
+    @configclass
+    class EventCfg:
+        pass
+
+    terms = {}
+    if scale > 0.0 and "object_mass" in params:
+        terms["object_mass"] = EventTerm(
+            func=mdp.randomize_rigid_body_mass,
+            mode="reset",
+            params={
+                "asset_cfg": SceneEntityCfg("object"),
+                "mass_distribution_params": _scaled(params["object_mass"], scale),
+                "operation": "scale",
+            },
+        )
+    if scale > 0.0 and "object_friction" in params:
+        low, high = _scaled(params["object_friction"], scale)
+        terms["object_material"] = EventTerm(
+            func=mdp.randomize_rigid_body_material,
+            mode="reset",
+            params={
+                "asset_cfg": SceneEntityCfg("object"),
+                "static_friction_range": (low, high),
+                "dynamic_friction_range": (low, high),
+                "restitution_range": (0.0, 0.0),
+                "num_buckets": 64,
+            },
+        )
+    if scale > 0.0 and "table_friction" in params:
+        low, high = _scaled(params["table_friction"], scale)
+        terms["table_material"] = EventTerm(
+            func=mdp.randomize_rigid_body_material,
+            mode="reset",
+            params={
+                "asset_cfg": SceneEntityCfg("table"),
+                "static_friction_range": (low, high),
+                "dynamic_friction_range": (low, high),
+                "restitution_range": (0.0, 0.0),
+                "num_buckets": 64,
+            },
+        )
+    if scale > 0.0 and "gripper_gain" in params:
+        terms["gripper_gain"] = EventTerm(
+            func=mdp.randomize_actuator_gains,
+            mode="reset",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", joint_names="panda_finger_joint.*"),
+                "stiffness_distribution_params": _scaled(params["gripper_gain"], scale),
+                "operation": "scale",
+                "distribution": "uniform",
+            },
+        )
+
+    for name, term in terms.items():
+        setattr(EventCfg, name, term)
+        EventCfg.__annotations__[name] = EventTerm
+    return EventCfg()
+
+
+def build_noise_models(level: str):
+    """Action noise, from the same shared ranges.
+
+    Observation noise is deliberately *not* returned as an Isaac noise model.
+    Isaac's model perturbs every element of the vector independently, which
+    breaks an invariant the MuJoCo environment maintains: a real system has one
+    pose estimate, and the relative-position entries are computed from it, so
+    they stay consistent with the absolute ones. ``_get_observations`` applies
+    the noise the same way MuJoCo does instead.
+    """
+    if not ISAAC_AVAILABLE:
+        return None, None
+    raw = load_randomisation_ranges(level)
+    scale, params = float(raw["scale"]), raw.get("params", {})
+    if scale <= 0.0:
+        return None, None
+
+    obs_model = act_model = None
+    if "action_noise" in params:
+        _, high = _scaled(params["action_noise"], scale)
+        act_model = NoiseModelWithAdditiveBiasCfg(
+            noise_cfg=GaussianNoiseCfg(mean=0.0, std=max(high, 1e-6), operation="add"),
+            bias_noise_cfg=GaussianNoiseCfg(mean=0.0, std=max(high * 0.25, 1e-6),
+                                            operation="add"),
+        )
+    return obs_model, act_model
 
 
 @configclass
@@ -135,6 +261,13 @@ class GraspTaskCfg(DirectRLEnvCfg if ISAAC_AVAILABLE else object):
     state_space = 0
     randomisation_level = "medium"
 
+    def __post_init__(self):
+        """Attach the randomisation, driven by the shared JSON ranges."""
+        if ISAAC_AVAILABLE:
+            self.events = build_events(self.randomisation_level)
+            _, act_noise = build_noise_models(self.randomisation_level)
+            self.action_noise_model = act_noise
+
     if ISAAC_AVAILABLE:
         sim: SimulationCfg = SimulationCfg(dt=1.0 / 200.0, render_interval=8)
 
@@ -145,26 +278,47 @@ class GraspTaskCfg(DirectRLEnvCfg if ISAAC_AVAILABLE else object):
         # The high-PD variant, as Isaac Lab's own lift task uses: the default
         # gains track an IK target too softly to grasp anything.
         #
-        # The joint angles are a top-down pre-grasp above the table, solved by
-        # driving this environment's own IK to a downward pose and reading the
-        # arm back (scripts/isaac_pregrasp.py). The Franka's shipped home pose
-        # puts the fingertips at z = 0.383, which is *below* the 0.40 table top:
-        # the arm starts inside the table, and on the way out it flicks the box
-        # off it.
+        # The joint angles are a top-down pre-grasp above the table, found by
+        # searching configurations with the simulator's own forward kinematics
+        # (scripts/isaac_pregrasp.py). Two poses were rejected first: the
+        # Franka's shipped home pose puts the fingertips at z = 0.383, *below*
+        # the 0.40 m table top, so the arm starts inside the table and flicks
+        # the box off it on the way out; and a pose obtained by letting the IK
+        # settle from that start left the elbow nearly straight
+        # (panda_joint4 = -0.32 against a -0.07 limit), which is close enough
+        # to a singularity that the damped-least-squares solver oscillated
+        # between two configurations instead of converging. This one keeps
+        # joint 4 at -1.42, clear of both limits.
         robot: ArticulationCfg = FRANKA_PANDA_HIGH_PD_CFG.replace(
             prim_path="/World/envs/env_.*/Robot",
             init_state=ArticulationCfg.InitialStateCfg(
                 joint_pos={
-                    "panda_joint1": -0.039,
-                    "panda_joint2": 0.493,
-                    "panda_joint3": 0.004,
-                    "panda_joint4": -0.324,
-                    "panda_joint5": -0.002,
-                    "panda_joint6": 0.702,
-                    "panda_joint7": 0.751,
+                    "panda_joint1": 0.0,
+                    "panda_joint2": -0.1,
+                    "panda_joint3": 0.0,
+                    "panda_joint4": -1.417,
+                    "panda_joint5": 0.0,
+                    "panda_joint6": 1.367,
+                    "panda_joint7": 0.785,
                     "panda_finger_joint.*": 0.04,
                 },
             ),
+        )
+
+        # One contact sensor per finger, filtered to the box. This is what makes
+        # the grasp test a real contact read rather than "the box is nearby and
+        # the fingers are shut", which reports a grasp for a near miss.
+        contact_left: ContactSensorCfg = ContactSensorCfg(
+            prim_path="/World/envs/env_.*/Robot/panda_leftfinger",
+            filter_prim_paths_expr=["/World/envs/env_.*/Object"],
+            update_period=0.0,
+            history_length=0,
+        )
+        contact_right: ContactSensorCfg = ContactSensorCfg(
+            prim_path="/World/envs/env_.*/Robot/panda_rightfinger",
+            filter_prim_paths_expr=["/World/envs/env_.*/Object"],
+            update_period=0.0,
+            history_length=0,
         )
 
         table: RigidObjectCfg = RigidObjectCfg(
@@ -209,10 +363,29 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
                 "Isaac Lab is not installed, or the simulation app has not been "
                 "launched yet. See envs/isaac/README.md."
             )
+        # Rebuild the randomisation from the level actually on the config.
+        # `__post_init__` fires when GraspTaskCfg() is constructed, which is
+        # before a caller can set `randomisation_level` -- so relying on it
+        # alone silently ran every level with the default's ranges, including
+        # `none`. The bring-up check for "randomisation is inert at level
+        # 'none'" is what caught it.
+        cfg.events = build_events(cfg.randomisation_level)
+        _, act_noise = build_noise_models(cfg.randomisation_level)
+        cfg.action_noise_model = act_noise
+
         super().__init__(cfg, render_mode, **kwargs)
 
         self.reward_cfg = GraspRewardConfig()
         self.ranges = load_randomisation_ranges(cfg.randomisation_level)
+        # Sensing noise, applied exactly as the MuJoCo environment applies it.
+        obs_params = self.ranges.get("params", {})
+        rand_scale = float(self.ranges["scale"])
+        self._obs_noise_pos = 0.0
+        self._obs_noise_vel = 0.0
+        if rand_scale > 0.0 and "obs_noise_pos" in obs_params:
+            self._obs_noise_pos = _scaled(obs_params["obs_noise_pos"], rand_scale)[1]
+        if rand_scale > 0.0 and "obs_noise_vel" in obs_params:
+            self._obs_noise_vel = _scaled(obs_params["obs_noise_vel"], rand_scale)[1]
 
         self._ee_idx = self._robot.find_bodies("panda_hand")[0][0]
         self._arm_dof = self._robot.find_joints("panda_joint.*")[0]
@@ -257,12 +430,21 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
 
     # ------------------------------------------------------------------
     def _setup_scene(self) -> None:
+        # Contact reporting has to be switched on when the robot is spawned,
+        # not when the sensor is created.
+        self.cfg.robot.spawn.activate_contact_sensors = True
+
         self._robot = Articulation(self.cfg.robot)
         self._table = RigidObject(self.cfg.table)
         self._object = RigidObject(self.cfg.obj)
         self.scene.articulations["robot"] = self._robot
         self.scene.rigid_objects["table"] = self._table
         self.scene.rigid_objects["object"] = self._object
+
+        self._contact_left = ContactSensor(self.cfg.contact_left)
+        self._contact_right = ContactSensor(self.cfg.contact_right)
+        self.scene.sensors["contact_left"] = self._contact_left
+        self.scene.sensors["contact_right"] = self._contact_right
 
         spawn_ground = sim_utils.GroundPlaneCfg()
         spawn_ground.func("/World/ground", spawn_ground)
@@ -323,15 +505,22 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         return self._object.data.root_pos_w - self.scene.env_origins
 
     def _grasped(self) -> torch.Tensor:
-        """Geometric grasp test: object close to the grip point and fingers closed.
+        """Both fingers in contact with the box, read from the contact sensors.
 
-        Weaker than the MuJoCo version, which reads the contact list. Replacing
-        this with a ``ContactSensor`` on each finger is the first item in
-        envs/isaac/README.md.
+        The MuJoCo environment reads its contact list for exactly this reason: a
+        policy that closes on thin air must not be told it has a grasp. The
+        filtered force matrix is ``(num_envs, bodies, filters, 3)``; there is one
+        body and one filter here, so the norm over the last axis is the force
+        between that finger and the box.
         """
-        near = torch.linalg.norm(self._object_pos() - self._grip_pos(), dim=-1) < 0.06
-        closed = self._gripper_width().squeeze(-1) < 0.07
-        return (near & closed).float()
+        left = self._contact_left.data.force_matrix_w
+        right = self._contact_right.data.force_matrix_w
+        if left is None or right is None:  # sensor not ready on the first frame
+            return torch.zeros(self.num_envs, device=self.device)
+        left_touch = torch.linalg.norm(left.view(self.num_envs, -1, 3), dim=-1).max(dim=1).values
+        right_touch = torch.linalg.norm(right.view(self.num_envs, -1, 3), dim=-1).max(dim=1).values
+        return ((left_touch > CONTACT_FORCE_THRESHOLD)
+                & (right_touch > CONTACT_FORCE_THRESHOLD)).float()
 
     # ------------------------------------------------------------------
     def _get_observations(self) -> dict:
@@ -345,6 +534,15 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         obj_lin = self._object.data.root_lin_vel_w
         obj_ang = self._object.data.root_ang_vel_w
 
+        if self._obs_noise_pos > 0.0:
+            grip_pos = grip_pos + torch.randn_like(grip_pos) * self._obs_noise_pos
+            obj_pos = obj_pos + torch.randn_like(obj_pos) * self._obs_noise_pos
+        if self._obs_noise_vel > 0.0:
+            grip_vel = grip_vel + torch.randn_like(grip_vel) * self._obs_noise_vel
+            obj_lin = obj_lin + torch.randn_like(obj_lin) * self._obs_noise_vel
+
+        # Relative entries are derived *after* noising, so the observation stays
+        # internally consistent: one noisy pose estimate, not two.
         obs = torch.cat(
             [
                 grip_pos, grip_vel, width, width_rate,

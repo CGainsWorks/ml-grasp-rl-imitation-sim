@@ -116,7 +116,11 @@ for episode in range(args.episodes):
     obs_dict, _ = env.reset()
     experts = [ScriptedExpert() for _ in range(args.num_envs)]
     peak = torch.zeros(args.num_envs, device=env.device)
-    for _ in range(int(env.max_episode_length) - 1):
+    # Stop two steps short of the horizon. DirectRLEnv auto-resets the instant
+    # the time-out fires, so reading the state after the last step reports the
+    # *next* episode's freshly placed box -- which looks exactly like a policy
+    # that dropped it.
+    for _ in range(int(env.max_episode_length) - 2):
         obs_np = obs_dict["policy"].cpu().numpy()
         actions = np.stack([e.act(obs_np[i]) for i, e in enumerate(experts)])
         obs_dict, _, _, _, _ = env.step(torch.as_tensor(actions, device=env.device))
@@ -136,6 +140,30 @@ for episode in range(args.episodes):
 total = args.episodes * args.num_envs
 check("scripted expert lifts the box", lifted > 0,
       "{}/{} lifted, {}/{} held at the hold point".format(lifted, total, successes, total))
+check("scripted expert holds it at the hold point", successes == total,
+      "{}/{} held".format(successes, total))
+
+# ------------------------------------------------- 6. randomisation is not inert
+# A randomisation config that silently does nothing is the failure this repo
+# guards against in MuJoCo too: training still runs, curves still look fine, and
+# the ablation quietly compares identical conditions.
+masses, frictions = [], []
+for _ in range(6):
+    env.reset()
+    masses.append(env._object.root_physx_view.get_masses().clone().cpu().numpy().ravel())
+    frictions.append(
+        env._object.root_physx_view.get_material_properties().clone().cpu().numpy()[..., 0].ravel()
+    )
+mass_spread = float(np.ptp(np.concatenate(masses)))
+friction_spread = float(np.ptp(np.concatenate(frictions)))
+if args.randomisation == "none":
+    check("randomisation is inert at level 'none'",
+          mass_spread < 1e-6 and friction_spread < 1e-6,
+          "mass spread {:.4f}, friction spread {:.4f}".format(mass_spread, friction_spread))
+else:
+    check("randomisation actually varies the world",
+          mass_spread > 1e-3 and friction_spread > 1e-3,
+          "mass spread {:.4f} kg, friction spread {:.4f}".format(mass_spread, friction_spread))
 
 print("\n{} of {} checks passed".format(sum(1 for _, ok in results if ok), len(results)))
 env.close()

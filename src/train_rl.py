@@ -38,6 +38,7 @@ from envs.mujoco.grasp_env import ACT_DIM, OBS_DIM, make_env  # noqa: E402
 from src.policies.sac import SAC, SACConfig  # noqa: E402
 from src.randomisation.domain_rand import load_randomisation  # noqa: E402
 from src.rewards.grasp_reward import load_reward_config  # noqa: E402
+from src.utils.exploration import ColoredNoiseProcess  # noqa: E402
 from src.utils.rollout import evaluate_policy, torch_policy  # noqa: E402
 
 EVAL_SEED_BLOCK = 500_000   # evaluation episodes during training
@@ -65,6 +66,7 @@ def train(args: argparse.Namespace) -> Dict:
         update_every=args.update_every,
         updates_per_step=args.updates_per_step,
         init_alpha=args.init_alpha,
+        alpha_floor=args.alpha_floor,
         target_entropy_scale=args.target_entropy_scale,
         critic_warmup_updates=args.critic_warmup,
         bc_coef=args.bc_coef,
@@ -104,6 +106,8 @@ def train(args: argparse.Namespace) -> Dict:
         "seed": args.seed,
         "randomisation": args.randomisation,
         "randomisation_ranges": load_randomisation(args.randomisation).to_dict(),
+        "exploration": args.exploration,
+        "alpha_floor": args.alpha_floor,
         "reward_config": args.reward_config,
         "reward_weights": load_reward_config(args.reward_config).to_dict(),
         "max_steps": args.max_steps,
@@ -124,6 +128,8 @@ def train(args: argparse.Namespace) -> Dict:
                  "train_return,alpha,critic_loss,actor_loss,bc_coef,wall_seconds\n")
 
     rng = np.random.default_rng(args.seed)
+    noise_beta = {"white": 0.0, "pink": 1.0, "red": 2.0}[args.exploration]
+    explorer = ColoredNoiseProcess(noise_beta, args.max_steps, ACT_DIM, rng)
     obs, _ = env.reset(seed=TRAIN_SEED_BLOCK + args.seed * 1_000_000)
     episode_return = 0.0
     recent_returns: list = []
@@ -142,8 +148,10 @@ def train(args: argparse.Namespace) -> Dict:
             # With demonstrations in the buffer there is no need for a long
             # uniform-random phase; a short one still decorrelates the start.
             action = rng.uniform(-1.0, 1.0, ACT_DIM).astype(np.float32)
-        else:
+        elif noise_beta == 0.0:
             action = agent.act(obs, deterministic=False)
+        else:
+            action = agent.actor.act_with_noise(obs, explorer.sample())
 
         next_obs, reward, terminated, truncated, info = env.step(action)
         agent.buffer.add(obs, action, reward, next_obs, float(terminated))
@@ -156,6 +164,7 @@ def train(args: argparse.Namespace) -> Dict:
             recent_returns.append(episode_return)
             recent_returns = recent_returns[-20:]
             episode_return = 0.0
+            explorer.reset()
             obs, _ = env.reset()
 
         if step % cfg.update_every == 0 and agent.buffer.size >= cfg.batch_size:
@@ -244,6 +253,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target-entropy-scale", type=float, default=1.0,
                         help="target entropy is -act_dim times this; raise it to keep a "
                              "policy closer to deterministic")
+    parser.add_argument("--alpha-floor", type=float, default=0.0,
+                        help="lower bound on the entropy coefficient; 0 disables it")
+    parser.add_argument("--exploration", default="white", choices=["white", "pink", "red"],
+                        help="colour of the action noise used for data collection")
     parser.add_argument("--critic-warmup", type=int, default=0,
                         help="critic-only gradient steps before the actor is allowed to "
                              "move; use with --init-actor")

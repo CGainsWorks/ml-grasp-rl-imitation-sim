@@ -110,6 +110,22 @@ class SquashedGaussianActor(nn.Module):
         action, _ = self.forward(tensor, deterministic=deterministic, with_logprob=False)
         return action.squeeze(0).numpy()
 
+    @torch.no_grad()
+    def act_with_noise(self, obs: np.ndarray, eps: np.ndarray) -> np.ndarray:
+        """Act using a supplied noise vector instead of a fresh Gaussian draw.
+
+        Same reparameterisation SAC uses -- ``tanh(mu + sigma * eps)`` -- with
+        ``eps`` provided by the caller, so exploration noise can be correlated
+        in time rather than independent per step. With ``eps`` drawn from a
+        standard normal this is exactly ``act(deterministic=False)``.
+        """
+        tensor = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
+        hidden = self.trunk(self.norm(tensor))
+        mu = self.mu_head(hidden)
+        log_std = torch.clamp(self.log_std_head(hidden), LOG_STD_MIN, LOG_STD_MAX)
+        noise = torch.as_tensor(eps, dtype=torch.float32).unsqueeze(0)
+        return torch.tanh(mu + torch.exp(log_std) * noise).squeeze(0).numpy()
+
 
 class TwinQ(nn.Module):
     """Two independent Q networks; SAC takes the minimum to fight overestimation."""

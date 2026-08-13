@@ -61,6 +61,11 @@ noise — the other hypothesis, that the missing behaviour is temporally extende
 and white noise never samples it — rescues one seed of three: real, but not the
 explanation. The full investigation is in [exploration.md](exploration.md).
 
+The same floor does **not** rescue the randomised runs: five seeds at `medium`
+go from 0.120 to 0.160, with intervals that overlap almost entirely. Entropy
+collapse explains the nominal failure and not the randomised one, which remains
+a separate open question.
+
 The tables in this document were produced before that fix and are left as they
 are; they record what a standard SAC configuration does here.
 

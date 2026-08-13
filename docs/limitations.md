@@ -53,6 +53,11 @@ budget (0.993 mean, 95% t [0.975, 1.000], against 0.400 and [0.000, 1.000]
 without it). The investigation, including the hypothesis that turned out to be
 wrong, is in [exploration.md](exploration.md).
 
+The floor fixes the nominal world only. Under `medium` randomisation it moves
+five seeds from 0.120 to 0.160, which does not survive its own confidence
+interval, so whatever stops from-scratch SAC learning under randomisation is a
+different problem and is still open.
+
 The grid in the README was run before this and is deliberately left alone: it is
 a fair record of what a standard SAC configuration does here, and rerunning
 three hours of compute to replace an honest result with a flattering one would

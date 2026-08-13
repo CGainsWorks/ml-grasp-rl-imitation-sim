@@ -1,0 +1,10 @@
+{
+  "final_success_rate": 0.36666666666666664,
+  "final_grasp_rate": 0.7666666666666667,
+  "best_success_rate": 0.36666666666666664,
+  "episodes": 1002,
+  "steps": 100000,
+  "wall_seconds": 1175.9,
+  "seed": 2,
+  "randomisation": "medium"
+}

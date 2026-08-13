@@ -113,10 +113,33 @@ stall and we do not know why" is now "three of five seeds stall because the
 entropy coefficient collapses, and a floor of 0.15 fixes it in every seed at
 half the budget".
 
+## It does not transfer to the randomised case
+
+The obvious next question — is this also why from-scratch SAC fails under
+randomisation? — was measured rather than assumed, five seeds at `medium`,
+100 000 steps:
+
+| condition | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| nominal, no floor (200k) | 1.0, 1.0, 0.0, 0.0, 0.0 | 0.400 | [0.000, 1.000] |
+| **nominal, floor (100k)** | 0.97, 1.0, 1.0, 1.0, 1.0 | **0.993** | [0.975, 1.000] |
+| medium, no floor (200k) | 0.2, 0.03, 0.0, 0.27, 0.1 | 0.120 | [0.000, 0.259] |
+| medium, floor (100k) | 0.0, 0.03, 0.37, 0.0, 0.4 | 0.160 | [0.000, 0.414] |
+
+The floor turns the nominal world from a coin flip into a solved task. Under
+randomisation it moves the mean from 0.120 to 0.160 with intervals that overlap
+almost entirely — nothing that survives five seeds.
+
+So entropy collapse explains **one** of the two from-scratch failures. Whatever
+stops SAC learning under randomisation is a different problem, and naming the
+nominal mechanism does not name that one. The candidates are the obvious ones —
+a harder exploration problem, a value function that has to generalise across
+worlds, or simply more steps needed — and this repository has not distinguished
+between them.
+
 Two caveats worth keeping:
 
-* The floor value, 0.15, was chosen from the successful seeds' own coefficient
+* The floor value, 0.15, was chosen from the successful seeds’ own coefficient
   (≈0.17) rather than searched. A value that works is not a tuned value.
-* This was tested on the nominal world. Whether the floor is equally effective
-  under wide randomisation — where the from-scratch runs also failed, and for
-  what may be the same reason or a different one — has not been measured.
+* Everything here is the nominal or `medium` world at 100 000 steps. The floor
+  was not retested at `low` or `high`.

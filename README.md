@@ -31,10 +31,14 @@ condition is being met. Blue bar: lift height.*
 | **Algorithms** | SAC (written out, not imported), behaviour cloning, DAgger, and BC+SAC with pinned demonstrations and a scale-normalised cloning term |
 | **Randomisation** | 11 parameters across dynamics, actuation and sensing; four training levels plus a held-out shifted distribution |
 | **Reporting** | 5 seeds x 100 episodes per cell, mean with a 95% t interval across seeds |
-| **Isaac Lab** | Ported and **brought up on Isaac Sim 5.1**: 4 of 5 checks pass, including reward parity with the MuJoCo implementation to 5.1e-08. The fifth (reliable scripted grasping) fails for a measured reason — [envs/isaac/README.md](envs/isaac/README.md) |
+| **Isaac Lab** | Ported and **working on Isaac Sim 5.1**: all 7 bring-up checks pass, including reward parity with the MuJoCo implementation to ~5e-08 and randomisation driven by the same JSON — [envs/isaac/README.md](envs/isaac/README.md) |
 
 Nothing here has touched hardware. `shifted` is a **proxy** for a real robot,
 never called a real-robot number: [docs/sim-to-real.md](docs/sim-to-real.md).
+The closest thing to an independent test is the Isaac port: a MuJoCo-trained
+policy scores **0.500** [0.314, 0.686] there with no adaptation, across a
+different physics engine, contact solver and embodiment, against 1.000 for the
+scripted expert in the same environment.
 
 ---
 
@@ -266,7 +270,7 @@ solve the nominal task.
 ```
 envs/
   mujoco/            grasp_env.py, assets/grasp_scene.xml
-  isaac/             Isaac Lab port (runs; see its README for what does not)
+  isaac/             Isaac Lab port (working; see its README)
 src/
   rewards/           reward terms, shared by both simulators
   policies/          SAC, networks, scripted expert
@@ -315,10 +319,10 @@ change how the numbers should be read:
   discovering grasping from a sparse signal.
 * **No hardware** — `shifted` is a proxy for a real robot, and a lower bound on
   a real gap.
-* **Isaac Lab port is partly working** — it runs, and its reward is verified
-  against the MuJoCo one inside the simulator, but the arm's IK leaves a
-  standing error the scripted expert cannot cope with, randomisation is not
-  wired into it, and nothing has been trained there.
+* **Isaac Lab port works, but no headline number comes from it** — all seven
+  bring-up checks pass and cross-simulator transfer is measured, but every
+  quoted success rate in this README was produced in MuJoCo. Four of the
+  eleven randomisation parameters have no Isaac equivalent yet.
 
 ---
 

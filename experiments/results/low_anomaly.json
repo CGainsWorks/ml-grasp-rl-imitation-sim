@@ -1,0 +1,115 @@
+{
+  "question": "is the floor's failure at `low` the value, or the level?",
+  "randomisation": "low",
+  "steps": 300000,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "rows": [
+    {
+      "alpha_floor": 0.0,
+      "success_per_seed": [
+        0.0,
+        0.0,
+        0.0,
+        0.5666666666666667,
+        0.0
+      ],
+      "grasp_per_seed": [
+        0.8667,
+        1.0,
+        0.9667,
+        0.9,
+        0.8333
+      ],
+      "across_seeds": {
+        "point": 0.11333333333333333,
+        "low": 0.0,
+        "high": 0.42794666666666664,
+        "n": 5,
+        "method": "t"
+      },
+      "mean_grasp": 0.91334
+    },
+    {
+      "alpha_floor": 0.05,
+      "success_per_seed": [
+        0.7333333333333333,
+        0.8666666666666667,
+        0.6,
+        0.3333333333333333,
+        0.4
+      ],
+      "grasp_per_seed": [
+        0.8667,
+        1.0,
+        0.9,
+        0.8667,
+        0.6667
+      ],
+      "across_seeds": {
+        "point": 0.5866666666666667,
+        "low": 0.3096842425150811,
+        "high": 0.8636490908182523,
+        "n": 5,
+        "method": "t"
+      },
+      "mean_grasp": 0.8600200000000001
+    },
+    {
+      "alpha_floor": 0.15,
+      "success_per_seed": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "grasp_per_seed": [
+        0.3,
+        0.6667,
+        0.3,
+        0.3,
+        0.1
+      ],
+      "across_seeds": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n": 5,
+        "method": "t"
+      },
+      "mean_grasp": 0.33333999999999997
+    },
+    {
+      "alpha_floor": 0.3,
+      "success_per_seed": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "grasp_per_seed": [
+        0.0,
+        0.1,
+        0.3,
+        0.2333,
+        0.0667
+      ],
+      "across_seeds": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n": 5,
+        "method": "t"
+      },
+      "mean_grasp": 0.13999999999999999
+    }
+  ],
+  "note": "floor 0.00 is experiments/runs/nofloor300_low_s*, floor 0.15 is experiments/runs/floorgrid_low_s*; neither was retrained. Grasp rate is the discriminating measurement, not success: at `low` the floor arm's failure is that it never closes on the box."
+}

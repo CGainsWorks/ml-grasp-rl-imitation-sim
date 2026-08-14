@@ -144,12 +144,41 @@ the nominal budget was never enough". Stopping at 100 000 steps would have
 recorded the opposite, which is worth remembering next time an intervention
 looks inert.
 
+## How sensitive is it to the floor value?
+
+0.15 was originally taken from what the successful seeds settle at (≈0.17)
+rather than searched, which is a weak reason to trust a number. Swept over three
+stalled seeds, 100 000 steps each. Final success saturates once the fix works at
+all, so the informative column is how quickly a run first clears 0.5:
+
+| floor | final per seed | mean | steps to >0.5 |
+| ---: | --- | ---: | --- |
+| 0.00 (baseline, 200k) | 0.00, 0.00, 0.00 | 0.000 | never |
+| 0.05 | 0.87, 0.00, 0.00 | 0.289 | 70k, 1 of 3 |
+| 0.10 | 1.00, 0.97, 1.00 | 0.989 | 43k, 3 of 3 |
+| 0.15 | 1.00, 1.00, 1.00 | 1.000 | 40k, 3 of 3 |
+| **0.30** | 0.97, 1.00, 1.00 | 0.989 | **23k**, 3 of 3 |
+| 0.50 | 1.00, 1.00, 1.00 | 1.000 | 63k, 3 of 3 |
+
+It is a **broad basin**, not a lucky point: anything from 0.10 to 0.50 rescues
+all three seeds. Only 0.05 fails, and it is the value closest to the 0.025 the
+collapsed runs settle at — which is the result the mechanism predicts.
+
+There is a shallow speed optimum near 0.30, roughly 1.7 times faster to
+threshold than 0.15 and nearly three times faster than 0.50. Both edges cost
+something: too low and the policy still stops exploring, too high and it keeps
+exploring when it should be exploiting.
+
+The grid below was nevertheless run at **0.15**, not 0.30. The speed advantage
+was measured on the nominal world only, and 0.15 is the value validated at five
+seeds there *and* at `medium` over 300 000 steps. Choosing the faster value
+would have been extrapolating a nominal-world result into the randomised
+setting, and it would have discarded eight runs already on disk. Whether 0.30
+keeps its advantage under randomisation is untested.
+
 Two caveats worth keeping:
 
-* The floor value, 0.15, was chosen from the successful seeds’ own coefficient
-  (≈0.17) rather than searched. A value that works is not a tuned value.
-* The `low` and `high` levels were not retested with the floor, and the `medium`
-  budget test is three seeds rather than five.
-* 0.667 is well short of what demonstrations achieve under the same
-  randomisation (0.726 at 200k, and reached within 30 000 steps). The floor makes
-  from-scratch RL work here; it does not make it competitive.
+* Everything here is one task, one reward, one algorithm. A floor is not a
+  general cure for premature convergence; it is a fix for this failure.
+* 0.667 at `medium` is still short of what demonstrations achieve under the same
+  randomisation (0.726, reached within 30 000 steps rather than 300 000).

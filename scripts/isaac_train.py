@@ -47,6 +47,11 @@ parser.add_argument("--bc-epochs", type=int, default=40)
 parser.add_argument("--bc-coef", type=float, default=50.0)
 parser.add_argument("--bc-decay-steps", type=int, default=0,
                     help="defaults to half the run")
+parser.add_argument("--device", default="cpu",
+                    help="where the agent lives. 'cuda' keeps the networks on the "
+                         "same card as the simulator, which is worth roughly 1.5x "
+                         "here; 'cpu' is the default so runs stay comparable with "
+                         "the MuJoCo ones. See docs/architecture.md")
 parser.add_argument("--alpha-floor", type=float, default=0.0,
                     help="lower clamp on the entropy coefficient; the fix for the "
                          "grasp-and-hold local optimum, measured in docs/exploration.md")
@@ -86,7 +91,7 @@ sac_cfg = SACConfig(
     init_alpha=0.02 if args.demos else 0.1,
     alpha_floor=args.alpha_floor,
 )
-agent = SAC(OBS_DIM, ACT_DIM, sac_cfg, seed=args.seed)
+agent = SAC(OBS_DIM, ACT_DIM, sac_cfg, seed=args.seed, device=args.device)
 
 if args.demos:
     # Same recipe the MuJoCo runs use: pin the demonstrations so the ring never
@@ -117,6 +122,7 @@ with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh
         "num_envs": args.num_envs,
         "seed": args.seed,
         "randomisation": args.randomisation,
+        "device": args.device,
     }, fh, indent=2)
 
 progress_path = os.path.join(args.output, "progress.csv")
@@ -136,7 +142,8 @@ def evaluate(episodes: int) -> dict:
         for _ in range(int(env.max_episode_length) - 2):
             with torch.no_grad():
                 action, _ = agent.actor(
-                    obs_dict["policy"].cpu(), deterministic=True, with_logprob=False
+                    obs_dict["policy"].to(agent.device), deterministic=True,
+                    with_logprob=False,
                 )
             obs_dict, reward, _, _, _ = env.step(action.to(env.device))
             total += reward
@@ -168,10 +175,10 @@ for step in range(1, args.steps + 1):
     else:
         with torch.no_grad():
             act_t, _ = agent.actor(
-                torch.as_tensor(obs, dtype=torch.float32), deterministic=False,
-                with_logprob=False,
+                torch.as_tensor(obs, dtype=torch.float32, device=agent.device),
+                deterministic=False, with_logprob=False,
             )
-        action_np = act_t.numpy()
+        action_np = act_t.cpu().numpy()
 
     obs_dict, reward, terminated, truncated, _ = env.step(
         torch.as_tensor(action_np, device=env.device)
@@ -181,8 +188,8 @@ for step in range(1, args.steps + 1):
     term_np = terminated.cpu().numpy()
     done_np = np.logical_or(term_np, truncated.cpu().numpy())
 
-    for i in range(env.num_envs):
-        agent.buffer.add(obs[i], action_np[i], reward_np[i], next_obs[i], float(term_np[i]))
+    agent.buffer.add_batch(obs, action_np, reward_np, next_obs,
+                           term_np.astype(np.float32))
 
     episode_return += reward_np
     if done_np.any():

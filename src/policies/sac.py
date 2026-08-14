@@ -73,8 +73,13 @@ class ReplayBuffer:
     than losing them after the first few thousand steps.
     """
 
-    def __init__(self, obs_dim: int, act_dim: int, capacity: int) -> None:
+    def __init__(self, obs_dim: int, act_dim: int, capacity: int,
+                 device: str = "cpu") -> None:
         self.capacity = int(capacity)
+        # Storage stays in numpy on the host: the buffer is far larger than a
+        # batch, and holding it on an 8 GB card would cost more than the copy
+        # saves. Only the sampled batch is moved.
+        self.device = torch.device(device)
         self.obs = np.zeros((self.capacity, obs_dim), dtype=np.float32)
         self.next_obs = np.zeros((self.capacity, obs_dim), dtype=np.float32)
         self.act = np.zeros((self.capacity, act_dim), dtype=np.float32)
@@ -93,6 +98,25 @@ class ReplayBuffer:
         self.done[idx] = done
         self.ptr += 1
         self.size = min(self.size + 1, self.capacity)
+
+    def add_batch(self, obs, act, rew, next_obs, done) -> None:
+        """Add ``n`` transitions at once.
+
+        Identical in effect to calling :meth:`add` ``n`` times -- there is a
+        test that asserts exactly that -- but without the Python loop, which is
+        what the vectorised Isaac environment was spending its per-step budget
+        on with 32 environments.
+        """
+        n = len(obs)
+        span = max(1, self.capacity - self.pinned)
+        idx = self.pinned + (np.arange(self.ptr, self.ptr + n) % span)
+        self.obs[idx] = obs
+        self.act[idx] = act
+        self.rew[idx] = rew
+        self.next_obs[idx] = next_obs
+        self.done[idx] = done
+        self.ptr += n
+        self.size = min(self.size + n, self.capacity)
 
     def add_demonstrations(self, obs, act, rew, next_obs, done) -> int:
         """Write ``n`` demonstration transitions into the pinned prefix."""
@@ -130,11 +154,11 @@ class ReplayBuffer:
 
     def _gather(self, idx: np.ndarray) -> Dict[str, torch.Tensor]:
         return {
-            "obs": torch.as_tensor(self.obs[idx]),
-            "act": torch.as_tensor(self.act[idx]),
-            "rew": torch.as_tensor(self.rew[idx]),
-            "next_obs": torch.as_tensor(self.next_obs[idx]),
-            "done": torch.as_tensor(self.done[idx]),
+            key: torch.as_tensor(array[idx]).to(self.device, non_blocking=True)
+            for key, array in (
+                ("obs", self.obs), ("act", self.act), ("rew", self.rew),
+                ("next_obs", self.next_obs), ("done", self.done),
+            )
         }
 
 
@@ -171,7 +195,8 @@ class SAC:
         self.alpha_opt = torch.optim.Adam([self.log_alpha], lr=self.cfg.lr_alpha)
         self.target_entropy = -float(act_dim) * self.cfg.target_entropy_scale
 
-        self.buffer = ReplayBuffer(obs_dim, act_dim, self.cfg.buffer_size)
+        self.buffer = ReplayBuffer(obs_dim, act_dim, self.cfg.buffer_size,
+                                   device=device)
         self._updates = 0
 
     # ------------------------------------------------------------------
@@ -184,7 +209,8 @@ class SAC:
 
     def observe_normalisation(self, obs_batch: np.ndarray) -> None:
         """Feed observations to both running normalisers."""
-        tensor = torch.as_tensor(np.asarray(obs_batch, dtype=np.float32))
+        tensor = torch.as_tensor(
+            np.asarray(obs_batch, dtype=np.float32)).to(self.device)
         self.actor.norm.update(tensor)
         self.critic.norm.update(tensor)
         self.critic_target.norm.mean.copy_(self.critic.norm.mean)

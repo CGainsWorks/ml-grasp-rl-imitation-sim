@@ -227,6 +227,35 @@ level actually on the config.
 4. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.
 
+## Do not put the agent on the GPU
+
+`scripts/isaac_train.py --device cuda` exists, is tested for parity against the
+CPU path, and is **slower**. Measured on the RTX 4060 with nothing else running:
+
+| | CPU | CUDA |
+| --- | ---: | ---: |
+| training loop, 1 000 steps x 32 envs | **0.121 s/step** | 0.131 s/step |
+| one SAC update (128x128, batch 256) | **6.17 ms** | 10.83 ms |
+
+The networks are far too small to amortise kernel launches, and the card is
+already busy with PhysX, so the agent competes with the simulator for it. The
+flag defaults to `cpu` and should stay there for anything resembling these
+network sizes; it is kept because it would plausibly flip for much larger
+networks or many more environments, and because a measured negative is more
+useful than the same idea being retried.
+
+What prompted this was a GPU utilisation reading of 38% during training, which
+looked like the loop starving the card. It was not: eight MuJoCo training runs
+were competing for the CPU at the time. With the machine to itself the same
+loop runs at 0.121 s/step against 0.170-0.186 under that load. The lesson is
+about the measurement, not the loop -- utilisation read while something else
+saturates the CPU says nothing about where the loop's time goes.
+
+The batched replay-buffer write that came with the flag is a real 4.5x on that
+operation (0.051 s to 0.011 s per 1 000 steps x 32 envs) and is kept, but it is
+40 microseconds inside a 121 millisecond step, so it changes nothing anyone
+will notice.
+
 ## Installing
 
 ```bash

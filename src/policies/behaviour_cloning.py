@@ -34,8 +34,11 @@ def fit(
     n_val = max(1, int(n * val_fraction))
     val_idx, train_idx = perm[:n_val], perm[n_val:]
 
-    obs_t = torch.as_tensor(obs, dtype=torch.float32)
-    act_t = torch.as_tensor(act, dtype=torch.float32)
+    # Follow the actor rather than assuming the CPU: the Isaac trainer can put
+    # it on the same card as the simulator.
+    device = next(actor.parameters()).device
+    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device)
+    act_t = torch.as_tensor(act, dtype=torch.float32, device=device)
     actor.norm.update(obs_t[train_idx])
 
     opt = torch.optim.Adam(actor.parameters(), lr=lr, weight_decay=weight_decay)

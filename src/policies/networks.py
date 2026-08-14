@@ -104,11 +104,16 @@ class SquashedGaussianActor(nn.Module):
         logp -= (2.0 * (np.log(2.0) - pre_tanh - F.softplus(-2.0 * pre_tanh))).sum(dim=-1)
         return action, logp
 
+    @property
+    def device(self) -> torch.device:
+        return next(self.parameters()).device
+
     @torch.no_grad()
     def act(self, obs: np.ndarray, deterministic: bool = True) -> np.ndarray:
-        tensor = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
+        tensor = torch.as_tensor(
+            obs, dtype=torch.float32, device=self.device).unsqueeze(0)
         action, _ = self.forward(tensor, deterministic=deterministic, with_logprob=False)
-        return action.squeeze(0).numpy()
+        return action.squeeze(0).cpu().numpy()
 
     @torch.no_grad()
     def act_with_noise(self, obs: np.ndarray, eps: np.ndarray) -> np.ndarray:
@@ -119,12 +124,15 @@ class SquashedGaussianActor(nn.Module):
         in time rather than independent per step. With ``eps`` drawn from a
         standard normal this is exactly ``act(deterministic=False)``.
         """
-        tensor = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
+        tensor = torch.as_tensor(
+            obs, dtype=torch.float32, device=self.device).unsqueeze(0)
         hidden = self.trunk(self.norm(tensor))
         mu = self.mu_head(hidden)
         log_std = torch.clamp(self.log_std_head(hidden), LOG_STD_MIN, LOG_STD_MAX)
-        noise = torch.as_tensor(eps, dtype=torch.float32).unsqueeze(0)
-        return torch.tanh(mu + torch.exp(log_std) * noise).squeeze(0).numpy()
+        noise = torch.as_tensor(
+            eps, dtype=torch.float32, device=self.device).unsqueeze(0)
+        return torch.tanh(
+            mu + torch.exp(log_std) * noise).squeeze(0).cpu().numpy()
 
 
 class TwinQ(nn.Module):

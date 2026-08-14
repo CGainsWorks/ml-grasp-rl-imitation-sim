@@ -1,0 +1,2 @@
+step,success_rate,grasp_rate,mean_return,mean_max_lift,train_return,alpha,critic_loss,actor_loss,bc_coef,wall_seconds
+25000,0.0000,0.6000,-33.179,0.0086,-29.417,0.0129,0.9548,25.2788,0.0000,349.2

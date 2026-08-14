@@ -390,6 +390,83 @@ def plot_entropy_collapse(out: str = "entropy_collapse.png") -> Optional[str]:
     return _save(fig, out)
 
 
+def plot_floor_control(out: str = "entropy_floor.png") -> Optional[str]:
+    """What the entropy floor actually buys, once the budgets are matched.
+
+    Left: success by randomisation level, with and without the floor, both arms
+    at 300 000 steps and five seeds. Bars are the mean, whiskers the 95% t
+    interval, dots the individual seeds -- the dots matter here, because the
+    floor's real effect at `medium` is that they stop being spread from 0 to
+    0.77.
+
+    Right: the `low` regression, which is the reason the left panel is not the
+    whole story. Success and grasp rate against the floor value, on the level
+    where a floor of 0.15 stops the policy learning to close on the box at all.
+    """
+    control_path = os.path.join(RESULT_DIR, "floor_control.json")
+    if not os.path.exists(control_path):
+        return None
+    with open(control_path, "r", encoding="utf-8") as fh:
+        control = json.load(fh)
+
+    low_path = os.path.join(RESULT_DIR, "low_anomaly.json")
+    low = None
+    if os.path.exists(low_path):
+        with open(low_path, "r", encoding="utf-8") as fh:
+            low = json.load(fh)
+
+    fig, axes = plt.subplots(1, 2 if low else 1, figsize=(11.6 if low else 6.4, 4.3),
+                             squeeze=False)
+    ax = axes[0][0]
+    levels = [row["level"] for row in control["rows"]]
+    x = np.arange(len(levels))
+    width = 0.36
+    for offset, key, label, colour in (
+        (-width / 2, "control_300k", "no floor", "#7f8c8d"),
+        (width / 2, "with_floor_300k", "entropy floor 0.15", "#2980b9"),
+    ):
+        means = [row[key]["point"] for row in control["rows"]]
+        lows = [max(0.0, row[key]["point"] - row[key]["low"]) for row in control["rows"]]
+        highs = [max(0.0, row[key]["high"] - row[key]["point"]) for row in control["rows"]]
+        ax.bar(x + offset, means, width, label=label, color=colour, alpha=0.85)
+        ax.errorbar(x + offset, means, yerr=[lows, highs], fmt="none",
+                    ecolor="#2c3e50", capsize=3, linewidth=1.0)
+        for i, row in enumerate(control["rows"]):
+            seeds = row[key]["per_seed"]
+            ax.scatter(np.full(len(seeds), x[i] + offset), seeds, s=16, zorder=3,
+                       color="#2c3e50", alpha=0.7, linewidth=0)
+    _style(ax, "Matched at 300 000 steps, five seeds",
+           "randomisation level", "success rate")
+    ax.set_xticks(x)
+    ax.set_xticklabels(levels)
+    ax.set_ylim(0, 1.08)
+    ax.legend(fontsize=8, frameon=False)
+
+    if low:
+        ax = axes[0][1]
+        floors = [row["alpha_floor"] for row in low["rows"]]
+        pos = np.arange(len(floors))
+        success = [row["across_seeds"]["point"] for row in low["rows"]]
+        grasp = [row["mean_grasp"] for row in low["rows"]]
+        ax.plot(pos, grasp, marker="o", color="#e67e22", label="grasp rate")
+        ax.plot(pos, success, marker="s", color="#2980b9", label="success rate")
+        for i, row in enumerate(low["rows"]):
+            seeds = row["success_per_seed"]
+            ax.scatter(np.full(len(seeds), pos[i]), seeds, s=16, zorder=3,
+                       color="#2c3e50", alpha=0.7, linewidth=0)
+        _style(ax, "`low` randomisation: the floor value matters, and 0.15 is wrong",
+               "entropy coefficient floor", "rate")
+        ax.set_xticks(pos)
+        ax.set_xticklabels(["{:.2f}".format(f) for f in floors])
+        ax.set_ylim(0, 1.08)
+        ax.legend(fontsize=8, frameon=False)
+
+    fig.suptitle("The entropy floor rescues the nominal world and does not "
+                 "generalise across randomisation levels", fontsize=10)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    return _save(fig, out)
+
+
 def _save(fig, name: str) -> str:
     os.makedirs(PLOT_DIR, exist_ok=True)
     path = os.path.join(PLOT_DIR, name)
@@ -403,7 +480,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--only", nargs="*", default=None,
-                        help="subset of: curves ablation reward bc dagger ranges entropy")
+                        help="subset of: curves ablation reward bc dagger ranges entropy floor")
     args = parser.parse_args()
 
     jobs = {
@@ -414,6 +491,7 @@ def main() -> None:
         "dagger": plot_dagger,
         "ranges": plot_randomisation_ranges,
         "entropy": plot_entropy_collapse,
+        "floor": plot_floor_control,
     }
     chosen: Sequence[str] = args.only or list(jobs)
     for name in chosen:

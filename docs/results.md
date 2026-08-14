@@ -61,10 +61,30 @@ noise — the other hypothesis, that the missing behaviour is temporally extende
 and white noise never samples it — rescues one seed of three: real, but not the
 explanation. The full investigation is in [exploration.md](exploration.md).
 
-Under randomisation the same floor works but needs roughly three times the
-budget: three seeds at `medium` reach 0.667 [0.448, 0.886] at 300 000 steps
-against 0.100 [0.000, 0.348] for the same seeds without it, while at a matched
-100 000 steps it looks inert. Slower, not different.
+**Under randomisation the same floor is much less convincing, and one row of it
+is a regression.** Both arms at 300 000 steps, five seeds, identical but for the
+one line (`experiments/results/floor_control.json`):
+
+| level | no floor | with floor | Welch |
+| --- | --- | --- | --- |
+| `low` | 0.113 [0.000, 0.428] | 0.000 [0.000, 0.000] | t = −1.0 |
+| `medium` | 0.460 [0.088, 0.832] | 0.680 [0.594, 0.766] | t = 1.60 |
+| `high` | 0.160 [0.000, 0.393] | 0.407 [0.203, 0.610] | t = 2.21, p ≈ 0.06 |
+
+Ahead on the point estimate at `medium` and `high`, separated at neither. What
+it reliably buys there is consistency rather than height — at `medium` the five
+floored seeds land in 0.60–0.77 against 0.00–0.77 without it. At `low` it is
+actively harmful, and not in the way the rest of this section is about: the
+floored runs never learn to *grasp* (0.33 against 0.91, p ≈ 0.002), which is a
+different failure from the collapse basin. The floor value that rescues the
+nominal world turns out to be roughly the value that breaks the mildest
+randomised one; there is no single setting that works everywhere. See
+[exploration.md](exploration.md) for the control and the follow-up.
+
+An earlier version of this section claimed the floor works under randomisation
+and merely needs three times the budget. That came from comparing floored runs
+at 300 000 steps against a baseline at 200 000, and the matched control does not
+support it.
 
 The tables in this document were produced before that fix and are left as they
 are; they record what a standard SAC configuration does here.

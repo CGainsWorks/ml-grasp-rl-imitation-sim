@@ -15,6 +15,15 @@ Two arms, five seeds each:
 ``bcrl``      Demonstration-seeded, with the behaviour-cloning coefficient held
               rather than decayed -- the configuration that reached 0.938 on one
               seed.
+``floor``     From scratch, with the entropy coefficient clamped from below at
+              0.15. This is the MuJoCo fix for the same local optimum, and
+              running it here asks whether the fix is a property of the task or
+              of MuJoCo -- the collapse itself reproduced in both engines.
+
+``--randomisation`` selects the world the arms are trained *and* scored on.
+The nominal grid is the default; ``--randomisation medium`` is the randomised
+grid, whose absence was listed as the first open item in the port's README.
+Runs are named after the level, so the two do not collide on disk.
 
 Runs are sequential. Isaac hangs if a second environment is constructed in the
 same process, and two simulator instances on one 8 GB card is asking for
@@ -37,15 +46,24 @@ LOGS = os.path.join("experiments", "logs")
 DEMOS = os.path.join("demonstrations", "isaac_expert_low.npz")
 
 
-def job(arm: str, seed: int, steps: int, num_envs: int) -> Dict:
-    name = "isaac_{}_s{}".format(arm, seed)
+def run_name(arm: str, seed: int, level: str) -> str:
+    """Nominal runs keep their original names so the existing grid is reused."""
+    if level == "none":
+        return "isaac_{}_s{}".format(arm, seed)
+    return "isaac_{}_{}_s{}".format(arm, level, seed)
+
+
+def job(arm: str, seed: int, steps: int, num_envs: int, level: str) -> Dict:
+    name = run_name(arm, seed, level)
     out = os.path.join(RUNS, name)
     cmd = [
         sys.executable, "scripts/isaac_train.py",
         "--num-envs", str(num_envs), "--steps", str(steps),
         "--eval-every", str(max(1, steps // 4)), "--eval-episodes", "1",
-        "--randomisation", "none", "--seed", str(seed), "--output", out,
+        "--randomisation", level, "--seed", str(seed), "--output", out,
     ]
+    if arm == "floor":
+        cmd += ["--alpha-floor", "0.15"]
     if arm == "bcrl":
         # Hold the anchor rather than decaying it: the decaying schedule
         # collapses at the decay point, which is measured in the Isaac README.
@@ -53,14 +71,14 @@ def job(arm: str, seed: int, steps: int, num_envs: int) -> Dict:
     return {"name": name, "output": out, "cmd": cmd}
 
 
-def summarise(arms: List[str], seeds: List[int], output: str) -> None:
+def summarise(arms: List[str], seeds: List[int], output: str, level: str) -> None:
     from src.utils.stats import t_interval
 
     rows = []
     for arm in arms:
         finals, bests = [], []
         for seed in seeds:
-            path = os.path.join(RUNS, "isaac_{}_s{}".format(arm, seed), "result.json")
+            path = os.path.join(RUNS, run_name(arm, seed, level), "result.json")
             if not os.path.exists(path):
                 continue
             with open(path, "r", encoding="utf-8") as fh:
@@ -82,6 +100,7 @@ def summarise(arms: List[str], seeds: List[int], output: str) -> None:
 
     blob = {
         "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+        "randomisation": level,
         "seeds": seeds,
         "arms": rows,
         "note": "Across-seed t intervals, the same standard the MuJoCo tables use.",
@@ -98,9 +117,11 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     parser.add_argument("--steps", type=int, default=4000)
     parser.add_argument("--num-envs", type=int, default=32)
+    parser.add_argument("--randomisation", default="none",
+                        choices=["none", "low", "medium", "high", "shifted"])
     parser.add_argument("--summarise-only", action="store_true")
-    parser.add_argument("--output",
-                        default=os.path.join("experiments", "results", "isaac_seed_grid.json"))
+    parser.add_argument("--output", default=None,
+                        help="defaults to experiments/results/isaac_seed_grid[_<level>].json")
     args = parser.parse_args()
 
     os.chdir(REPO)
@@ -108,7 +129,7 @@ def main() -> None:
 
     if not args.summarise_only:
         os.makedirs(LOGS, exist_ok=True)
-        jobs = [job(arm, seed, args.steps, args.num_envs)
+        jobs = [job(arm, seed, args.steps, args.num_envs, args.randomisation)
                 for arm in args.arms for seed in args.seeds]
         t0 = time.time()
         for spec in jobs:
@@ -120,7 +141,13 @@ def main() -> None:
                 subprocess.call(spec["cmd"], cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
             print("[{:>5.0f}s] done  {}".format(time.time() - t0, spec["name"]), flush=True)
 
-    summarise(args.arms, args.seeds, args.output)
+    output = args.output
+    if output is None and args.randomisation == "none":
+        output = os.path.join("experiments", "results", "isaac_seed_grid.json")
+    if output is None:
+        output = os.path.join("experiments", "results",
+                              "isaac_seed_grid_{}.json".format(args.randomisation))
+    summarise(args.arms, args.seeds, output, args.randomisation)
 
 
 if __name__ == "__main__":

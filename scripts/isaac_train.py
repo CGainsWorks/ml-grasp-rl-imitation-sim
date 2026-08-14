@@ -47,6 +47,9 @@ parser.add_argument("--bc-epochs", type=int, default=40)
 parser.add_argument("--bc-coef", type=float, default=50.0)
 parser.add_argument("--bc-decay-steps", type=int, default=0,
                     help="defaults to half the run")
+parser.add_argument("--alpha-floor", type=float, default=0.0,
+                    help="lower clamp on the entropy coefficient; the fix for the "
+                         "grasp-and-hold local optimum, measured in docs/exploration.md")
 parser.add_argument("--output", default="experiments/runs/isaac_sac")
 args = parser.parse_args()
 
@@ -81,6 +84,7 @@ sac_cfg = SACConfig(
     critic_warmup_updates=3_000 if args.demos else 0,
     target_entropy_scale=2.0 if args.demos else 1.0,
     init_alpha=0.02 if args.demos else 0.1,
+    alpha_floor=args.alpha_floor,
 )
 agent = SAC(OBS_DIM, ACT_DIM, sac_cfg, seed=args.seed)
 

@@ -304,6 +304,7 @@ in them are the failures in the tables. `make videos` regenerates all of them.
 | --- | --- |
 | ![bc+sac medium](videos/bcrl_medium.gif) | **BC + SAC, medium randomisation** on its own distribution |
 | ![sac stalled](videos/sac_none_stalled.gif) | **A stalled SAC seed** on the nominal world: it grasps the box and holds it on the table, never lifting. Three of five seeds ended here |
+| ![sac floor](videos/sac_none_floor.gif) | **The same seed, rescued.** Seed 3 again, with a floor under the entropy coefficient and nothing else changed — 2 of 2 episodes succeed. The before-and-after of the one-line fix, with the seed held fixed so nothing else can explain the difference |
 | ![bc+sac wide on shifted](videos/bcrl_high_shifted.gif) | **BC + SAC, wide randomisation**, on the held-out shifted worlds |
 | ![bc+sac none on shifted](videos/bcrl_none_shifted.gif) | **The same method trained without randomisation**, on the same worlds |
 

@@ -1,9 +1,13 @@
 # Why three seeds in five stalled, and what fixed it
 
-This is the one genuinely open question this repository had, and it is now
-closed. The write-up is kept because the route to the answer is more useful than
-the answer: two plausible hypotheses, both with literature behind them, one
-decisive and one not.
+This is the one genuinely open question this repository had. The mechanism is
+now identified and there is a fix, with the important caveat that the fix has a
+hyperparameter and that hyperparameter does not transfer between randomisation
+levels. The write-up is kept in the order it happened, because the route is more
+useful than the answer: two plausible hypotheses with literature behind them,
+one decisive; then three rounds of getting the randomised case wrong, twice by
+comparing against an unmatched budget and once by generalising from a single
+level.
 
 ## The symptom
 
@@ -111,7 +115,8 @@ supports.
 What it does change is the standing of the finding itself. "Three of five seeds
 stall and we do not know why" is now "three of five seeds stall because the
 entropy coefficient collapses, and a floor of 0.15 fixes it in every seed at
-half the budget".
+half the budget" — on the nominal world. The sections below are about what that
+sentence is worth once the world stops being nominal.
 
 ## Under randomisation: more reliable, not clearly better
 
@@ -161,6 +166,11 @@ Contrast that with the nominal world, where the floor reaches 0.993 against
 0.400 at *half* the budget. A result that wins with less compute cannot be
 explained by more compute, which is why that one survived the control and this
 one did not.
+
+Everything in this section is about a floor of **0.15**, the value taken from
+the nominal world. That turns out to be the wrong question — see the matrix two
+sections down, where the best floor for each level is chosen instead, and the
+floor beats no floor everywhere.
 
 ## At `low` the floor value is wrong, not the floor
 
@@ -227,10 +237,57 @@ honest: a floor fixes this failure, and its value has to be tuned per
 distribution, in a direction the nominal world will actively mislead you about.
 
 The obvious explanation is that the useful floor shrinks as the environment
-supplies more of its own stochasticity — and it already has a hole, because
+supplies more of its own stochasticity — and it already had a hole, because
 `medium` and `high` are *wider* than `low` and do fine at 0.15.
-`experiments/floor_by_level.py` fills in the missing cells rather than leaving
-that as an assertion.
+`experiments/floor_by_level.py` filled in the missing cells rather than leaving
+that as an assertion, and the explanation did not survive them.
+
+## The whole matrix, and the rule that is not there
+
+Every level against every floor value, five seeds per cell except where noted.
+Budgets match within a level and differ between levels — 100 000 steps at
+`none`, 300 000 under randomisation — so the comparison is down each column, not
+across rows (`experiments/results/floor_by_level.json`):
+
+| level | floor 0.00 | floor 0.05 | floor 0.15 | floor 0.30 |
+| --- | --- | --- | --- | --- |
+| `none` | 0.400 [0.00, 1.00] | 0.289 (n=3) | **0.993** [0.97, 1.00] | 0.989 (n=3) |
+| `low` | 0.113 [0.00, 0.43] | **0.587** [0.31, 0.86] | 0.000 | 0.000 |
+| `medium` | 0.460 [0.09, 0.83] | 0.587 [0.40, 0.77] | **0.680** [0.59, 0.77] | — |
+| `high` | 0.160 [0.00, 0.39] | **0.467** [0.25, 0.68] | 0.407 [0.20, 0.61] | — |
+
+Read down the columns and two things are true at once.
+
+**A floor beats no floor at every level.** Best value against that level's own
+control, matched budget:
+
+| level | best floor | against no floor | Welch |
+| --- | --- | --- | --- |
+| `none` | 0.15 → 0.993 | 0.400 | t = 2.42, dof 4.0 |
+| `low` | 0.05 → 0.587 | 0.113 | t = 3.13, dof 7.9 |
+| `medium` | 0.15 → 0.680 | 0.460 | t = 1.60, dof 4.4 |
+| `high` | 0.05 → 0.467 | 0.160 | t = 2.70, dof 7.9 |
+
+Three of the four clear t = 2.4 or better; `medium` does not, and its control has
+the widest spread of any cell in the table (0.00 to 0.77 across seeds), which is
+the reason.
+
+**No single value does it, and the value does not move with randomisation
+width.** `none` needs at least 0.10 and fails at 0.05. `low` needs at most 0.05
+and dies completely at 0.15. `medium` and `high` are indifferent between 0.05
+and 0.15. So the mildest two settings are the value-sensitive ones, in opposite
+directions, and the wide ones are tolerant — which is the reverse of what the
+"environment supplies its own exploration" story predicts, and not monotone in
+anything.
+
+`docs/plots/entropy_floor.png` shows it: the `none` and `low` curves cross
+between 0.05 and 0.15, going opposite ways.
+
+The recommendation this supports is therefore modest. A floor under the entropy
+coefficient fixes this failure mode, at every randomisation level tested. Its
+value is a hyperparameter that has to be tuned per distribution, and a value
+tuned on the nominal world is not merely suboptimal elsewhere — at `low` it
+takes the result to zero.
 
 ## How sensitive is it to the floor value?
 

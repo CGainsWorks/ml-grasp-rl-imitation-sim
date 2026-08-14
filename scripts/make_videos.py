@@ -48,6 +48,14 @@ CLIPS = [
                "leaves it in",
     },
     {
+        "name": "sac_none_floor",
+        "policy": "experiments/runs/explore_alphafloor_s3/policy.pt",
+        "args": ["--randomisation", "none", "--episodes", "2"],
+        "why": "the same seed 3 with a floor under the entropy coefficient: the "
+               "before-and-after of the one-line fix, with the seed held fixed "
+               "so nothing else can explain the difference",
+    },
+    {
         "name": "bcrl_medium",
         "policy": "experiments/runs/bcrl_medium_s0/policy.pt",
         "args": ["--randomisation", "medium", "--episodes", "3"],

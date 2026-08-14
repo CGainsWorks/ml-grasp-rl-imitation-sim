@@ -391,23 +391,25 @@ def plot_entropy_collapse(out: str = "entropy_collapse.png") -> Optional[str]:
 
 
 def plot_floor_control(out: str = "entropy_floor.png") -> Optional[str]:
-    """What the entropy floor actually buys, once the budgets are matched.
+    """What the entropy floor buys, and why one value does not do it.
 
-    Left: success by randomisation level, with and without the floor, both arms
-    at 300 000 steps and five seeds. Bars are the mean, whiskers the 95% t
-    interval, dots the individual seeds -- the dots matter here, because the
-    floor's real effect at `medium` is that they stop being spread from 0 to
-    0.77.
+    Left: success against the floor value, one line per randomisation level,
+    dots for individual seeds. Floor 0.00 is the leftmost point of each line,
+    so every level's control is on the same axes as its treatments. A floor
+    beats no floor at all four levels -- and the value that does it is not the
+    same value, and does not move monotonically with randomisation width.
 
-    Right: the `low` regression, which is the reason the left panel is not the
-    whole story. Success and grasp rate against the floor value, on the level
-    where a floor of 0.15 stops the policy learning to close on the box at all.
+    Right: the mechanism, at `low`. Grasp rate falls monotonically as the floor
+    rises while success peaks in the middle, because the two effects oppose: a
+    floor keeps the policy exploring enough to find the lift, and past a point
+    it keeps the policy too stochastic to close the fingers at all.
     """
-    control_path = os.path.join(RESULT_DIR, "floor_control.json")
-    if not os.path.exists(control_path):
+    matrix_path = os.path.join(RESULT_DIR, "floor_by_level.json")
+    if not os.path.exists(matrix_path):
         return None
-    with open(control_path, "r", encoding="utf-8") as fh:
-        control = json.load(fh)
+    with open(matrix_path, "r", encoding="utf-8") as fh:
+        matrix = json.load(fh)
+    cells = {(c["level"], c["alpha_floor"]): c for c in matrix["cells"]}
 
     low_path = os.path.join(RESULT_DIR, "low_anomaly.json")
     low = None
@@ -418,51 +420,48 @@ def plot_floor_control(out: str = "entropy_floor.png") -> Optional[str]:
     fig, axes = plt.subplots(1, 2 if low else 1, figsize=(11.6 if low else 6.4, 4.3),
                              squeeze=False)
     ax = axes[0][0]
-    levels = [row["level"] for row in control["rows"]]
-    x = np.arange(len(levels))
-    width = 0.36
-    for offset, key, label, colour in (
-        (-width / 2, "control_300k", "no floor", "#7f8c8d"),
-        (width / 2, "with_floor_300k", "entropy floor 0.15", "#2980b9"),
-    ):
-        means = [row[key]["point"] for row in control["rows"]]
-        lows = [max(0.0, row[key]["point"] - row[key]["low"]) for row in control["rows"]]
-        highs = [max(0.0, row[key]["high"] - row[key]["point"]) for row in control["rows"]]
-        ax.bar(x + offset, means, width, label=label, color=colour, alpha=0.85)
-        ax.errorbar(x + offset, means, yerr=[lows, highs], fmt="none",
-                    ecolor="#2c3e50", capsize=3, linewidth=1.0)
-        for i, row in enumerate(control["rows"]):
-            seeds = row[key]["per_seed"]
-            ax.scatter(np.full(len(seeds), x[i] + offset), seeds, s=16, zorder=3,
-                       color="#2c3e50", alpha=0.7, linewidth=0)
-    _style(ax, "Matched at 300 000 steps, five seeds",
-           "randomisation level", "success rate")
-    ax.set_xticks(x)
-    ax.set_xticklabels(levels)
-    ax.set_ylim(0, 1.08)
-    ax.legend(fontsize=8, frameon=False)
+    floors = matrix["floors"]
+    pos = {f: i for i, f in enumerate(floors)}
+    for level in matrix["levels"]:
+        xs, ys = [], []
+        for floor in floors:
+            cell = cells.get((level, floor))
+            if cell is None:
+                continue
+            xs.append(pos[floor])
+            ys.append(cell["point"])
+            ax.scatter(np.full(len(cell["per_seed"]), pos[floor]), cell["per_seed"],
+                       s=13, color=LEVEL_COLOURS[level], alpha=0.35, linewidth=0)
+        if xs:
+            ax.plot(xs, ys, marker="o", color=LEVEL_COLOURS[level], label=level)
+    _style(ax, "Success against the entropy floor, five seeds per point",
+           "entropy coefficient floor (0.00 = no floor)", "success rate")
+    ax.set_xticks(list(pos.values()))
+    ax.set_xticklabels(["{:.2f}".format(f) for f in floors])
+    ax.set_ylim(-0.03, 1.08)
+    ax.legend(fontsize=8, frameon=False, title="randomisation", title_fontsize=8)
 
     if low:
         ax = axes[0][1]
-        floors = [row["alpha_floor"] for row in low["rows"]]
-        pos = np.arange(len(floors))
-        success = [row["across_seeds"]["point"] for row in low["rows"]]
-        grasp = [row["mean_grasp"] for row in low["rows"]]
-        ax.plot(pos, grasp, marker="o", color="#e67e22", label="grasp rate")
-        ax.plot(pos, success, marker="s", color="#2980b9", label="success rate")
+        lf = [row["alpha_floor"] for row in low["rows"]]
+        lp = np.arange(len(lf))
+        ax.plot(lp, [row["mean_grasp"] for row in low["rows"]], marker="o",
+                color="#e67e22", label="grasp rate")
+        ax.plot(lp, [row["across_seeds"]["point"] for row in low["rows"]], marker="s",
+                color="#2980b9", label="success rate")
         for i, row in enumerate(low["rows"]):
             seeds = row["success_per_seed"]
-            ax.scatter(np.full(len(seeds), pos[i]), seeds, s=16, zorder=3,
-                       color="#2c3e50", alpha=0.7, linewidth=0)
-        _style(ax, "`low` randomisation: the floor value matters, and 0.15 is wrong",
+            ax.scatter(np.full(len(seeds), lp[i]), seeds, s=13, zorder=3,
+                       color="#2c3e50", alpha=0.45, linewidth=0)
+        _style(ax, "`low` randomisation: grasping is what the floor costs",
                "entropy coefficient floor", "rate")
-        ax.set_xticks(pos)
-        ax.set_xticklabels(["{:.2f}".format(f) for f in floors])
-        ax.set_ylim(0, 1.08)
+        ax.set_xticks(lp)
+        ax.set_xticklabels(["{:.2f}".format(f) for f in lf])
+        ax.set_ylim(-0.03, 1.08)
         ax.legend(fontsize=8, frameon=False)
 
-    fig.suptitle("The entropy floor rescues the nominal world and does not "
-                 "generalise across randomisation levels", fontsize=10)
+    fig.suptitle("A floor beats no floor at every level; no single floor value "
+                 "does it", fontsize=10)
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     return _save(fig, out)
 

@@ -1,0 +1,149 @@
+{
+  "question": "how much of the floor grid is the floor, and why does the `low` row fail while `medium` and `high` succeed?",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "steps": 300000,
+  "rows": [
+    {
+      "level": "low",
+      "control_300k": {
+        "per_seed": [
+          0.0,
+          0.0,
+          0.0,
+          0.5666666666666667,
+          0.0
+        ],
+        "grasp_per_seed": [
+          0.8667,
+          1.0,
+          0.9667,
+          0.9,
+          0.8333
+        ],
+        "point": 0.11333333333333333,
+        "low": 0.0,
+        "high": 0.42794666666666664,
+        "n": 5,
+        "method": "t"
+      },
+      "with_floor_300k": {
+        "per_seed": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "grasp_per_seed": [
+          0.3,
+          0.6667,
+          0.3,
+          0.3,
+          0.1
+        ],
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n": 5,
+        "method": "t"
+      }
+    },
+    {
+      "level": "medium",
+      "control_300k": {
+        "per_seed": [
+          0.36666666666666664,
+          0.6666666666666666,
+          0.7666666666666667,
+          0.0,
+          0.5
+        ],
+        "grasp_per_seed": [
+          0.8667,
+          0.9,
+          0.9,
+          0.6,
+          0.9667
+        ],
+        "point": 0.45999999999999996,
+        "low": 0.0882508602117103,
+        "high": 0.8317491397882897,
+        "n": 5,
+        "method": "t"
+      },
+      "with_floor_300k": {
+        "per_seed": [
+          0.6,
+          0.6666666666666666,
+          0.6333333333333333,
+          0.7333333333333333,
+          0.7666666666666667
+        ],
+        "grasp_per_seed": [
+          0.9,
+          0.9333,
+          1.0,
+          0.9667,
+          1.0
+        ],
+        "point": 0.6799999999999999,
+        "low": 0.594188116855013,
+        "high": 0.7658118831449868,
+        "n": 5,
+        "method": "t"
+      }
+    },
+    {
+      "level": "high",
+      "control_300k": {
+        "per_seed": [
+          0.1,
+          0.0,
+          0.2,
+          0.4666666666666667,
+          0.03333333333333333
+        ],
+        "grasp_per_seed": [
+          0.6,
+          0.8333,
+          0.7333,
+          0.9,
+          0.6667
+        ],
+        "point": 0.16,
+        "low": 0.0,
+        "high": 0.3929929799610089,
+        "n": 5,
+        "method": "t"
+      },
+      "with_floor_300k": {
+        "per_seed": [
+          0.6,
+          0.5666666666666667,
+          0.26666666666666666,
+          0.3333333333333333,
+          0.26666666666666666
+        ],
+        "grasp_per_seed": [
+          0.9,
+          0.9,
+          0.9,
+          0.9,
+          0.6333
+        ],
+        "point": 0.4066666666666666,
+        "low": 0.20309333333333332,
+        "high": 0.6102399999999999,
+        "n": 5,
+        "method": "t"
+      }
+    }
+  ],
+  "note": "Both columns are 300 000 steps, five seeds, identical except for --alpha-floor. Grasp rate is the final evaluation's, and separates 'never learned to pick the box up' from 'picks it up and will not lift it', which are different failures."
+}

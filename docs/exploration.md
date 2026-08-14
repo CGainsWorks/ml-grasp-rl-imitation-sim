@@ -113,36 +113,91 @@ stall and we do not know why" is now "three of five seeds stall because the
 entropy coefficient collapses, and a floor of 0.15 fixes it in every seed at
 half the budget".
 
-## Under randomisation it needs the floor *and* a longer budget
+## Under randomisation: more reliable, not clearly better
 
 The obvious next question — is this also why from-scratch SAC fails under
-randomisation? — took two rounds to answer, and the first round was misleading.
+randomisation? — took three rounds, and the first two were both wrong. The
+rounds are kept here because the way this went wrong is more instructive than
+the answer.
 
-At a matched budget the floor appears to do nothing. Five seeds at `medium`,
-100 000 steps:
+**Round one, matched at 100 000 steps: the floor looks inert.** Five seeds at
+`medium`:
 
 | condition | per-seed | mean | 95% t |
 | --- | --- | ---: | --- |
 | medium, no floor (200k) | 0.2, 0.03, 0.0, 0.27, 0.1 | 0.120 | [0.000, 0.259] |
 | medium, floor (100k) | 0.0, 0.03, 0.37, 0.0, 0.4 | 0.160 | [0.000, 0.414] |
 
-Two of those seeds were still climbing steeply when the run ended, which is the
-tell. Extending three seeds to 300 000 steps:
+Two of those seeds were still climbing steeply when the run ended, so the budget
+went up.
 
-| condition | per-seed | mean | 95% t |
-| --- | --- | ---: | --- |
-| medium, no floor, 200k (seeds 0, 2, 4) | 0.2, 0.0, 0.1 | 0.100 | [0.000, 0.348] |
-| **medium, floor, 300k** | 0.60, 0.63, 0.77 | **0.667** | [0.448, 0.886] |
+**Round two, floor at 300 000 against the 200 000-step baseline: the floor looks
+decisive.** 0.667 [0.448, 0.886] against 0.100 [0.000, 0.348], intervals clear
+of each other. This was written up as "the same fix, it just needs three times
+the budget under randomisation".
 
-The intervals do not overlap. The floor works under randomisation too; it simply
-needs about three times the budget to show it, because learning is slower when
-every episode is a different world. The trajectory is visible in the curves —
-seed 0 sat at 0.00 through 175 000 steps and reached 0.60 by 300 000.
+That conclusion was an artefact of comparing 300 000 steps against 200 000.
+Half again as much training is not nothing, and none of the gain had been
+attributed to it.
 
-So the honest conclusion is not "a different mechanism" but "the same fix, and
-the nominal budget was never enough". Stopping at 100 000 steps would have
-recorded the opposite, which is worth remembering next time an intervention
-looks inert.
+**Round three, both arms at 300 000 steps, five seeds, identical but for the one
+line** (`experiments/floor_control.py`, results in
+`experiments/results/floor_control.json`):
+
+| level | no floor | with floor | difference | Welch |
+| --- | --- | --- | ---: | --- |
+| `low` | 0.113 [0.000, 0.428] | 0.000 [0.000, 0.000] | −0.113 | t = −1.0 |
+| `medium` | 0.460 [0.088, 0.832] | **0.680** [0.594, 0.766] | +0.220 | t = 1.60, dof 4.4 |
+| `high` | 0.160 [0.000, 0.393] | **0.407** [0.203, 0.610] | +0.247 | t = 2.21, dof 7.9 |
+
+The floor is ahead on the point estimate at both `medium` and `high`, and at
+five seeds neither difference is separated — `high` is borderline (p ≈ 0.06),
+`medium` is not close. What the floor does do, unambiguously, is collapse the
+spread: at `medium` its five seeds land in 0.60–0.77 where the control's land in
+0.00–0.77. Under randomisation the defensible claim is **more reliable, not
+clearly better**, and it takes 300 000 steps to say even that.
+
+Contrast that with the nominal world, where the floor reaches 0.993 against
+0.400 at *half* the budget. A result that wins with less compute cannot be
+explained by more compute, which is why that one survived the control and this
+one did not.
+
+## The floor is harmful at `low`, and that is not noise
+
+The control produced a row that does not fit any of the above. At `low` — the
+mildest randomisation, the same parameters as `medium` at 0.4 of the width — the
+floor arm scored 0.000 on all five seeds while the control managed 0.113.
+
+The success difference is within noise (t = −1.0). The **grasp rate** is not:
+
+| level | grasp, no floor | grasp, with floor | Welch |
+| --- | ---: | ---: | --- |
+| `low` | 0.91 | **0.33** | t = −6.0, dof 4.9 (p ≈ 0.002) |
+| `medium` | 0.85 | 0.96 | t = 1.70 |
+| `high` | 0.75 | 0.85 | t = 1.31 |
+
+At `low` the floor is not failing to escape the local optimum this document is
+about. It is preventing the policy from learning the *first step of the task*:
+the floor arm ends up closing on the box in a third of episodes against nine in
+ten without it, and its critic loss stays near 2 where the levels that work run
+into the hundreds. Whatever is happening, it is a different failure with a
+different signature, and it happens at the level where the fix should matter
+least.
+
+So the effect of the floor is not monotone in randomisation width: a large win
+at `none`, actively harmful at `low`, mildly helpful at `medium` and `high`.
+Any recommendation to "clamp the entropy coefficient" has to carry that
+exception with it.
+
+`experiments/low_anomaly.py` tests the two explanations that fit, at floors of
+0.05 and 0.30 against the 0.00 and 0.15 already measured. Either 0.15 is simply
+the wrong value once the environment supplies stochasticity of its own — in
+which case a smaller floor works at `low` — or `medium` and `high` are wide
+enough to draw the occasional friendly world (high friction, light box) that a
+still-exploring policy can learn a lift from, while `low` is too narrow to
+contain those draws and wide enough to add noise — in which case the floor value
+changes nothing. The 0.05 arm discriminates, because 0.05 is the one value that
+*failed* on the nominal world.
 
 ## How sensitive is it to the floor value?
 
@@ -169,16 +224,18 @@ threshold than 0.15 and nearly three times faster than 0.50. Both edges cost
 something: too low and the policy still stops exploring, too high and it keeps
 exploring when it should be exploiting.
 
-The grid below was nevertheless run at **0.15**, not 0.30. The speed advantage
+The grid above was nevertheless run at **0.15**, not 0.30. The speed advantage
 was measured on the nominal world only, and 0.15 is the value validated at five
 seeds there *and* at `medium` over 300 000 steps. Choosing the faster value
 would have been extrapolating a nominal-world result into the randomised
 setting, and it would have discarded eight runs already on disk. Whether 0.30
-keeps its advantage under randomisation is untested.
+keeps its advantage under randomisation is being tested at `low`, where 0.15 is
+actively harmful.
 
 Two caveats worth keeping:
 
 * Everything here is one task, one reward, one algorithm. A floor is not a
   general cure for premature convergence; it is a fix for this failure.
-* 0.667 at `medium` is still short of what demonstrations achieve under the same
-  randomisation (0.726, reached within 30 000 steps rather than 300 000).
+* 0.680 at `medium` is still short of what demonstrations achieve under the same
+  randomisation (0.726, reached within 30 000 steps rather than 300 000), and
+  unlike the demonstration result it is not separated from its own control.

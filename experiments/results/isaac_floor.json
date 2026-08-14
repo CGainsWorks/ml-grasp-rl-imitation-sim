@@ -1,0 +1,63 @@
+{
+  "question": "does the entropy floor rescue the same local optimum in a second simulator?",
+  "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+  "alpha_floor": 0.15,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "arms": [
+    {
+      "arm": "scratch",
+      "final_per_seed": [
+        0.09375,
+        0.875,
+        0.0
+      ],
+      "best_per_seed": [
+        0.03125,
+        1.0,
+        0.03125
+      ],
+      "final_alpha_per_seed": [
+        0.0098,
+        0.0425,
+        0.0517
+      ],
+      "across_seeds": {
+        "point": 0.3229166666666667,
+        "low": 0.0,
+        "high": 1.0,
+        "n": 3,
+        "method": "t"
+      }
+    },
+    {
+      "arm": "floor",
+      "final_per_seed": [
+        0.8125,
+        0.0,
+        0.5
+      ],
+      "best_per_seed": [
+        1.0,
+        0.0625,
+        0.53125
+      ],
+      "final_alpha_per_seed": [
+        0.15,
+        0.15,
+        0.15
+      ],
+      "across_seeds": {
+        "point": 0.4375,
+        "low": 0.0,
+        "high": 1.0,
+        "n": 3,
+        "method": "t"
+      }
+    }
+  ],
+  "note": "15 000 steps x 32 environments per run, nominal world. The control is the same budget at which experiments/runs/isaac_sac_none already scored 0.000 with grasp rate 1.00."
+}

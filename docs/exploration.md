@@ -162,7 +162,7 @@ Contrast that with the nominal world, where the floor reaches 0.993 against
 explained by more compute, which is why that one survived the control and this
 one did not.
 
-## The floor is harmful at `low`, and that is not noise
+## At `low` the floor value is wrong, not the floor
 
 The control produced a row that does not fit any of the above. At `low` — the
 mildest randomisation, the same parameters as `medium` at 0.4 of the width — the
@@ -176,28 +176,61 @@ The success difference is within noise (t = −1.0). The **grasp rate** is not:
 | `medium` | 0.85 | 0.96 | t = 1.70 |
 | `high` | 0.75 | 0.85 | t = 1.31 |
 
-At `low` the floor is not failing to escape the local optimum this document is
-about. It is preventing the policy from learning the *first step of the task*:
-the floor arm ends up closing on the box in a third of episodes against nine in
-ten without it, and its critic loss stays near 2 where the levels that work run
-into the hundreds. Whatever is happening, it is a different failure with a
-different signature, and it happens at the level where the fix should matter
-least.
+At `low`, a floor of 0.15 is not failing to escape the local optimum this
+document is about. It is preventing the policy from learning the *first step of
+the task*: it ends up closing on the box in a third of episodes against nine in
+ten without any floor, and its critic loss stays near 2 where the levels that
+work run into the hundreds. A different failure with a different signature, at
+the level where the fix should matter least.
 
-So the effect of the floor is not monotone in randomisation width: a large win
-at `none`, actively harmful at `low`, mildly helpful at `medium` and `high`.
-Any recommendation to "clamp the entropy coefficient" has to carry that
-exception with it.
+`experiments/low_anomaly.py` tested the two explanations that fit, at floors of
+0.05 and 0.30 against the 0.00 and 0.15 already measured, with the predictions
+written down first. Either 0.15 is the wrong value once the environment supplies
+stochasticity of its own — in which case a *smaller* floor works at `low` — or
+`medium` and `high` are wide enough to draw the occasional friendly world (high
+friction, light box) that a still-exploring policy can learn a lift from, while
+`low` is too narrow to contain those draws and wide enough to add noise — in
+which case the floor value changes nothing.
 
-`experiments/low_anomaly.py` tests the two explanations that fit, at floors of
-0.05 and 0.30 against the 0.00 and 0.15 already measured. Either 0.15 is simply
-the wrong value once the environment supplies stochasticity of its own — in
-which case a smaller floor works at `low` — or `medium` and `high` are wide
-enough to draw the occasional friendly world (high friction, light box) that a
-still-exploring policy can learn a lift from, while `low` is too narrow to
-contain those draws and wide enough to add noise — in which case the floor value
-changes nothing. The 0.05 arm discriminates, because 0.05 is the one value that
-*failed* on the nominal world.
+### It is the value, and it is inverted
+
+Five seeds, 300 000 steps, `low` throughout:
+
+| floor | per-seed | mean | 95% t |
+| ---: | --- | ---: | --- |
+| 0.00 | 0.00, 0.00, 0.00, 0.57, 0.00 | 0.113 | [0.000, 0.428] |
+| **0.05** | 0.73, 0.87, 0.60, 0.33, 0.40 | **0.587** | [0.310, 0.864] |
+| 0.15 | 0.00, 0.00, 0.00, 0.00, 0.00 | 0.000 | [0.000, 0.000] |
+| 0.30 | 0.00, 0.00, 0.00, 0.00, 0.00 | 0.000 | [0.000, 0.000] |
+
+0.05 against no floor is t = 3.1, dof 7.9 — apart from the nominal result, the
+only comparison in this investigation that clears its own control. So the floor
+is not harmful at `low`. **0.15 is the wrong value there, and the right one is
+five times smaller.**
+
+The grasp rate says what goes wrong, and it is monotone where success is not:
+0.91, 0.86, 0.33, 0.14 as the floor goes 0.00, 0.05, 0.15, 0.30. Success peaks
+in the middle because the two effects pull against each other — a floor keeps
+the policy exploring enough to find the lift, and past about 0.05 at this level
+it keeps the policy too stochastic to close the fingers reliably in the first
+place. `docs/plots/entropy_floor.png` is the picture.
+
+Which inverts the nominal sweep, where 0.05 was the one value that *failed* and
+everything from 0.10 to 0.50 rescued every seed. The two working ranges do not
+overlap: at `none` the floor has to be at least 0.10, at `low` it has to be at
+most 0.05.
+
+That kills the tidy version of this document's conclusion. "Clamp the entropy
+coefficient at 0.15" is not a recommendation that survives contact with a second
+randomisation level, and the recommendation that replaces it is weaker and more
+honest: a floor fixes this failure, and its value has to be tuned per
+distribution, in a direction the nominal world will actively mislead you about.
+
+The obvious explanation is that the useful floor shrinks as the environment
+supplies more of its own stochasticity — and it already has a hole, because
+`medium` and `high` are *wider* than `low` and do fine at 0.15.
+`experiments/floor_by_level.py` fills in the missing cells rather than leaving
+that as an assertion.
 
 ## How sensitive is it to the floor value?
 
@@ -228,9 +261,10 @@ The grid above was nevertheless run at **0.15**, not 0.30. The speed advantage
 was measured on the nominal world only, and 0.15 is the value validated at five
 seeds there *and* at `medium` over 300 000 steps. Choosing the faster value
 would have been extrapolating a nominal-world result into the randomised
-setting, and it would have discarded eight runs already on disk. Whether 0.30
-keeps its advantage under randomisation is being tested at `low`, where 0.15 is
-actively harmful.
+setting, and it would have discarded eight runs already on disk. That caution
+was justified in the end, though not in the way it was meant: under
+randomisation the ordering does not merely change, it reverses, and 0.30 is as
+dead as 0.15 at `low`.
 
 Two caveats worth keeping:
 

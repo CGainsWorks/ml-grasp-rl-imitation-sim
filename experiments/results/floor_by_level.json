@@ -1,0 +1,211 @@
+{
+  "question": "does the useful entropy floor shrink as randomisation widens?",
+  "levels": [
+    "none",
+    "low",
+    "medium",
+    "high"
+  ],
+  "floors": [
+    0.0,
+    0.05,
+    0.15,
+    0.3
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "cells": [
+    {
+      "level": "none",
+      "alpha_floor": 0.0,
+      "per_seed": [
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point": 0.4,
+      "low": 0.0,
+      "high": 1.0,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "none",
+      "alpha_floor": 0.05,
+      "per_seed": [
+        0.8666666666666667,
+        0.0,
+        0.0
+      ],
+      "point": 0.2888888888888889,
+      "low": 0.0,
+      "high": 1.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
+      "level": "none",
+      "alpha_floor": 0.15,
+      "per_seed": [
+        0.9666666666666667,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "point": 0.9933333333333334,
+      "low": 0.9748266666666667,
+      "high": 1.0,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "none",
+      "alpha_floor": 0.3,
+      "per_seed": [
+        0.9666666666666667,
+        1.0,
+        1.0
+      ],
+      "point": 0.9888888888888889,
+      "low": 0.9410777777777778,
+      "high": 1.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
+      "level": "low",
+      "alpha_floor": 0.0,
+      "per_seed": [
+        0.0,
+        0.0,
+        0.0,
+        0.5666666666666667,
+        0.0
+      ],
+      "point": 0.11333333333333333,
+      "low": 0.0,
+      "high": 0.42794666666666664,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "low",
+      "alpha_floor": 0.05,
+      "per_seed": [
+        0.7333333333333333,
+        0.8666666666666667,
+        0.6,
+        0.3333333333333333,
+        0.4
+      ],
+      "point": 0.5866666666666667,
+      "low": 0.3096842425150811,
+      "high": 0.8636490908182523,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "low",
+      "alpha_floor": 0.15,
+      "per_seed": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "low",
+      "alpha_floor": 0.3,
+      "per_seed": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
+      "level": "medium",
+      "alpha_floor": 0.0,
+      "per_seed": [
+        0.36666666666666664,
+        0.6666666666666666,
+        0.7666666666666667,
+        0.0,
+        0.5
+      ],
+      "point": 0.45999999999999996,
+      "low": 0.0882508602117103,
+      "high": 0.8317491397882897,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "medium",
+      "alpha_floor": 0.15,
+      "per_seed": [
+        0.6,
+        0.6666666666666666,
+        0.6333333333333333,
+        0.7333333333333333,
+        0.7666666666666667
+      ],
+      "point": 0.6799999999999999,
+      "low": 0.594188116855013,
+      "high": 0.7658118831449868,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "high",
+      "alpha_floor": 0.0,
+      "per_seed": [
+        0.1,
+        0.0,
+        0.2,
+        0.4666666666666667,
+        0.03333333333333333
+      ],
+      "point": 0.16,
+      "low": 0.0,
+      "high": 0.3929929799610089,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "level": "high",
+      "alpha_floor": 0.15,
+      "per_seed": [
+        0.6,
+        0.5666666666666667,
+        0.26666666666666666,
+        0.3333333333333333,
+        0.26666666666666666
+      ],
+      "point": 0.4066666666666666,
+      "low": 0.20309333333333332,
+      "high": 0.6102399999999999,
+      "n": 5,
+      "method": "t"
+    }
+  ],
+  "note": "Budgets match within a level and differ between levels: 100 000 steps at `none`, 300 000 under randomisation. The comparison is down each column, not across rows."
+}

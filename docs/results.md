@@ -61,30 +61,37 @@ noise — the other hypothesis, that the missing behaviour is temporally extende
 and white noise never samples it — rescues one seed of three: real, but not the
 explanation. The full investigation is in [exploration.md](exploration.md).
 
-**Under randomisation the same floor is much less convincing, and one row of it
-is a regression.** Both arms at 300 000 steps, five seeds, identical but for the
-one line (`experiments/results/floor_control.json`):
+**The floor value does not transfer between distributions.** Applying the same
+0.15 under randomisation, both arms at 300 000 steps and five seeds, gives a
+much weaker result and one outright regression: `medium` 0.680 against 0.460,
+`high` 0.407 against 0.160, and `low` **0.000 against 0.113** — at that level a
+floor of 0.15 stops the policy learning to grasp at all (grasp rate 0.33 against
+0.91, p ≈ 0.002), which is a different failure from the collapse basin.
 
-| level | no floor | with floor | Welch |
-| --- | --- | --- | --- |
-| `low` | 0.113 [0.000, 0.428] | 0.000 [0.000, 0.000] | t = −1.0 |
-| `medium` | 0.460 [0.088, 0.832] | 0.680 [0.594, 0.766] | t = 1.60 |
-| `high` | 0.160 [0.000, 0.393] | 0.407 [0.203, 0.610] | t = 2.21, p ≈ 0.06 |
+Tuning the floor per level instead fixes that, and the full matrix says
+something more useful than either version
+(`experiments/results/floor_by_level.json`, five seeds per cell):
 
-Ahead on the point estimate at `medium` and `high`, separated at neither. What
-it reliably buys there is consistency rather than height — at `medium` the five
-floored seeds land in 0.60–0.77 against 0.00–0.77 without it. At `low` it is
-actively harmful, and not in the way the rest of this section is about: the
-floored runs never learn to *grasp* (0.33 against 0.91, p ≈ 0.002), which is a
-different failure from the collapse basin. The floor value that rescues the
-nominal world turns out to be roughly the value that breaks the mildest
-randomised one; there is no single setting that works everywhere. See
-[exploration.md](exploration.md) for the control and the follow-up.
+| level | floor 0.00 | floor 0.05 | floor 0.15 | floor 0.30 |
+| --- | --- | --- | --- | --- |
+| `none` | 0.400 | 0.289 (n=3) | **0.993** | 0.989 (n=3) |
+| `low` | 0.113 | **0.587** | 0.000 | 0.000 |
+| `medium` | 0.460 | 0.587 | **0.680** | — |
+| `high` | 0.160 | **0.467** | 0.407 | — |
 
-An earlier version of this section claimed the floor works under randomisation
-and merely needs three times the budget. That came from comparing floored runs
-at 300 000 steps against a baseline at 200 000, and the matched control does not
-support it.
+A floor beats no floor at **every** level — best value against that level's own
+control at a matched budget: `none` t = 2.42, `low` t = 3.13, `medium` t = 1.60,
+`high` t = 2.70. And no single value does it: `none` needs at least 0.10 and
+fails at 0.05, `low` needs at most 0.05 and dies at 0.15, `medium` and `high` are
+indifferent between them. The value-sensitive levels are the two mildest, in
+opposite directions. `docs/plots/entropy_floor.png` plots it;
+[exploration.md](exploration.md) has the controls.
+
+Two earlier versions of this section were wrong and are worth recording. The
+first claimed the floor works under randomisation and merely needs three times
+the budget — that came from comparing floored runs at 300 000 steps against a
+baseline at 200 000. The second, after the matched control, claimed the floor is
+harmful at `low` — that came from testing one floor value at one level.
 
 The tables in this document were produced before that fix and are left as they
 are; they record what a standard SAC configuration does here.
@@ -104,9 +111,22 @@ there fast: the medium-randomisation runs are above 0.9 within 20 000–30 000
 steps, which is before from-scratch SAC has finished its random-action phase in
 any useful sense.
 
-That is the practical finding of this repository, and it is not a subtle one:
-on a CPU budget, on a contact-rich task with a shaped reward, the difference
-between "works" and "does not work" was the demonstrations, not the algorithm.
+That was written as the practical finding of this repository — on a CPU budget,
+on a contact-rich task with a shaped reward, the difference between "works" and
+"does not work" was the demonstrations, not the algorithm — and the entropy
+investigation has since weakened it. From scratch, with a floor tuned for the
+level, SAC reaches 0.993 on the nominal world and 0.680 at `medium`: the same
+place the demonstration-seeded runs get to. What demonstrations buy is the
+*budget*: 30 000 steps against 100 000 nominal and 300 000 randomised, and no
+hyperparameter to tune per distribution.
+
+That is still the practical finding, restated honestly. On this hardware an
+order of magnitude in sample efficiency is the difference between an experiment
+that fits in a lunch break and one that does not, and the from-scratch route
+only works once somebody has diagnosed the collapse and swept the floor for that
+distribution. But "demonstrations or it does not work" is not what the data
+says, and the version of this paragraph that claimed it was written before the
+comparison existed.
 
 ### The dip at 100 000 steps is the schedule, not noise
 
@@ -209,6 +229,63 @@ task, not seed variance — and demonstrations take the same algorithm to 0.969.
 That is the MuJoCo headline finding reproduced in a second engine, with the same
 five-seed standard.
 
+### It does not confirm the cure
+
+The collapse reproduces. The fix for it does not, at least not reliably. Same
+two arms as the MuJoCo investigation, five seeds, 15 000 steps x 32
+environments — the budget at which Isaac's from-scratch failure is already known
+to be stable (`experiments/results/isaac_floor.json`):
+
+| arm | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| control | 0.09, 0.88, 0.00, 0.00, 0.00 | 0.194 | [0.000, 0.669] |
+| entropy floor 0.15 | 0.81, 0.00, 0.50, 1.00, 0.00 | 0.463 | [0.000, 1.000] |
+
+The floor more than doubles the mean and the difference is nowhere near
+separated (t = 1.01, dof 7.8). Both arms span 0.00 to 1.00 across seeds. The
+entropy coefficient behaves exactly as designed — the control's five runs end at
+0.009 to 0.052, the floored ones sit at 0.150 to four decimal places — so this
+is not a wiring failure. It is the intervention not working reliably here.
+
+Two readings, and the second is better supported. It could be that five seeds
+is too few to separate anything with this much variance, which is true but
+unsatisfying. Or it could be that **0.15 is the wrong value for this
+simulator**, which is the reading the MuJoCo matrix makes hard to dismiss: there
+the useful floor was different for every randomisation level, and a value tuned
+on one distribution took another to zero. Isaac is a different contact model,
+different arm, different action scaling — much further from the MuJoCo nominal
+world than `low` randomisation is. Transferring 0.15 across that gap was the
+same mistake as transferring it from `none` to `low`, and it was made for the
+same reason: it was the number that happened to be to hand.
+
+Sweeping the floor inside Isaac would settle it. That is about six hours of GPU
+per value on this hardware, sequentially, and it is recorded here as untested
+rather than assumed either way.
+
+### Randomisation in Isaac costs much more than in MuJoCo
+
+The first randomised training grid in the port, demonstration-seeded, five seeds
+at `medium` (`experiments/results/isaac_seed_grid_medium.json`):
+
+| world | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| nominal | 0.88, 0.97, 1.00, 1.00, 1.00 | 0.969 | [0.902, 1.000] |
+| `medium` | 0.22, 0.31, 0.38, 0.19, 0.28 | **0.275** | [0.182, 0.368] |
+
+In MuJoCo the same arm goes from 0.97 nominal to 0.726 at `medium`. Here it
+goes from 0.969 to 0.275 — a far steeper cost for the same nominal ranges,
+applied through the same JSON and the same interval arithmetic.
+
+The budget is the most likely explanation and it is not a flattering one: 4 000
+steps is enough to solve the nominal world here and visibly is not enough under
+randomisation. The per-seed curves never settle — seed 0 reads 0.31, 0.06, 0.28,
+0.22 across its four evaluations — which is what an unconverged run looks like,
+not a converged bad one. The MuJoCo runs it is being compared against had 200 000
+gradient updates against 4 000. Reading this as "Isaac randomisation is harder"
+would be over-reading it; what it establishes is that the port *runs*
+randomised training end to end, and that the number it produces at this budget
+is not comparable to MuJoCo's.
+
 ### The behaviour-cloning anchor, isolated
 
 The Isaac runs also settle the question the MuJoCo curves only hinted at. Two
@@ -269,5 +346,12 @@ In rough order of expected effect:
   only reach-and-close.
 * **Measured randomisation ranges** instead of plausible ones — see
   [sim-to-real](sim-to-real.md).
-* **A fix for the entropy collapse**, which would make the from-scratch
-  baseline a fair comparison rather than a demonstration of variance.
+* **Rebuilding the headline grid on top of the entropy floor.** The floor now
+  exists and, tuned per level, makes from-scratch SAC a fair baseline rather
+  than a demonstration of variance — 0.993 and 0.680 instead of 0.400 and 0.120.
+  Every from-scratch row in the tables above predates it. That rerun is about
+  three hours of CPU and is the single change that would move the most numbers
+  in this document.
+* **Sweeping the floor inside Isaac.** The one place the fix has been tried
+  without tuning is the one place it did not work (§6). Six hours of GPU per
+  value would say whether that is the value or the simulator.

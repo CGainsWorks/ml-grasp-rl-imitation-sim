@@ -53,10 +53,20 @@ budget (0.993 mean, 95% t [0.975, 1.000], against 0.400 and [0.000, 1.000]
 without it). The investigation, including the hypothesis that turned out to be
 wrong, is in [exploration.md](exploration.md).
 
-Under randomisation the floor also works, but needs about three times the
-budget: 0.667 [0.448, 0.886] at 300 000 steps against 0.100 [0.000, 0.348] for
-the same seeds without it. At a matched 100 000 steps it looks inert, which is
-what a first pass concluded before the longer runs corrected it.
+**The fix has a hyperparameter, and the hyperparameter does not transfer.** A
+floor beats no floor at every randomisation level, but the value that does it is
+different for each: `none` needs at least 0.10 and fails at 0.05, `low` needs at
+most 0.05 and scores 0.000 at 0.15, `medium` and `high` are indifferent between
+them. The 0.15 that rescues the nominal world takes `low` to zero — it stops the
+policy learning to grasp at all. So "clamp the entropy coefficient" is a real
+fix for a real failure mode and *not* a setting that can be copied between
+distributions, which is the most transferable thing this repository learned and
+the least convenient.
+
+Getting there took three wrong turns, all recorded in
+[exploration.md](exploration.md): the floor looked inert at a matched 100 000
+steps, then decisive against an unmatched baseline at 300 000 against 200 000,
+then harmful at `low` when only one floor value had been tried there.
 
 The grid in the README was run before this and is deliberately left alone: it is
 a fair record of what a standard SAC configuration does here, and rerunning
@@ -80,17 +90,28 @@ inside Isaac on the GPU agrees with the shared numpy implementation to about
 asserted. Randomisation is driven through Isaac's event manager from the same
 JSON ranges, with the same interval arithmetic.
 
-What it does *not* do is produce any number quoted in this repository. Every
-success rate in the README was produced in MuJoCo. `scripts/isaac_train.py`
-runs the same SAC implementation against the vectorised Isaac environment and a
-short run does learn to grasp, but no full grid has been trained there, so
-there is no Isaac column in any table.
+What it does *not* do is produce any number quoted in the README's headline
+tables; every success rate there was produced in MuJoCo. It does now carry its
+own five-seed grids: from scratch against demonstration-seeded on the nominal
+world (0.000 against 0.969), the entropy floor against its control (0.194
+against 0.463, t = 1.01 — not separated), and a randomised grid at `medium`
+(0.275 [0.182, 0.368]). The last of those is budget-limited rather than
+converged: 4 000 steps solves the nominal world here and visibly does not settle
+under randomisation.
 
-Four of the eleven randomisation parameters have no Isaac equivalent yet:
-object size needs a pre-startup scale term, hand compliance is a property of
-the MuJoCo weld with no analogue, action latency would need a command queue in
-the task, and gravity is per-scene rather than per-environment. Those four are
-listed in `envs/isaac/README.md` rather than quietly omitted.
+The floor result is the interesting negative. The failure the floor fixes
+reproduces perfectly in Isaac; the fix does not, and the likeliest reason is the
+one the MuJoCo matrix already demonstrated — 0.15 is a value tuned for one
+distribution, and Isaac is a further move than any randomisation level. Sweeping
+it inside Isaac is about six hours of GPU per value and has not been done.
+
+All eleven randomisation parameters are now mapped, but two of them are
+*analogues* rather than translations and are labelled as such: hand compliance
+is the `solref` of a MuJoCo weld that has no counterpart here, so it maps to the
+arm's joint stiffness with the sign inverted; and gravity is per-scene in Isaac
+rather than per-environment, so all environments share one draw where MuJoCo
+takes one per episode. Same intervals, coarser granularity. The mapping table is
+in `envs/isaac/README.md` rather than quietly omitted.
 
 **Cross-simulator transfer has been measured properly, and it is poor.** Twenty
 policies — five seeds at each of four randomisation levels — run in Isaac with

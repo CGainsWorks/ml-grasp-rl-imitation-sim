@@ -71,6 +71,48 @@ variance — and a longer single run confirms why: 480 000 transitions produced
 grasp rate 1.00 and success 0.00, the box held on the table and never lifted.
 Demonstrations take the same algorithm to 0.969.
 
+## Does the MuJoCo entropy fix work here?
+
+The collapse reproduces in this simulator; the cure does not, at least not
+reliably. Five seeds per arm, 15 000 steps x 32 environments, nominal world
+(`experiments/isaac_floor_test.py`):
+
+| arm | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| control | 0.09, 0.88, 0.00, 0.00, 0.00 | 0.194 | [0.000, 0.669] |
+| entropy floor 0.15 | 0.81, 0.00, 0.50, 1.00, 0.00 | 0.463 | [0.000, 1.000] |
+
+More than double the mean, nowhere near separated (t = 1.01, dof 7.8). The
+coefficient itself behaves: the control's runs end between 0.009 and 0.052, the
+floored ones at 0.150 exactly. So the mechanism is wired correctly and the
+intervention simply is not reliable here.
+
+The likeliest reason is that 0.15 is the wrong value for this simulator. In
+MuJoCo the useful floor turned out to be different for every randomisation
+level, and a value tuned on one distribution took another to zero — and Isaac,
+with a different contact model, arm and action scaling, is much further from the
+MuJoCo nominal world than a randomisation level is. Sweeping the floor here
+would settle it, at roughly six hours of GPU per value, and has not been done.
+
+## A randomised training grid
+
+The first one in this port, and the item that used to head the list of things
+this file admitted it had not done. Demonstration-seeded, five seeds, 4 000
+steps x 32 environments (`experiments/isaac_seed_grid.py --randomisation
+medium`):
+
+| world | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| nominal | 0.88, 0.97, 1.00, 1.00, 1.00 | 0.969 | [0.902, 1.000] |
+| `medium` | 0.22, 0.31, 0.38, 0.19, 0.28 | **0.275** | [0.182, 0.368] |
+
+MuJoCo's equivalent goes 0.97 to 0.726 for the same nominal ranges. The steeper
+drop here is most likely the budget rather than the simulator: the per-seed
+curves never settle (seed 0 reads 0.31, 0.06, 0.28, 0.22 across its four
+evaluations), which is what an unconverged run looks like. What this establishes
+is that randomised training runs end to end in the port, not that Isaac
+randomisation is harder.
+
 Two single-seed runs isolate the behaviour-cloning schedule:
 
 | run | steps x envs | result |
@@ -174,11 +216,15 @@ level actually on the config.
 
 ## Still not done
 
-1. **No randomised training grid here.** The five-seed grid is the nominal world
-   only; the randomisation levels have not been trained in Isaac. Every headline
-   number in the top-level README still comes from MuJoCo.
-2. **The unmapped randomisation parameters** listed above.
-3. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
+1. **The entropy floor is untuned here.** 0.15 was carried over from MuJoCo,
+   where that value is now known not to transfer even between randomisation
+   levels. A sweep inside Isaac is the missing experiment, at about six hours of
+   GPU per value.
+2. **The randomised grid is budget-limited.** 4 000 steps solves the nominal
+   world and does not converge under randomisation, so the 0.275 above is a
+   floor on what the method reaches here, not an estimate of it.
+3. **The unmapped randomisation parameters** listed above.
+4. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.
 
 ## Installing

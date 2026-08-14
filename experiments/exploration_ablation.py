@@ -54,6 +54,12 @@ ARMS = {
     "alpha-floor": ["--alpha-floor", "0.15"],
     "pink": ["--exploration", "pink"],
     "both": ["--alpha-floor", "0.15", "--exploration", "pink"],
+    # Sensitivity sweep over the floor value. "alpha-floor" above is 0.15, so
+    # that column of the sweep is already run and is not repeated here.
+    "floor005": ["--alpha-floor", "0.05"],
+    "floor010": ["--alpha-floor", "0.10"],
+    "floor030": ["--alpha-floor", "0.30"],
+    "floor050": ["--alpha-floor", "0.50"],
 }
 
 

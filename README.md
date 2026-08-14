@@ -153,13 +153,28 @@ The short version, with the reasoning and the caveats in
   meant by "RL results from one seed are noise". The stalled seeds have a
   specific, diagnosed failure: an entropy collapse into a local optimum where
   the box is grasped and held on the table.
-* **Demonstrations are what make the budget work.** The same algorithm, seeded
-  with a cloned actor and demonstrations pinned in the replay buffer, goes from
-  0.22 to 0.97 on the nominal world and from 0.13 to 0.73 at medium
-  randomisation — and gets there inside 30 000 steps.
-* **A second engine reproduces it, five seeds deep.** In Isaac Lab, SAC from
-  scratch scores 0.000 on all five seeds — a reliable failure, not variance —
-  and demonstration-seeded SAC scores 0.969 [0.902, 1.000].
+* **A floor under the entropy coefficient fixes it — and its value does not
+  transfer.** On the nominal world a floor of 0.15 takes five seeds from 0.400
+  to **0.993** at *half* the budget. A floor beats no floor at every
+  randomisation level tested, but the value that does it is different for each:
+  `none` fails at 0.05, `low` dies at 0.15 and needs 0.05, `medium` and `high`
+  are indifferent between them. A value tuned on the nominal world takes `low`
+  to zero. [docs/exploration.md](docs/exploration.md) is the whole
+  investigation, including the two conclusions along the way that were wrong.
+* **Demonstrations buy sample efficiency, not feasibility.** Seeded with a
+  cloned actor and demonstrations pinned in the replay buffer, SAC reaches 0.97
+  on the nominal world and 0.73 at medium randomisation, inside 30 000 steps.
+  From scratch with a tuned entropy floor it gets to 0.993 and 0.680 — the same
+  place, at 100 000 and 300 000 steps. Before the entropy collapse was
+  diagnosed, this bullet read "demonstrations are the difference between works
+  and does not work". They are the difference between 30 000 steps and 300 000.
+* **A second engine reproduces the failure, and not the fix.** In Isaac Lab, SAC
+  from scratch scores 0.000 on all five seeds — a reliable failure, not variance
+  — and demonstration-seeded SAC scores 0.969 [0.902, 1.000]. The entropy floor
+  that rescues MuJoCo raises the mean there from 0.194 to 0.463 and is nowhere
+  near separated (t = 1.01), most likely because 0.15 is the wrong value for a
+  different contact model — which is the same lesson as the row above, arriving
+  from further away.
 * **Randomisation buys transfer, and here it costs nothing measurable.** A
   policy trained without it is perfect on its own worlds and scores 0.002 on the
   held-out ones; wide randomisation multiplies that by thirty, to 0.072 — still
@@ -209,6 +224,24 @@ simplification here and is listed first in
 ## Training curves
 
 ![training curves](docs/plots/training_curves.png)
+
+---
+
+## The entropy floor
+
+![entropy floor](docs/plots/entropy_floor.png)
+
+Left: success against the floor value, one line per randomisation level, five
+seeds per point, with floor 0.00 as the leftmost point of each line so every
+control sits on the same axes as its treatments. A floor beats no floor
+everywhere; the `none` and `low` curves cross between 0.05 and 0.15 going
+opposite ways, which is why no single value works. Right: the mechanism at
+`low` — grasp rate falls monotonically as the floor rises while success peaks in
+the middle, because a floor that keeps the policy exploring enough to find the
+lift eventually keeps it too stochastic to close the fingers.
+
+Full investigation, including the conclusions that were wrong on the way, in
+[docs/exploration.md](docs/exploration.md).
 
 ---
 

@@ -1,0 +1,38 @@
+{
+  "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+  "randomisation": "medium",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "arms": [
+    {
+      "arm": "bcrl",
+      "final_per_seed": [
+        0.21875,
+        0.3125,
+        0.375,
+        0.1875,
+        0.28125
+      ],
+      "best_per_seed": [
+        0.3125,
+        0.34375,
+        0.59375,
+        0.34375,
+        0.25
+      ],
+      "across_seeds": {
+        "point": 0.275,
+        "low": 0.1823763461636284,
+        "high": 0.36762365383637163,
+        "n": 5,
+        "method": "t"
+      }
+    }
+  ],
+  "note": "Across-seed t intervals, the same standard the MuJoCo tables use."
+}

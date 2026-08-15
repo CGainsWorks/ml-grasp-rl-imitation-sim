@@ -102,6 +102,27 @@ GRASP_DEBOUNCE_STEPS = 3      # environment steps the grasp flag stays latched
 OBS_DIM = 32
 ACT_DIM = 4
 
+# The wrist variant. Adding a yaw degree of freedom is the change
+# docs/limitations.md calls the single biggest realism gain available here: it
+# turns "close the fingers" into "align, then close", which is where the real
+# difficulty in grasping lives. It needs no MJCF change -- the weld already
+# constrains the hand's orientation to the mocap body's, and this environment
+# simply never commanded it.
+#
+# The dimensions differ, so every policy, demonstration file and results table
+# from the four-dimensional task is incompatible with this one. That is why it
+# is a flag and not a replacement: the existing numbers stay valid and the two
+# tasks are reported separately.
+WRIST_OBS_DIM = 34            # + sin, cos of the wrist angle
+WRIST_ACT_DIM = 5             # + yaw rate
+WRIST_LIMIT = np.pi / 2       # +/- 90 degrees is enough: a box repeats every 90
+WRIST_STEP = np.deg2rad(9.0)  # per control step at full command
+# With a wrist the size cap can rise: the pads no longer have to swallow the
+# diagonal of a badly-yawed box. 34 mm half-size is 68 mm across a face against
+# a 78 mm gap, and 96 mm across the diagonal -- comfortably graspable aligned,
+# impossible misaligned, which is exactly the regime the wrist exists for.
+WRIST_MAX_HALF_SIZE = 0.034
+
 
 class GraspEnv(_BASE):
     """Gymnasium-style environment. Also usable without gymnasium installed."""
@@ -121,7 +142,18 @@ class GraspEnv(_BASE):
         width: int = 480,
         height: int = 360,
         seed: Optional[int] = None,
+        wrist: bool = False,
+        max_half_size: Optional[float] = None,
     ) -> None:
+        self.wrist = bool(wrist)
+        # Overridable so the wrist can be ablated properly: the same box
+        # distribution has to be presented to a hand that can rotate and one
+        # that cannot, or the comparison is between two different tasks.
+        self._max_half_size = float(
+            max_half_size if max_half_size is not None
+            else (WRIST_MAX_HALF_SIZE if self.wrist else 0.024))
+        self.obs_dim = WRIST_OBS_DIM if self.wrist else OBS_DIM
+        self.act_dim = WRIST_ACT_DIM if self.wrist else ACT_DIM
         self.model = mujoco.MjModel.from_xml_path(SCENE_PATH)
         self.data = mujoco.MjData(self.model)
 
@@ -171,7 +203,8 @@ class GraspEnv(_BASE):
         self._ws_low = np.array([-0.20, -0.28, 0.462])
         self._ws_high = np.array([0.20, 0.28, 0.72])
 
-        self.world: SampledWorld = sample_world(self.rand_cfg, self.np_random)
+        self.world: SampledWorld = sample_world(
+            self.rand_cfg, self.np_random, self._max_half_size)
         self._latency_queue: deque = deque()
         self._steps = 0
         self._goal = np.zeros(3)
@@ -179,10 +212,12 @@ class GraspEnv(_BASE):
         self._object_rest_z = TABLE_HEIGHT
         self._prev_grip = np.zeros(3)
         self._last_terms: Dict[str, float] = {}
+        self._wrist_yaw = 0.0
 
         if spaces is not None:
-            self.observation_space = spaces.Box(-np.inf, np.inf, (OBS_DIM,), np.float32)
-            self.action_space = spaces.Box(-1.0, 1.0, (ACT_DIM,), np.float32)
+            self.observation_space = spaces.Box(
+                -np.inf, np.inf, (self.obs_dim,), np.float32)
+            self.action_space = spaces.Box(-1.0, 1.0, (self.act_dim,), np.float32)
 
     # ------------------------------------------------------------------
     # Model mutation from the sampled world
@@ -228,7 +263,8 @@ class GraspEnv(_BASE):
         if seed is not None:
             self.np_random = np.random.default_rng(seed)
 
-        self.world = sample_world(self.rand_cfg, self.np_random)
+        self.world = sample_world(
+            self.rand_cfg, self.np_random, self._max_half_size)
         self._apply_world(self.world)
 
         mujoco.mj_resetData(self.model, self.data)
@@ -253,6 +289,7 @@ class GraspEnv(_BASE):
         self.data.qpos[hadr + 3 : hadr + 7] = [1.0, 0.0, 0.0, 0.0]
         self.data.mocap_pos[self._mocap_id] = hand_pos
         self.data.mocap_quat[self._mocap_id] = [1.0, 0.0, 0.0, 0.0]
+        self._wrist_yaw = 0.0
         self.data.ctrl[:] = self._grip_range[0]
 
         mujoco.mj_forward(self.model, self.data)
@@ -267,7 +304,7 @@ class GraspEnv(_BASE):
         # as a queue; it is identical across all randomisation levels, so it
         # does not bias the ablation.
         self._latency_queue = deque(
-            [np.zeros(ACT_DIM, dtype=np.float64)] * int(self.world.action_latency)
+            [np.zeros(self.act_dim, dtype=np.float64)] * int(self.world.action_latency)
         )
         self._steps = 0
         self._grasp_latch = 0
@@ -283,12 +320,14 @@ class GraspEnv(_BASE):
     # Step
     # ------------------------------------------------------------------
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict]:
-        action = np.clip(np.asarray(action, dtype=np.float64).reshape(ACT_DIM), -1.0, 1.0)
+        action = np.clip(
+            np.asarray(action, dtype=np.float64).reshape(self.act_dim), -1.0, 1.0)
         commanded = action.copy()
 
         if self.world.action_noise > 0.0:
             commanded = np.clip(
-                commanded + self.np_random.normal(0.0, self.world.action_noise, ACT_DIM),
+                commanded + self.np_random.normal(
+                    0.0, self.world.action_noise, self.act_dim),
                 -1.0,
                 1.0,
             )
@@ -299,8 +338,14 @@ class GraspEnv(_BASE):
         target = self.data.mocap_pos[self._mocap_id] + commanded[:3] * self.pos_step
         self.data.mocap_pos[self._mocap_id] = np.clip(target, self._ws_low, self._ws_high)
 
+        if self.wrist:
+            self._wrist_yaw = float(np.clip(
+                self._wrist_yaw + commanded[3] * WRIST_STEP, -WRIST_LIMIT, WRIST_LIMIT))
+            half = 0.5 * self._wrist_yaw
+            self.data.mocap_quat[self._mocap_id] = [np.cos(half), 0.0, 0.0, np.sin(half)]
+
         lo, hi = self._grip_range
-        grip_cmd = lo + (commanded[3] + 1.0) * 0.5 * (hi - lo)
+        grip_cmd = lo + (commanded[-1] + 1.0) * 0.5 * (hi - lo)
         self.data.ctrl[:] = grip_cmd
 
         prev_grip = self._grip_pos().copy()
@@ -441,6 +486,11 @@ class GraspEnv(_BASE):
         if self.world.obs_noise_vel > 0.0:
             obs[3:6] += self.np_random.normal(0, self.world.obs_noise_vel, 3)
             obs[20:23] += self.np_random.normal(0, self.world.obs_noise_vel, 3)
+        if self.wrist:
+            # The policy has to know where its own wrist is. sin/cos rather than
+            # the angle, so there is no discontinuity to learn around the limit.
+            obs = np.concatenate(
+                [obs, [np.sin(self._wrist_yaw), np.cos(self._wrist_yaw)]])
         if self.world.obs_noise_rot > 0.0:
             # Perturb the *frame*, not the six numbers independently. A pose
             # estimator returns one orientation with one error; noising the two

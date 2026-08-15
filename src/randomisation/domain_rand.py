@@ -148,7 +148,8 @@ NOMINAL = SampledWorld(
 )
 
 
-def sample_world(cfg: RandomisationConfig, rng: np.random.Generator) -> SampledWorld:
+def sample_world(cfg: RandomisationConfig, rng: np.random.Generator,
+                 max_half_size: float = 0.024) -> SampledWorld:
     """Draw one world from ``cfg``.
 
     Parameters absent from the config keep their nominal value, so a config
@@ -167,11 +168,15 @@ def sample_world(cfg: RandomisationConfig, rng: np.random.Generator) -> SampledW
     # every level starts the object somewhere different. Only its magnitude is
     # randomisable, and it is clamped so the object always sits on the table.
     out.init_xy_jitter = float(np.clip(out.init_xy_jitter, 0.0, 0.16))
-    # Hard cap on object size. The hand has no wrist rotation, so the pads
-    # always close along world x. A square box at 45 degrees of yaw presents
-    # sqrt(2) times its side to the pads, and the open gap is 78 mm, so any
-    # half-size above about 27 mm is ungraspable at the worst yaw no matter
-    # what the policy does. The cap sits below that with margin; the missing
-    # wrist DoF is recorded in docs/limitations.md.
-    out.object_half_size = float(np.clip(out.object_half_size, 0.014, 0.024))
+    # Hard cap on object size, and the reason it is a parameter. Without a
+    # wrist the pads always close along world x, so a square box at 45 degrees
+    # of yaw presents sqrt(2) times its side to a 78 mm gap: anything above
+    # about 27 mm half-size is ungraspable at the worst yaw no matter what the
+    # policy does, and the default cap sits below that with margin.
+    #
+    # A hand that can rotate does not have that limit, which is the whole point
+    # of the wrist variant -- so the environment raises this cap when it has a
+    # wrist, and only then does yaw alignment become part of the task rather
+    # than a detail the size cap hides.
+    out.object_half_size = float(np.clip(out.object_half_size, 0.014, max_half_size))
     return out

@@ -73,26 +73,34 @@ Demonstrations take the same algorithm to 0.969.
 
 ## Does the MuJoCo entropy fix work here?
 
-The collapse reproduces in this simulator; the cure does not, at least not
-reliably. Five seeds per arm, 15 000 steps x 32 environments, nominal world
-(`experiments/isaac_floor_test.py`):
+Yes, at a value that had to be found here rather than carried over. Five seeds
+per arm for the first two rows, three for the swept values, 15 000 steps x 32
+environments, nominal world (`experiments/isaac_floor_sweep.py`):
 
-| arm | per-seed | mean | 95% t |
-| --- | --- | ---: | --- |
-| control | 0.09, 0.88, 0.00, 0.00, 0.00 | 0.194 | [0.000, 0.669] |
-| entropy floor 0.15 | 0.81, 0.00, 0.50, 1.00, 0.00 | 0.463 | [0.000, 1.000] |
+| floor | per-seed | mean | 95% t | against no floor |
+| ---: | --- | ---: | --- | --- |
+| 0.00 (control) | 0.09, 0.88, 0.00, 0.00, 0.00 | 0.194 | [0.000, 0.669] | — |
+| 0.05 | 0.00, 0.00, 0.00 | 0.000 | [0.000, 0.000] | t = −1.13 |
+| 0.15 | 0.81, 0.00, 0.50, 1.00, 0.00 | 0.463 | [0.000, 1.000] | t = 1.01 |
+| **0.30** | **1.00, 1.00, 1.00** | **1.000** | **[1.000, 1.000]** | **t = 4.71** |
 
-More than double the mean, nowhere near separated (t = 1.01, dof 7.8). The
-coefficient itself behaves: the control's runs end between 0.009 and 0.052, the
-floored ones at 0.150 exactly. So the mechanism is wired correctly and the
-intervention simply is not reliable here.
+The first attempt used 0.15, the MuJoCo nominal value, and produced the middle
+row — an effect that more than doubled the mean and was nowhere near separated.
+The honest conclusion at that point was "the collapse reproduces here and the
+fix does not". It was wrong, and the MuJoCo level matrix is what said which
+experiment to run instead: there the useful floor differs for every
+distribution, so a value carried into a different simulator has no reason to be
+right.
 
-The likeliest reason is that 0.15 is the wrong value for this simulator. In
-MuJoCo the useful floor turned out to be different for every randomisation
-level, and a value tuned on one distribution took another to zero — and Isaac,
-with a different contact model, arm and action scaling, is much further from the
-MuJoCo nominal world than a randomisation level is. Sweeping the floor here
-would settle it, at roughly six hours of GPU per value, and has not been done.
+At 0.30 the escape is visible in the curve — peak lift sits at 0.002 m through
+10 500 steps, then 0.203 m at 12 000 and success 1.000 by the end. At 0.05 the
+policy never leaves the basin: 0.0056 m at 15 000 steps, flat throughout.
+
+The lesson generalises past this repository. Premature entropy collapse has a
+one-line fix, and the value of that one line is a property of the distribution.
+Tuning it is not optional and the direction is not predictable: this simulator
+wanted twice the MuJoCo nominal value, while MuJoCo's mildest randomisation
+wanted a third of it.
 
 ## A randomised training grid
 
@@ -216,10 +224,9 @@ level actually on the config.
 
 ## Still not done
 
-1. **The entropy floor is untuned here.** 0.15 was carried over from MuJoCo,
-   where that value is now known not to transfer even between randomisation
-   levels. A sweep inside Isaac is the missing experiment, at about six hours of
-   GPU per value.
+1. **The floor is only swept on the nominal world here.** 0.30 solves it
+   there, three seeds of three; whether it is still the right value under
+   randomisation in this simulator is untested, and MuJoCo says not to assume.
 2. **The randomised grid is budget-limited.** 4 000 steps solves the nominal
    world and does not converge under randomisation, so the 0.275 above is a
    floor on what the method reaches here, not an estimate of it.

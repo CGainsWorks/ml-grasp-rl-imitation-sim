@@ -99,15 +99,16 @@ tables; every success rate there was produced in MuJoCo. It does now carry its
 own five-seed grids: from scratch against demonstration-seeded on the nominal
 world (0.000 against 0.969), the entropy floor against its control (0.194
 against 0.463, t = 1.01 — not separated), and a randomised grid at `medium`
-(0.275 [0.182, 0.368]). The last of those is budget-limited rather than
-converged: 4 000 steps solves the nominal world here and visibly does not settle
-under randomisation.
+(0.275 [0.182, 0.368]), and a floor sweep. The randomised grid is budget-limited
+rather than converged: 4 000 steps solves the nominal world here and visibly
+does not settle under randomisation.
 
-The floor result is the interesting negative. The failure the floor fixes
-reproduces perfectly in Isaac; the fix does not, and the likeliest reason is the
-one the MuJoCo matrix already demonstrated — 0.15 is a value tuned for one
-distribution, and Isaac is a further move than any randomisation level. Sweeping
-it inside Isaac is about six hours of GPU per value and has not been done.
+The floor result turned around once the value was swept rather than assumed.
+Carrying MuJoCo's 0.15 across gave 0.463 against a 0.194 control and read as a
+failed replication; at 0.30 it is 1.000 on three seeds of three, t = 4.71 — the
+largest effect in this repository. Both engines therefore show the failure and
+the fix, and the value belongs to the distribution: 0.05 at MuJoCo's `low`, 0.15
+at MuJoCo nominal, 0.30 here, with 0.05 scoring zero here.
 
 All eleven randomisation parameters are now mapped, but two of them are
 *analogues* rather than translations and are labelled as such: hand compliance

@@ -193,13 +193,14 @@ The short version, with the reasoning and the caveats in
   So the poor sim-to-real proxy result here is not an artefact of an
   undertrained baseline, which is the first thing worth ruling out before
   believing it.
-* **A second engine reproduces the failure, and not the fix.** In Isaac Lab, SAC
-  from scratch scores 0.000 on all five seeds — a reliable failure, not variance
-  — and demonstration-seeded SAC scores 0.969 [0.902, 1.000]. The entropy floor
-  that rescues MuJoCo raises the mean there from 0.194 to 0.463 and is nowhere
-  near separated (t = 1.01), most likely because 0.15 is the wrong value for a
-  different contact model — which is the same lesson as the row above, arriving
-  from further away.
+* **A second engine reproduces the failure *and* the fix — at a different
+  value.** In Isaac Lab, SAC from scratch scores 0.000 on all five seeds, and
+  demonstration-seeded SAC scores 0.969 [0.902, 1.000]. Carrying MuJoCo's floor
+  of 0.15 across gave 0.463 against a 0.194 control and looked like a failed
+  replication; sweeping the value instead gave **1.000 on three seeds of three
+  at a floor of 0.30** (t = 4.71), the largest effect measured here. The floor
+  is real in both engines and its value belongs to the distribution, not to the
+  algorithm.
 * **Randomisation buys transfer, and here it costs nothing measurable.** A
   policy trained without it is perfect on its own worlds and scores 0.002 on the
   held-out ones; wide randomisation multiplies that by thirty, to 0.072 — still

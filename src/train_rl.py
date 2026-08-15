@@ -34,7 +34,7 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from envs.mujoco.grasp_env import ACT_DIM, OBS_DIM, make_env  # noqa: E402
+from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.sac import SAC, SACConfig  # noqa: E402
 from src.randomisation.domain_rand import load_randomisation  # noqa: E402
 from src.rewards.grasp_reward import load_reward_config  # noqa: E402
@@ -76,11 +76,14 @@ def train(args: argparse.Namespace) -> Dict:
     )
 
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
+                   wrist=args.wrist,
                    reward_config=args.reward_config)
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
+                        wrist=args.wrist,
                         reward_config=args.reward_config)
 
-    agent = SAC(OBS_DIM, ACT_DIM, cfg, seed=args.seed)
+    obs_dim, act_dim = env.obs_dim, env.act_dim
+    agent = SAC(obs_dim, act_dim, cfg, seed=args.seed)
 
     demo_meta: Optional[Dict] = None
     if args.demos:
@@ -116,8 +119,9 @@ def train(args: argparse.Namespace) -> Dict:
         "demos": args.demos,
         "demo_meta": demo_meta,
         "init_actor": args.init_actor,
-        "obs_dim": OBS_DIM,
-        "act_dim": ACT_DIM,
+        "obs_dim": obs_dim,
+        "act_dim": act_dim,
+        "wrist": args.wrist,
     }
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
         json.dump(config_blob, fh, indent=2)
@@ -129,7 +133,7 @@ def train(args: argparse.Namespace) -> Dict:
 
     rng = np.random.default_rng(args.seed)
     noise_beta = {"white": 0.0, "pink": 1.0, "red": 2.0}[args.exploration]
-    explorer = ColoredNoiseProcess(noise_beta, args.max_steps, ACT_DIM, rng)
+    explorer = ColoredNoiseProcess(noise_beta, args.max_steps, act_dim, rng)
     obs, _ = env.reset(seed=TRAIN_SEED_BLOCK + args.seed * 1_000_000)
     episode_return = 0.0
     recent_returns: list = []
@@ -143,11 +147,11 @@ def train(args: argparse.Namespace) -> Dict:
 
     for step in range(1, args.steps + 1):
         if step <= cfg.start_steps and not args.demos:
-            action = rng.uniform(-1.0, 1.0, ACT_DIM).astype(np.float32)
+            action = rng.uniform(-1.0, 1.0, act_dim).astype(np.float32)
         elif step <= cfg.start_steps // 4 and args.demos:
             # With demonstrations in the buffer there is no need for a long
             # uniform-random phase; a short one still decorrelates the start.
-            action = rng.uniform(-1.0, 1.0, ACT_DIM).astype(np.float32)
+            action = rng.uniform(-1.0, 1.0, act_dim).astype(np.float32)
         elif noise_beta == 0.0:
             action = agent.act(obs, deterministic=False)
         else:
@@ -230,6 +234,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--steps", type=int, default=200_000)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--randomisation", default="none")
+    parser.add_argument("--wrist", action="store_true",
+                        help="the 5-D wrist-yaw variant of the task; the "
+                             "observation and action dimensions differ, so its "
+                             "policies and results are not comparable with the "
+                             "4-D ones (docs/limitations.md)")
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--reward-config", default=None,
                         help="JSON of reward weights; defaults to the documented ones")

@@ -77,6 +77,34 @@ The last row is the control that makes the reading safe. `SAC + entropy floor`
 is unaffected because at 0.086 it is not grasping reliably enough for pose
 accuracy to matter; the effect tracks how much a policy has to lose.
 
+### Correlated sensing error costs the filter, not the clone
+
+Independent per-step noise is the easy model and it flatters anything that
+averages, which is why `obs_noise_corr` exists: a first-order filter, magnitude
+held constant (lag-1 autocorrelation 0.906 at rho 0.9, standard deviation
+unchanged — there is a test). Same ranges, same magnitude, only the temporal
+structure differs:
+
+| policy | independent | correlated | change |
+| --- | ---: | ---: | ---: |
+| **scripted expert** | 0.840 | 0.740 | **−0.100** |
+| BC + SAC, wide | 0.158 | 0.110 | −0.048 |
+| BC + SAC, medium | 0.168 | 0.144 | −0.024 |
+| SAC + entropy floor, wide | 0.086 | 0.074 | −0.012 |
+| behaviour cloning | 0.236 | 0.252 | +0.016 |
+
+The ordering is the point, and it is the reverse of the orientation-error table
+above. The **expert** loses most, because the expert is the only thing here that
+low-passes its pose estimate — and a low-pass filter is exactly what a
+correlated error defeats. Its clone loses nothing, because a memoryless clone
+was never averaging anything to begin with; it has no filter to defeat.
+
+So the two sensing results say opposite things about the same pair. Give the
+expert an input it ignores and its clone collapses; give the expert an error its
+filter cannot remove and the clone is unmoved. A clone of a policy is not a
+noisier version of that policy, and neither result would have shown up against
+the independent-noise model this repository shipped with.
+
 ## 3. SAC from scratch is unreliable at this budget, and the interval says so
 
 On the nominal world, five seeds of SAC scored 1.00, 1.00, 0.00, 0.00, 0.00.
@@ -463,6 +491,43 @@ The honest conclusion: the `shifted` proxy overstates how transferable these
 policies are. Randomisation buys robustness *within* a simulator's contact and
 actuator model; it does not, at these ranges, buy robustness to a different
 model of contact altogether.
+
+### It is not a calibration constant, which was the hopeful answer
+
+The cheapest explanation for the transfer failure is that the two simulators
+agree on what a command *means* and disagree on what it *does* — a policy tuned
+to MuJoCo's compliant mocap weld overshooting against Isaac's stiffer IK
+controller. If that were it, a scalar would fix it.
+
+`scripts/isaac_transfer_probe.py` scales the action and nothing else, on a
+policy that genuinely fails there (64 episodes per arm):
+
+| arm | success | mean peak lift |
+| --- | ---: | ---: |
+| baseline | 0.062 | 0.082 m |
+| every action x0.5 | 0.047 | 0.024 m |
+| every action x0.25 | 0.000 | 0.000 m |
+| every action x1.5 | 0.062 | 0.070 m |
+| every action x2.0 | 0.016 | 0.027 m |
+| lateral only x0.5 | 0.078 | **0.130 m** |
+| gripper held once grasped | 0.109 | 0.088 m |
+
+**No arm clears its own interval, in either direction.** Scaling down starves
+the motion inside the horizon; scaling up destabilises it. So the mismatch is
+not a gain anybody forgot to calibrate, and the hopeful answer is gone.
+
+One row points somewhere, weakly. Halving only the *lateral* commands takes
+peak lift from 0.082 m to 0.130 m — roughly what a successful MuJoCo policy
+reaches — while success stays at 0.078. The policy gets the box up and then
+loses it, which is a contact-and-holding failure rather than a reaching one.
+That is a hypothesis with one supporting number, not a result.
+
+Also worth recording as a near miss: the first version of this probe used
+`bcrl_high_s0`, which produced a baseline of 0.484 and looked like a
+contradiction of the 0.05–0.08 in the table above. It is not — that policy is
+the single outlier seed that scored 0.406 in the five-seed ablation, and 0.484
+agrees with it. Probing the one policy that transfers would have measured
+nothing about why the others do not.
 
 ## 7. What would change these numbers
 

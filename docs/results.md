@@ -32,6 +32,51 @@ the worlds where the learner actually fails — which is exactly the assumption
 that does not hold on real hardware, where the expert is a person with a
 joystick.
 
+### The clone depends on an input its teacher never reads
+
+This is the sharpest version of the point above, and it was found by accident
+while sourcing the randomisation ranges from the literature
+([randomisation-sources.md](randomisation-sources.md)). The observation carries
+the object's orientation — two columns of its rotation matrix, indices 14:20 —
+and no level of randomisation ever perturbed them, because real pose estimators
+were not consulted when the ranges were chosen. They report 8°–18° of rotation
+error.
+
+Adding that error, five seeds, 100 episodes, everything else held at the same
+sourced ranges (`experiments/measured_level.py`):
+
+| policy | with orientation error | without | cost |
+| --- | ---: | ---: | ---: |
+| **scripted expert** | 0.840 | 0.810 | **+0.030** |
+| behaviour cloning | 0.236 | 0.680 | **−0.444** |
+| BC + SAC, wide randomisation | 0.158 | 0.272 | −0.114 |
+| BC + SAC, medium randomisation | 0.168 | 0.230 | −0.062 |
+| SAC + entropy floor, wide randomisation | 0.086 | 0.086 | 0.000 |
+
+The expert does not care, and the reason is in its source: `OBJ_ROT_X` is
+*defined* in `src/policies/scripted_expert.py` and never read. The expert is a
+function of grip position, object position and the commanded goal. Its
+orientation input could be replaced with noise, or deleted, and its behaviour
+would be identical.
+
+Its clone loses nearly half its success rate to that same input being wrong.
+Behaviour cloning fits observations to actions over 200 demonstrations; nothing
+in that procedure distinguishes an input the teacher used from one that merely
+correlated with what the teacher did. Object yaw correlates with graspability
+here — a square box at 45° presents √2 times its side — so the clone has every
+statistical reason to lean on it, and no way to learn that the *demonstrated
+behaviour* did not.
+
+Two things follow. The compounding-error story in the paragraph above is not
+the only way a clone degrades faster than its teacher: it can also inherit a
+dependence the teacher never had. And a randomisation axis that is missing from
+training is not merely untested — it is an invitation for the policy to become
+sensitive to it, which is exactly backwards from what randomisation is for.
+
+The last row is the control that makes the reading safe. `SAC + entropy floor`
+is unaffected because at 0.086 it is not grasping reliably enough for pose
+accuracy to matter; the effect tracks how much a policy has to lose.
+
 ## 3. SAC from scratch is unreliable at this budget, and the interval says so
 
 On the nominal world, five seeds of SAC scored 1.00, 1.00, 0.00, 0.00, 0.00.

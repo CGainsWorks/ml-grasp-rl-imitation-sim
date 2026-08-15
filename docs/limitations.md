@@ -135,7 +135,11 @@ why the five-seed version replaced it.
 ## Things that would be next, in order of value
 
 1. A wrist yaw degree of freedom, and object yaw alignment as part of the task.
-2. Measured randomisation ranges from real hardware, replacing the guessed ones.
+2. Measured randomisation ranges from real hardware. The guessed ones have now
+   been checked against published measurements rather than defended
+   ([randomisation-sources.md](randomisation-sources.md)): they are optimistic
+   on latency by 2-5x, optimistic on sensing, and omitted orientation error
+   altogether. Real hardware would still be better than a literature survey.
 3. Perception: a wrist camera and a pose estimator in the loop, with its real
    error model rather than additive Gaussian noise.
 4. More object shapes, and grasp-point selection.

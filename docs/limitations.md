@@ -168,6 +168,28 @@ three against 0.989 — which is the signature of over-updating a critic on a
 small replay buffer. Halving the batch is a regression with a seed at 0.000 and
 is not adopted.
 
+**The nominal world hides a capacity loss, and nearly cost this a silent
+disaster.** It saturates at 1.000, so a network too small to solve anything
+harder still looks perfect there. Rechecked on `medium`, where nothing
+saturates, three seeds:
+
+| | per-seed | mean | vs baseline |
+| --- | --- | ---: | --- |
+| baseline, 128x128, 1 update/step | 0.13, 0.67, 0.60 | 0.467 | — |
+| **0.5 updates/step** | 0.77, 0.00, 0.80 | **0.522** | t = 0.18 |
+| 64x64 + 0.5 updates/step | 0.00, 0.00, 0.00 | **0.000** | t = −2.78 |
+
+The 2.39x setting scores **1.000 on the nominal world and 0.000 on every
+randomised seed**. Adopting it on the nominal result — which was the obvious
+thing to do, and what the first table alone recommends — would have made every
+randomised experiment afterwards produce zeros for a reason nobody would have
+thought to look for.
+
+So the adopted setting is `--updates-per-step 0.5` at the unchanged 128x128:
+1.94x faster, indistinguishable from the baseline where the task is hard, and
+better where it is easy. A benchmark that saturates cannot be used to approve a
+reduction in capacity, which is the general form of the lesson.
+
 **The from-scratch runs have an entropy-collapse failure mode, and it is now
 fixed.** The seeds that stall settle
 at an entropy coefficient around 0.025 while the seeds that solve the task sit

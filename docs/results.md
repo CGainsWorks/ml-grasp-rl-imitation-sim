@@ -286,10 +286,10 @@ contact solver, a different arm, a different action scale — it is 0.30, with
 0.05 scoring zero. A single number carried across simulators would have been
 wrong, and was.
 
-### Randomisation in Isaac costs much more than in MuJoCo
+### Randomisation in Isaac costs much more than in MuJoCo, and more steps make it worse
 
-The first randomised training grid in the port, demonstration-seeded, five seeds
-at `medium` (`experiments/results/isaac_seed_grid_medium.json`):
+The first randomised training grid in the port, demonstration-seeded, five
+seeds (`experiments/results/isaac_seed_grid_medium.json`):
 
 | world | per-seed | mean | 95% t |
 | --- | --- | ---: | --- |
@@ -297,18 +297,34 @@ at `medium` (`experiments/results/isaac_seed_grid_medium.json`):
 | `medium` | 0.22, 0.31, 0.38, 0.19, 0.28 | **0.275** | [0.182, 0.368] |
 
 In MuJoCo the same arm goes from 0.97 nominal to 0.726 at `medium`. Here it
-goes from 0.969 to 0.275 — a far steeper cost for the same nominal ranges,
-applied through the same JSON and the same interval arithmetic.
+goes from 0.969 to 0.275, for the same nominal ranges applied through the same
+JSON and the same interval arithmetic.
 
-The budget is the most likely explanation and it is not a flattering one: 4 000
-steps is enough to solve the nominal world here and visibly is not enough under
-randomisation. The per-seed curves never settle — seed 0 reads 0.31, 0.06, 0.28,
-0.22 across its four evaluations — which is what an unconverged run looks like,
-not a converged bad one. The MuJoCo runs it is being compared against had 200 000
-gradient updates against 4 000. Reading this as "Isaac randomisation is harder"
-would be over-reading it; what it establishes is that the port *runs*
-randomised training end to end, and that the number it produces at this budget
-is not comparable to MuJoCo's.
+This document previously explained that away as the budget — 4 000 steps solves
+the nominal world and looked too short for the randomised one. **That was a
+guess, and it is wrong.** The same grid at 15 000 steps, five seeds:
+
+| budget | per-seed | mean | 95% t |
+| --- | --- | ---: | --- |
+| 4 000 steps | 0.22, 0.31, 0.38, 0.19, 0.28 | 0.275 | [0.182, 0.368] |
+| **15 000 steps** | 0.03, 0.09, 0.28, 0.22, 0.03 | **0.131** | [0.000, 0.272] |
+
+Nearly four times the training makes it *worse*, and by more than noise
+(Welch t = −2.37, dof 6.9). The per-seed curves say what happens: every seed
+peaks at its first or second evaluation and declines from there — seed 2 reads
+0.53, 0.16, 0.25, 0.34; seed 3 reads 0.44, 0.19, 0.13, 0.16. Mean of the
+per-seed best is 0.34 against a final of 0.131.
+
+That is the same shape as the MuJoCo cliff in section 4, but it cannot have the
+same cause: the behaviour-cloning coefficient is *held* in these runs, not
+decayed. A policy that peaks early under randomisation and then degrades while
+its anchor is still in place is a critic problem, not a schedule problem, and
+this repository has not diagnosed it.
+
+Two things follow. Randomisation costs far more in Isaac than in MuJoCo and the
+budget does not explain it. And the 0.275 figure is a peak caught by a short
+run rather than a converged result — reporting finals, as this repository does
+everywhere, the honest number at a longer budget is 0.131.
 
 ### The behaviour-cloning anchor, isolated
 

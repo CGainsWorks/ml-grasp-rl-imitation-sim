@@ -104,22 +104,25 @@ wanted a third of it.
 
 ## A randomised training grid
 
-The first one in this port, and the item that used to head the list of things
-this file admitted it had not done. Demonstration-seeded, five seeds, 4 000
-steps x 32 environments (`experiments/isaac_seed_grid.py --randomisation
-medium`):
+Demonstration-seeded, five seeds, at two budgets
+(`experiments/isaac_seed_grid.py --randomisation medium`):
 
-| world | per-seed | mean | 95% t |
-| --- | --- | ---: | --- |
-| nominal | 0.88, 0.97, 1.00, 1.00, 1.00 | 0.969 | [0.902, 1.000] |
-| `medium` | 0.22, 0.31, 0.38, 0.19, 0.28 | **0.275** | [0.182, 0.368] |
+| world | budget | per-seed | mean | 95% t |
+| --- | --- | --- | ---: | --- |
+| nominal | 4 000 x 32 | 0.88, 0.97, 1.00, 1.00, 1.00 | 0.969 | [0.902, 1.000] |
+| `medium` | 4 000 x 32 | 0.22, 0.31, 0.38, 0.19, 0.28 | 0.275 | [0.182, 0.368] |
+| `medium` | 15 000 x 32 | 0.03, 0.09, 0.28, 0.22, 0.03 | **0.131** | [0.000, 0.272] |
 
-MuJoCo's equivalent goes 0.97 to 0.726 for the same nominal ranges. The steeper
-drop here is most likely the budget rather than the simulator: the per-seed
-curves never settle (seed 0 reads 0.31, 0.06, 0.28, 0.22 across its four
-evaluations), which is what an unconverged run looks like. What this establishes
-is that randomised training runs end to end in the port, not that Isaac
-randomisation is harder.
+MuJoCo's equivalent goes 0.97 nominal to 0.726 at `medium`. Here it goes 0.969
+to 0.275, and the first version of this file explained the difference as the
+budget. Nearly four times the training makes it *worse* (Welch t = −2.37), so
+that explanation is dead. Every seed peaks at its first or second evaluation and
+declines: seed 2 reads 0.53, 0.16, 0.25, 0.34.
+
+The behaviour-cloning coefficient is held rather than decayed in these runs, so
+this is not the MuJoCo cliff with a different name. A policy that peaks early
+under randomisation and degrades with its anchor still in place is a critic
+problem, and it is not diagnosed here.
 
 Two single-seed runs isolate the behaviour-cloning schedule:
 
@@ -227,9 +230,9 @@ level actually on the config.
 1. **The floor is only swept on the nominal world here.** 0.30 solves it
    there, three seeds of three; whether it is still the right value under
    randomisation in this simulator is untested, and MuJoCo says not to assume.
-2. **The randomised grid is budget-limited.** 4 000 steps solves the nominal
-   world and does not converge under randomisation, so the 0.275 above is a
-   floor on what the method reaches here, not an estimate of it.
+2. **Nobody knows why the randomised runs degrade.** They peak at the first or
+   second evaluation and fall away with the behaviour-cloning anchor still
+   held, so the MuJoCo schedule explanation does not apply. Undiagnosed.
 3. **The unmapped randomisation parameters** listed above.
 4. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.

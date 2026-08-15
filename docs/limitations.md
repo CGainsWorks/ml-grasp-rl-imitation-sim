@@ -99,9 +99,11 @@ tables; every success rate there was produced in MuJoCo. It does now carry its
 own five-seed grids: from scratch against demonstration-seeded on the nominal
 world (0.000 against 0.969), the entropy floor against its control (0.194
 against 0.463, t = 1.01 — not separated), and a randomised grid at `medium`
-(0.275 [0.182, 0.368]), and a floor sweep. The randomised grid is budget-limited
-rather than converged: 4 000 steps solves the nominal world here and visibly
-does not settle under randomisation.
+(0.275 [0.182, 0.368] at 4 000 steps, 0.131 [0.000, 0.272] at 15 000), and a
+floor sweep. The randomised runs get *worse* with more training, peaking at the
+first or second evaluation and declining with the behaviour-cloning anchor still
+held — which rules out the schedule explanation that fits the MuJoCo curves and
+leaves this undiagnosed.
 
 The floor result turned around once the value was swept rather than assumed.
 Carrying MuJoCo's 0.15 across gave 0.463 against a 0.194 control and read as a

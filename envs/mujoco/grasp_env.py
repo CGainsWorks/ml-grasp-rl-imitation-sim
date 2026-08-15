@@ -95,6 +95,15 @@ from src.rewards.grasp_reward import (  # noqa: E402
 )
 
 SCENE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "grasp_scene.xml")
+ARM_SCENE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "assets", "grasp_scene_arm.xml")
+# Damped least squares for the arm variant's IK. The damping is what makes a
+# singular configuration produce a small motion instead of an enormous one --
+
+# the mocap weld cannot. Two iterations per control step is enough at a 2 cm
+# command; more just tracks the setpoint more stiffly than a real servo would.
+IK_DAMPING = 0.08
+IK_ITERS = 20
 
 TABLE_HEIGHT = 0.40           # top face of the table, metres
 GRIPPER_OPEN_WIDTH = 0.078    # pad-to-pad gap with both slide joints at zero
@@ -143,8 +152,10 @@ class GraspEnv(_BASE):
         height: int = 360,
         seed: Optional[int] = None,
         wrist: bool = False,
+        arm: bool = False,
         max_half_size: Optional[float] = None,
     ) -> None:
+        self.arm = bool(arm)
         self.wrist = bool(wrist)
         # Overridable so the wrist can be ablated properly: the same box
         # distribution has to be presented to a hand that can rotate and one
@@ -154,7 +165,8 @@ class GraspEnv(_BASE):
             else (WRIST_MAX_HALF_SIZE if self.wrist else 0.024))
         self.obs_dim = WRIST_OBS_DIM if self.wrist else OBS_DIM
         self.act_dim = WRIST_ACT_DIM if self.wrist else ACT_DIM
-        self.model = mujoco.MjModel.from_xml_path(SCENE_PATH)
+        self.model = mujoco.MjModel.from_xml_path(
+            ARM_SCENE_PATH if self.arm else SCENE_PATH)
         self.data = mujoco.MjData(self.model)
 
         self.reward_cfg = reward_cfg or GraspRewardConfig()
@@ -175,15 +187,41 @@ class GraspEnv(_BASE):
         self.np_random = np.random.default_rng(seed)
 
         # Cached model handles
-        self._mocap_id = self.model.body("mocap").mocapid[0]
+        # The arm variant has no mocap body: the hand is bolted to a flange and
+        # driven through IK instead of dragged by a weld.
+        self._mocap_id = (
+            None if self.arm else self.model.body("mocap").mocapid[0])
         self._object_bid = self.model.body("object").id
         self._object_gid = self.model.geom("object").id
         self._table_gid = self.model.geom("table_top").id
         self._grip_sid = self.model.site("grip_site").id
+        if self.arm:
+            names = ["j1", "j2", "j3", "j4", "j5", "j6"]
+            self._arm_qpos = np.array(
+                [self.model.jnt_qposadr[self.model.joint(n).id] for n in names])
+            self._arm_dofs = np.array(
+                [self.model.jnt_dofadr[self.model.joint(n).id] for n in names])
+            self._arm_ctrl = np.array(
+                [self.model.actuator(a).id for a in ["a1", "a2", "a3", "a4", "a5", "a6"]])
+            self._grip_ctrl = np.array(
+                [self.model.actuator(a).id for a in ["left_drive", "right_drive"]])
+            # The orientation the pads should hold: read off the model at its
+            # home configuration rather than hard-coded, so a change to the
+            # hand's mounting does not silently rotate the grasp.
+            mujoco.mj_kinematics(self.model, self.data)
+            self._rest_frame = self.data.site_xmat[self._grip_sid].reshape(3, 3).copy()
+            self._arm_home = self.data.qpos[self._arm_qpos].copy()
+            self._arm_gain0 = self.model.actuator_gainprm[self._arm_ctrl, 0].copy()
+            self._arm_target = np.zeros(3)
+        else:
+            self._grip_ctrl = np.arange(self.model.nu)
         self._goal_sid = self.model.site("goal").id
         self._pad_gids = (self.model.geom("left_pad").id, self.model.geom("right_pad").id)
         self._object_qadr = self.model.jnt_qposadr[self.model.joint("object_free").id]
-        self._hand_qadr = self.model.jnt_qposadr[self.model.joint("hand_free").id]
+        # The arm variant's hand has no free joint: it is a link in a chain.
+        self._hand_qadr = (
+            None if self.arm
+            else self.model.jnt_qposadr[self.model.joint("hand_free").id])
         self._finger_qadr = (
             self.model.jnt_qposadr[self.model.joint("left_slide").id],
             self.model.jnt_qposadr[self.model.joint("right_slide").id],
@@ -196,7 +234,9 @@ class GraspEnv(_BASE):
             float(self.model.actuator("left_drive").ctrlrange[0]),
             float(self.model.actuator("left_drive").ctrlrange[1]),
         )
-        self._weld_id = 0  # the hand weld is the only equality constraint
+        # The hand weld is the only equality constraint, and the arm variant
+        # does not have one.
+        self._weld_id = None if self.arm else 0
 
         # Workspace box for the mocap target. The lower z bound keeps the pads
         # about 4 mm clear of the table so the hand cannot wedge itself under it.
@@ -265,7 +305,16 @@ class GraspEnv(_BASE):
             self.model.actuator_gainprm[aid, 0] = world.gripper_gain
             self.model.actuator_biasprm[aid, 1] = -world.gripper_gain
 
-        self.model.eq_solref[self._weld_id, 0] = world.hand_compliance
+        if self.arm:
+            # There is no weld to soften. `hand_compliance` is the solref of the
+            # weld that drags the free-body hand, and its nearest analogue here
+            # is how hard the arm insists on its commanded joint angles, which
+            # is the same substitution the Isaac port documents. Scaled from the
+            # nominal 0.02 so the same JSON drives both variants.
+            gain = float(np.clip(0.02 / max(world.hand_compliance, 1e-4), 0.2, 5.0))
+            self.model.actuator_gainprm[self._arm_ctrl, 0] = self._arm_gain0 * gain
+        else:
+            self.model.eq_solref[self._weld_id, 0] = world.hand_compliance
         self.model.opt.gravity[2] = -world.gravity
 
     # ------------------------------------------------------------------
@@ -300,14 +349,35 @@ class GraspEnv(_BASE):
         hand_xy = np.array([ox, oy]) + self.np_random.uniform(-0.06, 0.06, size=2)
         hand_pos = np.array([hand_xy[0], hand_xy[1], self.np_random.uniform(0.58, 0.66)])
         hand_pos[:2] = np.clip(hand_pos[:2], self._ws_low[:2], self._ws_high[:2])
-        hadr = self._hand_qadr
-        self.data.qpos[hadr : hadr + 3] = hand_pos
-        self.data.qpos[hadr + 3 : hadr + 7] = [1.0, 0.0, 0.0, 0.0]
-        self.data.mocap_pos[self._mocap_id] = hand_pos
-        self.data.mocap_quat[self._mocap_id] = [1.0, 0.0, 0.0, 0.0]
+        if not self.arm:
+            hadr = self._hand_qadr
+            self.data.qpos[hadr : hadr + 3] = hand_pos
+            self.data.qpos[hadr + 3 : hadr + 7] = [1.0, 0.0, 0.0, 0.0]
+        if self.arm:
+            # Home the arm, then IK onto the same starting pose the weld version
+            # begins from, so the two variants start the episode alike.
+            self.data.qpos[self._arm_qpos] = self._arm_home
+            mujoco.mj_kinematics(self.model, self.data)
+            self._arm_target = hand_pos.copy()
+            # Converge properly at reset. The home configuration is the arm
+            # standing straight up, roughly 0.7 m from the start pose, and the
+            # two iterations a control step uses would take the whole episode to
+            # cover that -- the first version of this started every episode with
+            # the hand still on its way down.
+            self._solve_ik(hand_pos, 0.0, iters=200, hold=False)
+            mujoco.mj_forward(self.model, self.data)
+        else:
+            self.data.mocap_pos[self._mocap_id] = hand_pos
+            self.data.mocap_quat[self._mocap_id] = [1.0, 0.0, 0.0, 0.0]
         self._wrist_yaw = 0.0
         self._noise_state = {}
-        self.data.ctrl[:] = self._grip_range[0]
+        # Open the fingers. Only the finger actuators: on the arm variant a
+        # blanket write lands on the six joint setpoints too, leaving them at
+        # zero while the joints sit at the IK solution. The actuators then close
+        # a 2.7 radian gap on the first step and the arm hurls the box across
+        # the room -- which is what a peak lift of 13.9 m in the expert check
+        # turned out to be.
+        self.data.ctrl[self._grip_ctrl] = self._grip_range[0]
 
         mujoco.mj_forward(self.model, self.data)
 
@@ -352,18 +422,34 @@ class GraspEnv(_BASE):
             self._latency_queue.append(commanded)
             commanded = self._latency_queue.popleft()
 
-        target = self.data.mocap_pos[self._mocap_id] + commanded[:3] * self.pos_step
-        self.data.mocap_pos[self._mocap_id] = np.clip(target, self._ws_low, self._ws_high)
+        if self.arm:
+            # The setpoint is integrated, not read back from the arm. Reading it
+            # back would make a zero action mean "stay wherever the arm has
+            # sagged to", which is the mistake the Isaac port made first.
+            self._arm_target = np.clip(
+                self._arm_target + commanded[:3] * self.pos_step,
+                self._ws_low, self._ws_high)
+            target = self._arm_target
+        else:
+            target = self.data.mocap_pos[self._mocap_id] + commanded[:3] * self.pos_step
+            self.data.mocap_pos[self._mocap_id] = np.clip(
+                target, self._ws_low, self._ws_high)
 
         if self.wrist:
             self._wrist_yaw = float(np.clip(
                 self._wrist_yaw + commanded[3] * WRIST_STEP, -WRIST_LIMIT, WRIST_LIMIT))
-            half = 0.5 * self._wrist_yaw
-            self.data.mocap_quat[self._mocap_id] = [np.cos(half), 0.0, 0.0, np.sin(half)]
+            if not self.arm:
+                half = 0.5 * self._wrist_yaw
+                self.data.mocap_quat[self._mocap_id] = [
+                    np.cos(half), 0.0, 0.0, np.sin(half)]
 
         lo, hi = self._grip_range
         grip_cmd = lo + (commanded[-1] + 1.0) * 0.5 * (hi - lo)
-        self.data.ctrl[:] = grip_cmd
+        if self.arm:
+            self._solve_ik(self._arm_target, self._wrist_yaw if self.wrist else 0.0)
+            self.data.ctrl[self._grip_ctrl] = grip_cmd
+        else:
+            self.data.ctrl[:] = grip_cmd
 
         prev_grip = self._grip_pos().copy()
         for _ in range(self.n_substeps):
@@ -546,6 +632,71 @@ class GraspEnv(_BASE):
         state = rho * prev + np.sqrt(1.0 - rho * rho) * draw
         self._noise_state[channel] = state
         return state
+
+    def _solve_ik(self, target_pos: np.ndarray, target_yaw: float,
+                  iters: int = IK_ITERS, hold: bool = True) -> None:
+        """Move the arm so the grip site reaches a Cartesian pose.
+
+        Damped least squares on the stacked position and orientation error.
+        Orientation is solved, not ignored: the Isaac port taught this the
+        expensive way -- position-only IK leaves the wrist free to rotate, the
+        pads drift off square to the table, and a top-down grasp stops being
+        possible. The target orientation is the hand's rest pose turned by
+        ``target_yaw`` about the vertical, which is fixed at zero unless the
+        wrist variant is also on.
+
+        Nothing here clamps to the joint limits by hand: the actuators' control
+        ranges do that, so an unreachable command produces the same thing a real
+        arm produces, which is an arm that stops short.
+        """
+        jacp = np.zeros((3, self.model.nv))
+        jacr = np.zeros((3, self.model.nv))
+        cols = self._arm_dofs
+        restore = self.data.qpos[self._arm_qpos].copy() if hold else None
+        for _ in range(iters):
+            mujoco.mj_jacSite(self.model, self.data, jacp, jacr, self._grip_sid)
+            pos_err = target_pos - self.data.site_xpos[self._grip_sid]
+
+            # Orientation error as a rotation vector, from the current frame to
+            # the desired one.
+            cur = self.data.site_xmat[self._grip_sid].reshape(3, 3)
+            des = self._desired_grip_frame(target_yaw)
+            rel = des @ cur.T
+            angle = np.arccos(np.clip((np.trace(rel) - 1.0) * 0.5, -1.0, 1.0))
+            if angle < 1e-6:
+                rot_err = np.zeros(3)
+            else:
+                axis = np.array([rel[2, 1] - rel[1, 2],
+                                 rel[0, 2] - rel[2, 0],
+                                 rel[1, 0] - rel[0, 1]]) / (2.0 * np.sin(angle))
+                rot_err = axis * angle
+
+            err = np.concatenate([pos_err, 0.35 * rot_err])
+            jac = np.vstack([jacp[:, cols], jacr[:, cols]])
+            hess = jac @ jac.T + (IK_DAMPING ** 2) * np.eye(6)
+            dq = jac.T @ np.linalg.solve(hess, err)
+            self.data.qpos[self._arm_qpos] += dq
+            mujoco.mj_kinematics(self.model, self.data)
+            mujoco.mj_comPos(self.model, self.data)
+
+        solution = self.data.qpos[self._arm_qpos].copy()
+        if restore is not None:
+            # Put the simulator back where it was. The iteration above walks
+            # `qpos` because the Jacobian has to be evaluated at each trial
+            # configuration, but that is a *solver* stepping through candidates,
+            # not the arm moving: leaving it applied teleports the arm every
+            # control step and the physics then fights the actuators. The first
+            # version did exactly that, and the hand climbed while its target
+            # descended.
+            self.data.qpos[self._arm_qpos] = restore
+            mujoco.mj_kinematics(self.model, self.data)
+            mujoco.mj_comPos(self.model, self.data)
+        self.data.ctrl[self._arm_ctrl] = solution
+
+    def _desired_grip_frame(self, yaw: float) -> np.ndarray:
+        """Hand pointing down the table normal, optionally yawed about it."""
+        c, s_ = np.cos(yaw), np.sin(yaw)
+        return np.array([[c, -s_, 0.0], [s_, c, 0.0], [0.0, 0.0, 1.0]]) @ self._rest_frame
 
     def _yaw_error(self) -> float:
         """Signed angle between the closing axis and the nearest box face.

@@ -111,6 +111,7 @@ def load_randomisation(level_or_path: str) -> RandomisationConfig:
 class SampledWorld:
     """The concrete parameter values drawn for one episode."""
 
+    object_shape: float
     object_half_size: float
     object_mass: float
     object_friction: float
@@ -132,6 +133,7 @@ class SampledWorld:
 
 
 NOMINAL = SampledWorld(
+    object_shape=0.0,          # 0 box, 1 cylinder, 2 sphere
     object_half_size=0.022,
     object_mass=0.08,
     object_friction=1.0,
@@ -163,7 +165,7 @@ def sample_world(cfg: RandomisationConfig, rng: np.random.Generator,
             raise ValueError("randomisation config names unknown parameter " + key)
         nominal = getattr(NOMINAL, key)
         value = spec.sample(rng, cfg.scale, nominal)
-        if key == "action_latency":
+        if key in ("action_latency", "object_shape"):
             value = int(round(value))
         setattr(out, key, value)
     # The initial-pose jitter is part of the task, not of the randomisation:

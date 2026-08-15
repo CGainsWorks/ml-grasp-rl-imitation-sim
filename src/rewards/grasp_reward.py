@@ -70,6 +70,13 @@ class GraspRewardConfig:
     # Regularisers
     w_action: float = 0.02        # squared action penalty, discourages bang-bang
     w_time: float = 0.0           # per-step cost; zero by default, the horizon is fixed
+    # Yaw alignment, for the wrist variant of the task. Zero by default, which
+    # makes this term vanish and keeps every existing number and the Isaac
+    # reward-parity test bit-identical. Non-zero only in the wrist reward
+    # config: without it the extra degree of freedom is exploration cost with
+    # no gradient, and a policy trained with the wrist scores 0.000 against
+    # 0.122 without it (docs/limitations.md).
+    w_yaw: float = 0.0
 
     # Thresholds
     lift_target: float = 0.12     # metres of clearance that counts as fully lifted
@@ -110,11 +117,13 @@ class RewardTerms:
     drop: Any
     action: Any
     time: Any
+    yaw: Any = 0.0
 
     def total(self):
         return (
             self.reach + self.align + self.grasp + self.lift + self.place
             + self.hold + self.success + self.drop + self.action + self.time
+            + self.yaw
         )
 
     def as_dict(self) -> Dict[str, Any]:
@@ -158,6 +167,7 @@ def grasp_reward(
     dropped,
     action,
     cfg: GraspRewardConfig,
+    yaw_error=None,
 ):
     """Dense staged reward for lift-and-hold grasping.
 
@@ -219,6 +229,26 @@ def grasp_reward(
 
     drop = -cfg.w_drop * dropped
 
+    # Yaw alignment: pay for turning the closing axis square to a face, and
+    # only before the grasp -- afterwards the orientation is settled and a
+    # penalty would just tax holding. ``yaw_error`` is already folded into
+    # +/-45 degrees by the caller, since a box repeats every 90.
+    if yaw_error is None or cfg.w_yaw == 0.0:
+        # Shaped like the other terms so the batch dimension matches, and
+        # exactly zero so nothing that does not use it can be affected.
+        yaw_cost = 0.0 * xp.sum(action * action, axis=-1)
+    else:
+        # Gated on proximity, and the gate is the whole lesson. The first
+        # version paid for alignment anywhere: the policy learned to hover in
+        # mid-air, perfectly square to the box, collecting the absence of a
+        # penalty, and its grasp rate fell from 0.50 to 0.10 while its yaw error
+        # fell from 25.9 to 4.4 degrees. A shaping term that can be satisfied
+        # without doing the task will be, so this one only pays where being
+        # aligned means something -- within reach of the object, and before the
+        # grasp, after which the orientation is settled.
+        near = xp.exp(-_norm(object_pos - grip_pos, xp) / cfg.reach_scale)
+        yaw_cost = -cfg.w_yaw * xp.abs(yaw_error) * near * (1.0 - grasped)
+
     action_cost = -cfg.w_action * xp.sum(action * action, axis=-1)
     time_cost = -cfg.w_time * (grasp * 0.0 + 1.0)
 
@@ -233,5 +263,6 @@ def grasp_reward(
         drop=drop,
         action=action_cost,
         time=time_cost,
+        yaw=yaw_cost,
     )
     return terms.total(), terms

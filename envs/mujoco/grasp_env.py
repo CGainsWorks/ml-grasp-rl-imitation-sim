@@ -230,7 +230,22 @@ class GraspEnv(_BASE):
         cheap: no recompile, no reallocation of ``MjData``.
         """
         hs = world.object_half_size
-        self.model.geom_size[self._object_gid] = np.array([hs, hs, hs])
+        # Shape, as a runtime edit of the geom rather than a second scene file.
+        # The size vector means different things per type, which is the whole
+        # reason this is a switch and not a scale: for a box it is three
+        # half-extents, for a cylinder a radius and a half-height, for a sphere
+        # a radius alone. All three are set so the width the pads have to close
+        # on is the same, which is what makes the comparison across shapes fair.
+        shape = int(round(world.object_shape))
+        if shape == 1:
+            self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_CYLINDER)
+            self.model.geom_size[self._object_gid] = np.array([hs, hs, 0.0])
+        elif shape == 2:
+            self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_SPHERE)
+            self.model.geom_size[self._object_gid] = np.array([hs, 0.0, 0.0])
+        else:
+            self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_BOX)
+            self.model.geom_size[self._object_gid] = np.array([hs, hs, hs])
         # Keep the box a solid of constant density-free mass: mass is sampled
         # independently of size, and the inertia is recomputed to match.
         mass = world.object_mass
@@ -375,6 +390,7 @@ class GraspEnv(_BASE):
             np.array([float(dropped)]),
             action[None, :],
             self.reward_cfg,
+            yaw_error=(np.array([self._yaw_error()]) if self.wrist else None),
         )
         reward = float(reward[0])
         self._last_terms = {
@@ -530,6 +546,18 @@ class GraspEnv(_BASE):
         state = rho * prev + np.sqrt(1.0 - rho * rho) * draw
         self._noise_state[channel] = state
         return state
+
+    def _yaw_error(self) -> float:
+        """Signed angle between the closing axis and the nearest box face.
+
+        Folded into +/-45 degrees, because a box repeats every 90 and there is
+        never a reason to turn further than that. Zero when the pads are square
+        to a face, which is the alignment the wrist exists to reach.
+        """
+        rot = self.data.xmat[self._object_bid].reshape(3, 3)
+        object_yaw = float(np.arctan2(rot[1, 0], rot[0, 0]))
+        error = object_yaw - self._wrist_yaw
+        return float((error + np.pi / 4.0) % (np.pi / 2.0) - np.pi / 4.0)
 
     def _rotation_error(self) -> np.ndarray:
         """A small random rotation, angle ~ N(0, obs_noise_rot) about a random axis."""

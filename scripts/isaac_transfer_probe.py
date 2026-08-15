@@ -107,6 +107,7 @@ def transform(action: torch.Tensor, arm: str, grasped: torch.Tensor) -> torch.Te
 
 def run(arm: str) -> dict:
     successes, trials, peaks = 0, 0, []
+    final_gap, final_grasp = [], []
     for _ in range(args.episodes):
         obs_dict, _ = env.reset()
         peak = torch.zeros(env.num_envs, device=env.device)
@@ -119,12 +120,23 @@ def run(arm: str) -> dict:
         successes += int(env.success().sum())
         trials += env.num_envs
         peaks.append(float(peak.mean()))
+        # Where the episode actually ends. Peak lift says the box got high;
+        # success is read at the *final* step, so a policy that overshoots the
+        # hold point and oscillates scores zero while looking healthy on peak.
+        final_gap.append(float(
+            torch.norm(env._object_pos() - env.goal_pos, dim=-1).mean()))
+        final_grasp.append(float(env._grasped().float().mean()))
     interval = wilson_interval(successes, trials)
-    print("{:<16s} success {:.3f}  95% Wilson [{:.3f}, {:.3f}]  peak lift {:.3f} m".format(
-        arm, interval.point, interval.low, interval.high, float(np.mean(peaks))), flush=True)
+    print("{:<16s} success {:.3f} [{:.3f}, {:.3f}]  peak lift {:.3f} m  "
+          "final gap {:.3f} m  final grasp {:.2f}".format(
+              arm, interval.point, interval.low, interval.high,
+              float(np.mean(peaks)), float(np.mean(final_gap)),
+              float(np.mean(final_grasp))), flush=True)
     return {"arm": arm, "successes": successes, "episodes": trials,
             "success_rate": interval.point, "wilson": interval.as_dict(),
-            "mean_peak_lift": float(np.mean(peaks))}
+            "mean_peak_lift": float(np.mean(peaks)),
+            "mean_final_gap": float(np.mean(final_gap)),
+            "mean_final_grasp": float(np.mean(final_grasp))}
 
 
 arms = args.arms

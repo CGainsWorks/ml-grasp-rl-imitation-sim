@@ -1,0 +1,17 @@
+{
+  "name": "probe_strong",
+  "scale": 1.0,
+  "params": {
+    "gripper_gain": {
+      "low": 2.0,
+      "high": 2.0,
+      "mode": "scale"
+    }
+  },
+  "_comment": [
+    "A probe distribution, not a training one: every parameter pinned so the",
+    "only difference from nominal is the one named. Used by",
+    "scripts/isaac_transfer_probe.py to ask whether cross-simulator transfer",
+    "fails on contact rather than control."
+  ]
+}

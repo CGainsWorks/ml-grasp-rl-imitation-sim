@@ -529,6 +529,50 @@ the single outlier seed that scored 0.406 in the five-seed ablation, and 0.484
 agrees with it. Probing the one policy that transfers would have measured
 nothing about why the others do not.
 
+### It fails on vertical positioning, and every earlier guess was about grasping
+
+The probes above all assumed the policy was *losing* the box: that is why they
+tested grip force, forcing the gripper closed, and contact friction. Reading
+the state at the end of the episode rather than the peak shows the assumption
+was wrong. The hold point is 0.15 m above the table; success needs the object
+within 0.05 m of it, with both pads in contact, on the final step.
+
+| Isaac condition | peak lift | final gap to goal | final grasp | success |
+| --- | ---: | ---: | ---: | ---: |
+| nominal | 0.091 m | 0.096 m | **0.55** | 0.052 |
+| object friction x3 | **0.268 m** | 0.120 m | 0.30 | 0.042 |
+| *the same policy in MuJoCo* | *0.13 m* | *—* | *—* | *0.976* |
+
+**The policy is still holding the box in 55% of nominal episodes when the
+episode ends.** It is not dropping it; it is stopping about ten centimetres
+short. Raise the friction and the opposite happens: the box goes to 0.268 m,
+nearly double the target, and ends further from the goal than before.
+
+Under-lift at nominal friction, overshoot at high friction, and in neither case
+does it settle. The policy's vertical control does not transfer, and friction
+is not a cause but a knob that slides the failure from one side of the target to
+the other — which is what the non-monotone friction curve was showing:
+
+| object friction | peak lift | success |
+| --- | ---: | ---: |
+| x1 | 0.091 m | 0.070 |
+| x2 | 0.079 m | 0.031 |
+| **x3** | **0.204 m** | 0.070 |
+| x5 | 0.053 m | 0.023 |
+
+(128 rollouts per point, one policy. The x3 row replicates across three
+independent runs and three different policies; x2 and x5 do not lift at all,
+and why the effect is confined to x3 is not explained here.)
+
+A plausible mechanism, stated as a hypothesis because it has not been tested:
+MuJoCo's hand is dragged by a compliant weld that sags under load, so a policy
+trained there learns to command more vertical motion than it needs. Isaac's
+IK controller tracks its setpoint accurately, so the same command overshoots —
+unless the box is slipping in the fingers, which at nominal friction it is.
+That would make the two simulators disagree about what a vertical command
+*achieves* while agreeing about what it means, and it predicts that matching
+the weld compliance would transfer better than matching anything else.
+
 ## 7. What would change these numbers
 
 In rough order of expected effect:

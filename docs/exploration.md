@@ -288,6 +288,42 @@ value is a hyperparameter that has to be tuned per distribution, and a value
 tuned on the nominal world is not merely suboptimal elsewhere — at `low` it
 takes the result to zero.
 
+### Is there a rule for picking it? Partly, and it does not cross simulators
+
+Tuning per distribution costs a sweep, so it is worth asking whether the value
+can be predicted instead. There is one obvious candidate: the runs that solve
+the task *without* a floor settle at some entropy coefficient of their own, and
+that number is free — it falls out of the baseline runs anyone would do first.
+
+Every distribution where at least one unfloored run succeeded:
+
+| distribution | winners settle at | best floor | ratio |
+| --- | ---: | ---: | ---: |
+| MuJoCo `none` | 0.190 (2 runs) | 0.15 | 0.8 |
+| MuJoCo `low` | 0.081 (1 run) | 0.05 | 0.6 |
+| MuJoCo `medium` | 0.148 (4 runs) | 0.15 | 1.0 |
+| MuJoCo `high` | 0.110 (1 run) | 0.05 | 0.5 |
+| **Isaac `none`** | **0.043** (1 run) | **0.30** | **7.1** |
+
+Within MuJoCo the rule works: the useful floor is between half and all of the
+coefficient that successful runs settle at, across four distributions whose
+best floors differ by 3x. That is a cheap and testable recipe — run the
+baseline, read the coefficient off the seeds that worked, clamp at roughly that
+value.
+
+Across simulators it fails, and not marginally: Isaac's one unfloored success
+settled at 0.043 and the value that takes it to 1.000 is seven times higher.
+Whatever the coefficient a successful run settles at means, it is not the same
+quantity in the two engines.
+
+So the honest state of it: a heuristic that holds across four distributions in
+one simulator and breaks on the first distribution outside it. Five data points,
+three of them resting on a single run, is not enough to call it a rule, and the
+cases where it works are exactly the cases where a sweep would have been cheap
+anyway. It is recorded because it is checkable and because the failure is more
+interesting than the success — it says the entropy coefficient is not measuring
+a property of the *task*.
+
 ## How sensitive is it to the floor value?
 
 0.15 was originally taken from what the successful seeds settle at (≈0.17)

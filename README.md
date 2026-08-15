@@ -27,9 +27,9 @@ condition is being met. Blue bar: lift height.*
 | --- | --- |
 | **Task** | Close a parallel-jaw hand on a box, lift it to a hold point 0.15 m above the table, and still be holding it 4 s in |
 | **Simulator** | MuJoCo 3.11, hand-written MJCF, contact-based grasp detection |
-| **Observation / action** | 32-D state / 4-D Cartesian delta plus gripper |
+| **Observation / action** | 32-D state / 4-D Cartesian delta plus gripper (34-D / 5-D with the optional wrist) |
 | **Algorithms** | SAC (written out, not imported), behaviour cloning, DAgger, and BC+SAC with pinned demonstrations and a scale-normalised cloning term |
-| **Randomisation** | 11 parameters across dynamics, actuation and sensing; four training levels plus a held-out shifted distribution |
+| **Randomisation** | 13 parameters across dynamics, actuation and sensing; four training levels, a held-out shifted distribution, and a `measured` one built from published values |
 | **Reporting** | 5 seeds x 100 episodes per cell, mean with a 95% t interval across seeds |
 | **Isaac Lab** | Ported and **working on Isaac Sim 5.1**: all 7 bring-up checks pass, including reward parity with the MuJoCo implementation to ~5e-08 and randomisation driven by the same JSON — [envs/isaac/README.md](envs/isaac/README.md) |
 
@@ -55,7 +55,7 @@ prints a success rate with a confidence interval, and fails loudly if the scene
 has been broken.
 
 ```bash
-make check                  # lint + 50 unit tests, what CI runs
+make check                  # lint + 55 unit tests, what CI runs
 make experiments            # the whole grid: 50 runs, about 3 hours on 8 cores
 make plots readme           # regenerate every figure and every table here
 make videos                 # rollout clips (needs a GL context)
@@ -380,6 +380,7 @@ tests/               environment contract, reward parity, learning machinery
 | [docs/reward-design.md](docs/reward-design.md) | every term, and the two shapings that failed first |
 | [docs/architecture.md](docs/architecture.md) | how the pieces fit, and the seed blocks |
 | [docs/domain-randomisation.md](docs/domain-randomisation.md) | what is randomised, by how much, and the MuJoCo friction trap |
+| [docs/randomisation-sources.md](docs/randomisation-sources.md) | the ranges checked against published measurements, and where the guesses were wrong |
 | [docs/imitation.md](docs/imitation.md) | demonstrations, cloning, DAgger, and fine-tuning without destroying the clone |
 | [docs/evaluation.md](docs/evaluation.md) | the protocol, and which confidence interval answers which question |
 | [docs/sim-to-real.md](docs/sim-to-real.md) | why `shifted` is a proxy and what it is missing |

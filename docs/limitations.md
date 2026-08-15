@@ -135,7 +135,9 @@ largest effect in this repository. Both engines therefore show the failure and
 the fix, and the value belongs to the distribution: 0.05 at MuJoCo's `low`, 0.15
 at MuJoCo nominal, 0.30 here, with 0.05 scoring zero here.
 
-All eleven randomisation parameters are now mapped, but two of them are
+All eleven MuJoCo-side randomisation parameters that predate this work are
+mapped in Isaac; the two sensing parameters added since (obs_noise_rot,
+obs_noise_corr) are MuJoCo-only. Two of the mapped eleven are
 *analogues* rather than translations and are labelled as such: hand compliance
 is the `solref` of a MuJoCo weld that has no counterpart here, so it maps to the
 arm's joint stiffness with the sign inverted; and gravity is per-scene in Isaac
@@ -157,7 +159,11 @@ why the five-seed version replaced it.
 
 ## Things that would be next, in order of value
 
-1. A wrist yaw degree of freedom, and object yaw alignment as part of the task.
+1. **A reward term for yaw alignment.** The wrist degree of freedom now exists
+   and the scripted expert uses it, but a policy trained with it scores 0.000
+   against 0.122 without it: `w_align` penalises lateral offset and nothing
+   rewards turning the wrist, so the extra dimension is exploration cost with no
+   gradient. The joint was the easy half.
 2. Measured randomisation ranges from real hardware. The guessed ones have now
    been checked against published measurements rather than defended
    ([randomisation-sources.md](randomisation-sources.md)): they are optimistic
@@ -166,7 +172,11 @@ why the five-seed version replaced it.
 3. Perception: a wrist camera and a pose estimator in the loop, with its real
    error model rather than additive Gaussian noise.
 4. More object shapes, and grasp-point selection.
-5. Isaac bring-up, then a cross-simulator evaluation, which is the closest thing
-   to a sim-to-real test available without a robot.
+5. **Why cross-simulator transfer fails.** The evaluation exists and the answer
+   is not a control-gain constant — seven scalings of the action, in both
+   directions, none of which clears its interval. Halving lateral commands alone
+   raises peak lift to what a successful MuJoCo policy reaches while success
+   does not move, which points at contact rather than reaching, with one
+   supporting number.
 6. A sparse-reward variant with hindsight experience replay, to show the task
    can be learned without hand-designed shaping.

@@ -27,20 +27,56 @@ seeds:
 | no wrist (4-D) | 0.333, 0.033, 0.000 | 0.122 |
 | with wrist (5-D) | 0.000, 0.000, 0.000 | **0.000** |
 
-Adding the degree of freedom made the task unlearnable at this budget. That is
-not mysterious and it is not a bug: the reward has no term for yaw alignment.
-`w_align` penalises *lateral offset*, not orientation mismatch, so nothing in
-the reward tells the policy that turning the wrist first is worth anything —
-the extra dimension is pure exploration cost with no gradient to follow. The
-scripted expert benefits because it was *told* to align.
+Adding the degree of freedom made the task unlearnable at this budget, and the
+obvious fix does not help. A yaw-alignment reward term was added
+(`w_yaw` in `src/rewards/grasp_reward.py`, `src/rewards/configs/wrist.json`) in
+two versions — paid everywhere, and gated on proximity to the object. Nine runs,
+three seeds each:
 
-The fix is a reward term, which means redesigning the shaping rather than adding
-a joint, and [reward-design.md](reward-design.md) is already explicit about how
-much of this task's behaviour came from the shaping rather than the algorithm.
-Recorded as measured rather than fixed.
+| | per-seed | mean |
+| --- | --- | ---: |
+| no wrist (4-D control) | 0.333, 0.033, 0.000 | 0.122 |
+| wrist, no yaw term | 0.000, 0.000, 0.000 | 0.000 |
+| wrist + yaw term | 0.000, 0.000, 0.000 | 0.000 |
+| wrist + yaw term, gated on proximity | 0.000, 0.000, 0.000 | 0.000 |
 
-**Objects are boxes.** One shape, randomised in size, mass and friction. No
-cylinders, no bottles, no bags, no clutter, no bin. Nothing here demonstrates
+The term does what it was designed to do and it is not enough. Measured on the
+trained policies, final yaw error falls from **25.9°** (the value at reset, i.e.
+no alignment) to **18.1°** without the term and **4.4°** with it: the policy
+learns to square the closing axis to the box within a few degrees. Success stays
+at zero.
+
+The first version also showed what a badly-placed shaping term costs. Paid
+everywhere, it was satisfiable *without doing the task* — hover in mid-air,
+perfectly aligned, collect the absence of a penalty — and the grasp rate fell
+from 0.50 (no term) to 0.10 while the yaw error improved. Gating it on proximity
+removed that exploit and did not recover the success rate. This is the third
+shaping failure recorded in this repository, and the cleanest example of a term
+that is easier to satisfy than the objective it was meant to support.
+
+What is left untested is the weight. `w_yaw = 1.5` was chosen to be comparable
+with the other terms and never swept, so "the alignment reward does not rescue
+the wrist" is established at one weight, in two placements, and no further.
+
+**Objects are boxes by default, and cylinders and spheres optionally.**
+`src/randomisation/configs/shapes.json` draws the geom type per episode with the
+width the pads must close on held equal across the three, so the comparison is
+about shape rather than size.
+
+The scripted expert handles all three, and the ordering is not the intuitive
+one: **sphere 1.000, cylinder 1.000, box 0.950**. A sphere is the *easiest*
+shape for this hand, because a hand that cannot rotate has no way to profit from
+knowing a box's yaw — the box's difficulty *is* its orientation, and a sphere
+has none.
+
+Learned, on the mixed distribution at 200 000 steps against the box-only control
+at the same budget, the variance swallows the comparison: 0.167 [0.000, 0.884]
+across three seeds (0.50, 0.00, 0.00) against 0.407 for boxes alone across five.
+Adding shape variety plausibly makes learning harder at a fixed budget, in the
+same way every other widening of the distribution does here, but three seeds
+with that spread cannot establish it.
+
+No bottles, no bags, no clutter, no bin, and still nothing here demonstrates
 grasp *selection* — choosing where to grasp an unfamiliar shape — which is what
 most of the grasping literature is actually about.
 

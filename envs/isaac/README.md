@@ -102,6 +102,33 @@ Tuning it is not optional and the direction is not predictable: this simulator
 wanted twice the MuJoCo nominal value, while MuJoCo's mildest randomisation
 wanted a third of it.
 
+### And it does nothing at all under randomisation
+
+The same sweep at `medium`, four values, three seeds each, same 15 000-step
+budget (`experiments/results/isaac_floor_sweep_medium.json`):
+
+| floor | per-seed | mean |
+| ---: | --- | ---: |
+| 0.00 | 0.00, 0.00, 0.00 | 0.000 |
+| 0.15 | 0.00, 0.00, 0.00 | 0.000 |
+| 0.30 | 0.00, 0.00, 0.00 | 0.000 |
+| 0.50 | 0.00, 0.00, 0.00 | 0.000 |
+
+Twelve runs, every one zero, including the 0.30 that scores a perfect 1.000 on
+the nominal world at the same budget in the same simulator. This is not a value
+that needs finding — an order of magnitude of them was tried.
+
+That separates two failures which had been running together in this
+repository's head. **The floor fixes a policy that has stopped exploring.**
+Randomised Isaac is not failing that way; more exploration, at any dose, is not
+the missing ingredient. Which fits the other randomised symptom here — the
+demonstration-seeded runs *degrade* as they train, losing half their success
+between 4 000 and 15 000 steps while critic loss grows twentyfold — and points
+at the value function rather than the policy.
+
+Neither observation is a diagnosis. What they jointly rule out is the
+explanation this repository already had in hand, which was the tempting one.
+
 ## A randomised training grid
 
 Demonstration-seeded, five seeds, at two budgets

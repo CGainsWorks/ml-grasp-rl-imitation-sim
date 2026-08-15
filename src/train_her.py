@@ -78,8 +78,19 @@ def main() -> None:
     parser.add_argument("--alpha-floor", type=float, default=0.15)
     parser.add_argument("--eval-every", type=int, default=25_000)
     parser.add_argument("--eval-episodes", type=int, default=30)
+    parser.add_argument("--threads", type=int, default=1,
+                        help="torch intra-op threads; 1 is fastest when running "
+                             "several trainings at once, which is the normal case")
     parser.add_argument("--output", default="experiments/runs/her")
     args = parser.parse_args()
+
+    # One compute thread per process. These networks are 128x128 at batch 256:
+    # far too small for intra-op parallelism to pay, and the grid runs eight to
+    # twelve processes at once, so the default of eight threads each asks for
+    # ~96 threads on 16 cores. Measured under exactly that load, one thread is
+    # 2.6x faster per update than eight (10.5 ms against 27.5 ms). The runs are
+    # parallel across processes; there is nothing left to parallelise inside one.
+    torch.set_num_threads(args.threads)
 
     os.makedirs(args.output, exist_ok=True)
     torch.manual_seed(args.seed)

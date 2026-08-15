@@ -113,11 +113,30 @@ detector. The sensing randomisation adds Gaussian noise to a ground-truth pose,
 which is a weak model of a real pose estimator: its error is correlated across
 steps, biased by viewpoint, and worst when the gripper occludes the object.
 
-**The reward is dense and hand-designed.** Nothing here shows RL discovering
-grasping from a sparse signal; a sparse version of this task wants hindsight
-experience replay and a much larger compute budget than a CPU afternoon.
-[docs/reward-design.md](reward-design.md) is explicit about the two shapings
+**The reward is dense and hand-designed, and removing it is not recoverable
+here.** The sparse version was built and run: reward 1.0 on the step the success
+condition holds and 0 everywhere else, with hindsight relabelling
+([Andrychowicz et al., 2017](https://arxiv.org/abs/1707.01495), future strategy,
+k = 4) as the standard remedy. `src/train_her.py`, six runs of 200 000 steps:
+
+| | per-seed | mean |
+| --- | --- | ---: |
+| sparse + hindsight relabelling | 0.000, 0.000, 0.000 | **0.000** |
+| sparse alone (control) | 0.000, 0.000, 0.000 | **0.000** |
+
+Zero success *and* zero grasp rate throughout: nothing learns to touch the box.
+The nine shaped terms are doing essentially all the work in this task, which is
+what [reward-design.md](reward-design.md) implies when it records two shapings
 that failed before the current one worked.
+
+The control is what makes that readable. Both arms at zero means the sparse task
+is not being solved at this budget; had the control scored anything, the right
+conclusion would have been a bug in the relabelling instead. What this does
+*not* establish is that hindsight replay fails on this task in general — it is
+one configuration at one budget, and the original paper uses far more compute
+than a CPU evening. The relabelling itself is tested: goal entries, the derived
+goal-minus-object entries and the recomputed reward, against the simulator's
+true object position rather than the noisy observed one.
 
 ## The results are honest but small
 
@@ -129,6 +148,25 @@ repository says they overlap rather than picking the favourable framing.
 eight cores. It is not enough for SAC from scratch under randomisation, and the
 results say so rather than quietly extending the budget for the conditions that
 needed it.
+
+About 90% of that time is gradient updates and 8% is physics — 0.54 ms per
+environment step against roughly 10 ms per update — so the budget is set by the
+optimiser, not the simulator. `experiments/compute_ablation.py` tests the
+obvious reductions on the one condition that reliably reaches 1.000, three seeds
+each:
+
+| | success | wall | speedup |
+| --- | --- | ---: | ---: |
+| baseline: 128x128, batch 256, 1 update/step | 0.989 | 1064 s | 1.00x |
+| 64x64 | 0.933 | 889 s | 1.20x |
+| batch 128 | **0.633** | 869 s | 1.22x |
+| **0.5 updates/step** | **1.000** | 548 s | **1.94x** |
+| 64x64 + 0.5 updates/step | 0.989 | 446 s | 2.39x |
+
+Halving the gradient updates is faster *and* better — 1.000 on three seeds of
+three against 0.989 — which is the signature of over-updating a critic on a
+small replay buffer. Halving the batch is a regression with a seed at 0.000 and
+is not adopted.
 
 **The from-scratch runs have an entropy-collapse failure mode, and it is now
 fixed.** The seeds that stall settle

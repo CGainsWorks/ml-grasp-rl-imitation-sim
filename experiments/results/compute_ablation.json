@@ -1,0 +1,88 @@
+{
+  "question": "which compute reductions are free on a condition that reliably reaches 1.000?",
+  "level": "none",
+  "alpha_floor": 0.15,
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "arms": [
+    {
+      "arm": "baseline",
+      "per_seed": [
+        0.9666666666666667,
+        1.0,
+        1.0
+      ],
+      "mean_wall_seconds": 1064.2,
+      "speedup": 1.0,
+      "point": 0.9888888888888889,
+      "low": 0.9410777777777778,
+      "high": 1.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
+      "arm": "narrow",
+      "per_seed": [
+        1.0,
+        0.8666666666666667,
+        0.9333333333333333
+      ],
+      "mean_wall_seconds": 889.3333333333334,
+      "speedup": 1.1966266866566717,
+      "point": 0.9333333333333332,
+      "low": 0.7677107861118027,
+      "high": 1.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
+      "arm": "batch128",
+      "per_seed": [
+        1.0,
+        0.0,
+        0.9
+      ],
+      "mean_wall_seconds": 869.4,
+      "speedup": 1.2240625718886589,
+      "point": 0.6333333333333333,
+      "low": 0.0,
+      "high": 1.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
+      "arm": "utd0.5",
+      "per_seed": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_wall_seconds": 548.0333333333333,
+      "speedup": 1.9418526853597715,
+      "point": 1.0,
+      "low": 1.0,
+      "high": 1.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
+      "arm": "narrowutd",
+      "per_seed": [
+        0.9666666666666667,
+        1.0,
+        1.0
+      ],
+      "mean_wall_seconds": 445.56666666666666,
+      "speedup": 2.388419241415426,
+      "point": 0.9888888888888889,
+      "low": 0.9410777777777778,
+      "high": 1.0,
+      "n": 3,
+      "method": "t"
+    }
+  ],
+  "note": "Wall-clock is per run and depends on how many ran at once, so the speedup column is only meaningful between arms in the same batch. Success is the number that decides whether a saving is free."
+}

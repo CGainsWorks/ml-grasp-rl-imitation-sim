@@ -1,0 +1,9 @@
+{
+  "final_success_rate": 0.0,
+  "best_success_rate": 0.0,
+  "steps": 200000,
+  "seed": 0,
+  "her": true,
+  "reward": "sparse",
+  "wall_seconds": 4159.6
+}

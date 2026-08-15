@@ -31,6 +31,12 @@ GRIP_WIDTH = 6
 OBJ_POS = slice(8, 11)
 OBJ_ROT_X = slice(14, 17)
 GOAL_POS = slice(26, 29)
+# Only present on the wrist variant of the task, where the observation carries
+# the hand's own yaw as a sin/cos pair on the end.
+WRIST_SIN, WRIST_COS = 32, 33
+# Matches WRIST_STEP in envs/mujoco/grasp_env.py: the yaw commanded by a unit
+# action in one control step.
+WRIST_STEP = np.deg2rad(9.0)
 
 APPROACH, DESCEND, CLOSE, LIFT = range(4)
 
@@ -59,7 +65,11 @@ class ScriptedExpert:
         phase_timeout: tuple = (45, 30),
         noise: float = 0.0,
         rng: np.random.Generator | None = None,
+        wrist: bool = False,
+        align_tol: float = np.deg2rad(6.0),
     ) -> None:
+        self.wrist = bool(wrist)
+        self.align_tol = float(align_tol)
         self.kp = kp
         self.lift_kp = lift_kp
         self.close_steps = close_steps
@@ -101,11 +111,33 @@ class ScriptedExpert:
         goal = obs[GOAL_POS]  # the hold point is commanded, not sensed
         self._phase_steps += 1
 
+        # Wrist yaw, when the hand has one. The pads close along the hand's own
+        # x axis, so the grasp wants that axis square to a face of the box. A
+        # box repeats every 90 degrees, so the target is the object's yaw folded
+        # into +/-45 degrees: there is never a reason to turn further, and
+        # folding keeps the command inside the joint's range.
+        #
+        # This is computed *before* the phase machine because the descent has to
+        # wait for it. Descending onto a big box while the wrist is still
+        # turning sweeps it off the table, and at 35 mm half-size that is every
+        # episode -- the first version of this method computed the yaw after the
+        # transitions and the alignment gate was dead code.
+        wrist_cmd = None
+        aligned = True
+        if self.wrist:
+            obj_x = filtered[OBJ_ROT_X]
+            object_yaw = float(np.arctan2(obj_x[1], obj_x[0]))
+            folded = (object_yaw + np.pi / 4.0) % (np.pi / 2.0) - np.pi / 4.0
+            error = folded - float(np.arctan2(obs[WRIST_SIN], obs[WRIST_COS]))
+            wrist_cmd = float(np.clip(error / WRIST_STEP, -1.0, 1.0))
+            aligned = abs(error) <= self.align_tol
+
         if self.phase == APPROACH:
             target = np.array([obj[0], obj[1], obj[2] + APPROACH_HEIGHT])
             grip_cmd = -1.0
             timed_out = self._phase_steps > self.phase_timeout[0]
-            if np.linalg.norm(target - grip) < self.approach_tol or timed_out:
+            in_place = np.linalg.norm(target - grip) < self.approach_tol
+            if (in_place and aligned) or timed_out:
                 self._advance(DESCEND)
         elif self.phase == DESCEND:
             target = np.array([obj[0], obj[1], obj[2] + GRASP_Z_OFFSET])
@@ -140,7 +172,10 @@ class ScriptedExpert:
         gain = self.lift_kp if self.phase == LIFT else self.kp
         cap = SPEED_CAP[self.phase]
         delta = np.clip(gain * (target - grip), -cap, cap)
-        action = np.concatenate([delta, [grip_cmd]])
+        if wrist_cmd is None:
+            action = np.concatenate([delta, [grip_cmd]])
+        else:
+            action = np.concatenate([delta, [wrist_cmd], [grip_cmd]])
 
         if self.noise > 0.0:
             action = action + self.rng.normal(0.0, self.noise, size=action.shape)

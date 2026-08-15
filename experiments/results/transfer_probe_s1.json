@@ -1,0 +1,109 @@
+{
+  "question": "which difference in applying the policy breaks cross-simulator transfer?",
+  "policy": "experiments/policies/bcrl_high_s1.ts.pt",
+  "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+  "randomisation": "none",
+  "num_envs": 16,
+  "episodes_per_arm": 4,
+  "arms": [
+    {
+      "arm": "baseline",
+      "successes": 4,
+      "episodes": 64,
+      "success_rate": 0.0625,
+      "wilson": {
+        "point": 0.0625,
+        "low": 0.024571201396618017,
+        "high": 0.14997485092208662,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 0.08192438818514347
+    },
+    {
+      "arm": "scale-0.5",
+      "successes": 3,
+      "episodes": 64,
+      "success_rate": 0.046875,
+      "wilson": {
+        "point": 0.046875,
+        "low": 0.016069016786292974,
+        "high": 0.12899653740093686,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 0.02396733732894063
+    },
+    {
+      "arm": "scale-0.25",
+      "successes": 0,
+      "episodes": 64,
+      "success_rate": 0.0,
+      "wilson": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.05662405979280534,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 4.2654573917388916e-07
+    },
+    {
+      "arm": "scale-1.5",
+      "successes": 4,
+      "episodes": 64,
+      "success_rate": 0.0625,
+      "wilson": {
+        "point": 0.0625,
+        "low": 0.024571201396618017,
+        "high": 0.14997485092208662,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 0.06983571499586105
+    },
+    {
+      "arm": "scale-2.0",
+      "successes": 1,
+      "episodes": 64,
+      "success_rate": 0.015625,
+      "wilson": {
+        "point": 0.015625,
+        "low": 0.002763541923337505,
+        "high": 0.08334101600094265,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 0.027045180089771748
+    },
+    {
+      "arm": "clip-xy",
+      "successes": 5,
+      "episodes": 64,
+      "success_rate": 0.078125,
+      "wilson": {
+        "point": 0.078125,
+        "low": 0.03383117690855046,
+        "high": 0.17019537354162906,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 0.12992696277797222
+    },
+    {
+      "arm": "hold-gripper",
+      "successes": 7,
+      "episodes": 64,
+      "success_rate": 0.109375,
+      "wilson": {
+        "point": 0.109375,
+        "low": 0.05400113344416797,
+        "high": 0.20898641326896122,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 0.08765504881739616
+    }
+  ],
+  "note": "One modification per arm, applied to the action only. The policy is unchanged throughout; this asks whether the transfer failure is a control-gain mismatch that a constant could fix."
+}

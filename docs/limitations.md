@@ -10,13 +10,34 @@ reachability constraint. Every one of those is a real failure mode in a real
 cell. A policy trained here needs a reachability check and a joint-limit clamp
 between it and any servo loop.
 
-**The hand cannot rotate.** The pads always close along world *x*. A square box
-at 45° of yaw presents √2 times its side, so above roughly 27 mm of half-size it
-is ungraspable at the worst yaw regardless of the policy. Object sizes are
-therefore capped at 24 mm half-size everywhere. Adding a wrist yaw degree of
-freedom is the single change that would most improve this task's realism: it
-turns "close the fingers" into "align, then close", which is where the real
-difficulty in grasping lives.
+**The hand cannot rotate — by default.** The pads close along world *x*, so a
+square box at 45° of yaw presents √2 times its side and above roughly 27 mm of
+half-size it is ungraspable at the worst yaw regardless of the policy. Object
+sizes are therefore capped at 24 mm half-size, and at that cap yaw cannot bind.
+
+`make_env(..., wrist=True)` adds the yaw degree of freedom (34-D observation,
+5-D action), and the honest summary is that it helps the *scripted* policy and
+defeats the *learned* one. On boxes spanning 15–35 mm, the expert with a wrist
+roughly doubles success in the bands where alignment matters (0.167 → 0.333 at
+27–31 mm). Trained from scratch on the same distribution, 200 000 steps, three
+seeds:
+
+| | per-seed | mean |
+| --- | --- | ---: |
+| no wrist (4-D) | 0.333, 0.033, 0.000 | 0.122 |
+| with wrist (5-D) | 0.000, 0.000, 0.000 | **0.000** |
+
+Adding the degree of freedom made the task unlearnable at this budget. That is
+not mysterious and it is not a bug: the reward has no term for yaw alignment.
+`w_align` penalises *lateral offset*, not orientation mismatch, so nothing in
+the reward tells the policy that turning the wrist first is worth anything —
+the extra dimension is pure exploration cost with no gradient to follow. The
+scripted expert benefits because it was *told* to align.
+
+The fix is a reward term, which means redesigning the shaping rather than adding
+a joint, and [reward-design.md](reward-design.md) is already explicit about how
+much of this task's behaviour came from the shaping rather than the algorithm.
+Recorded as measured rather than fixed.
 
 **Objects are boxes.** One shape, randomised in size, mass and friction. No
 cylinders, no bottles, no bags, no clutter, no bin. Nothing here demonstrates

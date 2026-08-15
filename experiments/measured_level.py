@@ -14,6 +14,13 @@ Three columns, because the interesting question is not only "how much worse" but
 ``shifted``          the existing held-out proxy, for continuity
 ``measured``         the sourced ranges
 ``measured_norot``   the same, with the orientation error removed
+``measured_corr``    the same, with the error correlated in time (rho 0.9)
+
+The fourth column is the other half of the realism question. Independent
+per-step noise is the easy model and it flatters anything that filters, because
+averaging kills it -- and the expert filters, and every clone of it inherits the
+input-output behaviour of something that filtered. Correlating the error at the
+same magnitude removes that free lunch.
 
 The third column is the ablation. Orientation error is the axis this repository
 never had, and the hand cannot rotate, so the plausible guess is that it costs
@@ -35,7 +42,7 @@ from src.evaluate import evaluate_expert, evaluate_run  # noqa: E402
 from src.utils.stats import summarise_seeds  # noqa: E402
 
 RUNS = os.path.join("experiments", "runs")
-LEVELS = ["shifted", "measured", "measured_norot"]
+LEVELS = ["shifted", "measured", "measured_norot", "measured_corr"]
 METHODS = [
     ("bc", "bc_s*", "behaviour cloning"),
     ("bcrl_high", "bcrl_high_s*", "BC + SAC, wide randomisation"),

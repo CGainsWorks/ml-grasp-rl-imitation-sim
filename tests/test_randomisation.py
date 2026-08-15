@@ -109,3 +109,23 @@ def test_unknown_parameter_name_is_rejected():
 def test_unknown_level_name_is_rejected():
     with pytest.raises(FileNotFoundError):
         load_randomisation("enormous")
+
+
+def test_correlated_sensor_noise_is_correlated_and_not_larger():
+    """obs_noise_corr must change the error's structure, not its magnitude.
+
+    A correlated error that is also a bigger one would confound every
+    comparison against the independent case, which is the whole point of the
+    `measured` and `measured_corr` pair.
+    """
+    from envs.mujoco.grasp_env import make_env
+
+    for rho, expected in ((0.0, 0.0), (0.9, 0.9)):
+        env = make_env("none", seed=0)
+        env.reset()
+        env.world.obs_noise_pos = 0.006
+        env.world.obs_noise_corr = rho
+        series = np.array([env._sensor_noise("object", 0.006)[0] for _ in range(4000)])
+        lag1 = float(np.corrcoef(series[:-1], series[1:])[0, 1])
+        assert abs(lag1 - expected) < 0.08, (rho, lag1)
+        assert abs(series.std() - 0.006) < 0.001, (rho, series.std())

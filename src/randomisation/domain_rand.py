@@ -122,6 +122,7 @@ class SampledWorld:
     obs_noise_pos: float
     obs_noise_vel: float
     obs_noise_rot: float
+    obs_noise_corr: float
     action_noise: float
     init_xy_jitter: float
     init_yaw_jitter: float
@@ -142,6 +143,7 @@ NOMINAL = SampledWorld(
     obs_noise_pos=0.0,
     obs_noise_vel=0.0,
     obs_noise_rot=0.0,
+    obs_noise_corr=0.0,
     action_noise=0.0,
     init_xy_jitter=0.10,
     init_yaw_jitter=np.pi,

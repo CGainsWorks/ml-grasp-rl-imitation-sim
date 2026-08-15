@@ -213,6 +213,7 @@ class GraspEnv(_BASE):
         self._prev_grip = np.zeros(3)
         self._last_terms: Dict[str, float] = {}
         self._wrist_yaw = 0.0
+        self._noise_state: Dict[str, np.ndarray] = {}
 
         if spaces is not None:
             self.observation_space = spaces.Box(
@@ -290,6 +291,7 @@ class GraspEnv(_BASE):
         self.data.mocap_pos[self._mocap_id] = hand_pos
         self.data.mocap_quat[self._mocap_id] = [1.0, 0.0, 0.0, 0.0]
         self._wrist_yaw = 0.0
+        self._noise_state = {}
         self.data.ctrl[:] = self._grip_range[0]
 
         mujoco.mj_forward(self.model, self.data)
@@ -479,8 +481,8 @@ class GraspEnv(_BASE):
         ).astype(np.float64)
 
         if self.world.obs_noise_pos > 0.0:
-            obs[0:3] += self.np_random.normal(0, self.world.obs_noise_pos, 3)
-            obs[8:11] += self.np_random.normal(0, self.world.obs_noise_pos, 3)
+            obs[0:3] += self._sensor_noise("grip", self.world.obs_noise_pos)
+            obs[8:11] += self._sensor_noise("object", self.world.obs_noise_pos)
             obs[11:14] = obs[8:11] - obs[0:3]
             obs[29:32] = obs[26:29] - obs[8:11]
         if self.world.obs_noise_vel > 0.0:
@@ -501,6 +503,33 @@ class GraspEnv(_BASE):
             obs[17:20] = noisy[:, 1]
 
         return obs.astype(np.float32)
+
+    def _sensor_noise(self, channel: str, sigma: float) -> np.ndarray:
+        """Pose error, optionally correlated in time.
+
+        Independent Gaussian noise per step is the easy model and the wrong
+        one: a real pose estimator's error is dominated by viewpoint, occlusion
+        and calibration, all of which persist across frames. Independent noise
+        also flatters any policy that filters, because averaging kills it --
+        and both the scripted expert and every policy cloned from it filter.
+
+        ``obs_noise_corr`` is the correlation, as an Ornstein-Uhlenbeck-style
+        first-order filter: 0.0 reproduces the old independent draw exactly, so
+        every existing level and every existing number is unchanged, and 0.9
+        gives an error that drifts over roughly ten frames.
+        """
+        rho = float(self.world.obs_noise_corr)
+        draw = self.np_random.normal(0.0, sigma, 3)
+        if rho <= 0.0:
+            return draw
+        prev = self._noise_state.get(channel)
+        if prev is None:
+            prev = self.np_random.normal(0.0, sigma, 3)
+        # Scaled so the stationary standard deviation stays sigma whatever rho is:
+        # a correlated error should not also be a bigger one.
+        state = rho * prev + np.sqrt(1.0 - rho * rho) * draw
+        self._noise_state[channel] = state
+        return state
 
     def _rotation_error(self) -> np.ndarray:
         """A small random rotation, angle ~ N(0, obs_noise_rot) about a random axis."""

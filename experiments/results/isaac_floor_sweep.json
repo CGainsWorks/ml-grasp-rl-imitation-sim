@@ -28,6 +28,19 @@
       "method": "t"
     },
     {
+      "alpha_floor": 0.05,
+      "per_seed": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point": 0.0,
+      "low": 0.0,
+      "high": 0.0,
+      "n": 3,
+      "method": "t"
+    },
+    {
       "alpha_floor": 0.15,
       "per_seed": [
         0.8125,
@@ -40,6 +53,19 @@
       "low": 0.0,
       "high": 1.0,
       "n": 5,
+      "method": "t"
+    },
+    {
+      "alpha_floor": 0.3,
+      "per_seed": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "point": 1.0,
+      "low": 1.0,
+      "high": 1.0,
+      "n": 3,
       "method": "t"
     }
   ],

@@ -46,15 +46,23 @@ LOGS = os.path.join("experiments", "logs")
 DEMOS = os.path.join("demonstrations", "isaac_expert_low.npz")
 
 
-def run_name(arm: str, seed: int, level: str) -> str:
-    """Nominal runs keep their original names so the existing grid is reused."""
+def run_name(arm: str, seed: int, level: str, tag: str = "") -> str:
+    """Nominal runs keep their original names so the existing grid is reused.
+
+    ``tag`` separates grids that differ in something the name would otherwise
+    hide -- the budget, most importantly. Without it a longer rerun silently
+    matches the shorter runs already on disk and skips them, which is a quiet
+    way to compare two budgets by accident.
+    """
+    suffix = "_{}".format(tag) if tag else ""
     if level == "none":
-        return "isaac_{}_s{}".format(arm, seed)
-    return "isaac_{}_{}_s{}".format(arm, level, seed)
+        return "isaac_{}{}_s{}".format(arm, suffix, seed)
+    return "isaac_{}_{}{}_s{}".format(arm, level, suffix, seed)
 
 
-def job(arm: str, seed: int, steps: int, num_envs: int, level: str) -> Dict:
-    name = run_name(arm, seed, level)
+def job(arm: str, seed: int, steps: int, num_envs: int, level: str,
+        tag: str = "") -> Dict:
+    name = run_name(arm, seed, level, tag)
     out = os.path.join(RUNS, name)
     cmd = [
         sys.executable, "scripts/isaac_train.py",
@@ -71,14 +79,15 @@ def job(arm: str, seed: int, steps: int, num_envs: int, level: str) -> Dict:
     return {"name": name, "output": out, "cmd": cmd}
 
 
-def summarise(arms: List[str], seeds: List[int], output: str, level: str) -> None:
+def summarise(arms: List[str], seeds: List[int], output: str, level: str,
+              tag: str = "") -> None:
     from src.utils.stats import t_interval
 
     rows = []
     for arm in arms:
         finals, bests = [], []
         for seed in seeds:
-            path = os.path.join(RUNS, run_name(arm, seed, level), "result.json")
+            path = os.path.join(RUNS, run_name(arm, seed, level, tag), "result.json")
             if not os.path.exists(path):
                 continue
             with open(path, "r", encoding="utf-8") as fh:
@@ -117,6 +126,9 @@ def main() -> None:
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     parser.add_argument("--steps", type=int, default=4000)
     parser.add_argument("--num-envs", type=int, default=32)
+    parser.add_argument("--tag", default="",
+                        help="suffix for the run directories; use it whenever the "
+                             "budget differs from a grid already on disk")
     parser.add_argument("--randomisation", default="none",
                         choices=["none", "low", "medium", "high", "shifted"])
     parser.add_argument("--summarise-only", action="store_true")
@@ -129,7 +141,7 @@ def main() -> None:
 
     if not args.summarise_only:
         os.makedirs(LOGS, exist_ok=True)
-        jobs = [job(arm, seed, args.steps, args.num_envs, args.randomisation)
+        jobs = [job(arm, seed, args.steps, args.num_envs, args.randomisation, args.tag)
                 for arm in args.arms for seed in args.seeds]
         t0 = time.time()
         for spec in jobs:
@@ -147,7 +159,7 @@ def main() -> None:
     if output is None:
         output = os.path.join("experiments", "results",
                               "isaac_seed_grid_{}.json".format(args.randomisation))
-    summarise(args.arms, args.seeds, output, args.randomisation)
+    summarise(args.arms, args.seeds, output, args.randomisation, args.tag)
 
 
 if __name__ == "__main__":

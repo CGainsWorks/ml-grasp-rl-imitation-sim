@@ -252,38 +252,39 @@ task, not seed variance — and demonstrations take the same algorithm to 0.969.
 That is the MuJoCo headline finding reproduced in a second engine, with the same
 five-seed standard.
 
-### It does not confirm the cure
+### It confirms the cure too, at a value nobody would have guessed
 
-The collapse reproduces. The fix for it does not, at least not reliably. Same
-two arms as the MuJoCo investigation, five seeds, 15 000 steps x 32
-environments — the budget at which Isaac's from-scratch failure is already known
-to be stable (`experiments/results/isaac_floor.json`):
+The floor was first tried here at **0.15**, the value that works on the MuJoCo
+nominal world, and the result looked like a failure: 0.463 against a control of
+0.194 across five seeds, t = 1.01, both arms spanning 0.000 to 1.000. That was
+written up as "the collapse reproduces and the cure does not".
 
-| arm | per-seed | mean | 95% t |
-| --- | --- | ---: | --- |
-| control | 0.09, 0.88, 0.00, 0.00, 0.00 | 0.194 | [0.000, 0.669] |
-| entropy floor 0.15 | 0.81, 0.00, 0.50, 1.00, 0.00 | 0.463 | [0.000, 1.000] |
+It was the wrong reading, and the MuJoCo matrix said which experiment to run
+next: there the useful floor is different for every distribution, and Isaac is a
+larger move than any randomisation level. Sweeping the value instead of the
+intervention (`experiments/isaac_floor_sweep.py`, 15 000 steps x 32
+environments, nominal world):
 
-The floor more than doubles the mean and the difference is nowhere near
-separated (t = 1.01, dof 7.8). Both arms span 0.00 to 1.00 across seeds. The
-entropy coefficient behaves exactly as designed — the control's five runs end at
-0.009 to 0.052, the floored ones sit at 0.150 to four decimal places — so this
-is not a wiring failure. It is the intervention not working reliably here.
+| floor | per-seed | mean | 95% t | against no floor |
+| ---: | --- | ---: | --- | --- |
+| 0.00 (control) | 0.09, 0.88, 0.00, 0.00, 0.00 | 0.194 | [0.000, 0.669] | — |
+| 0.05 | 0.00, 0.00, 0.00 | 0.000 | [0.000, 0.000] | t = −1.13 |
+| 0.15 | 0.81, 0.00, 0.50, 1.00, 0.00 | 0.463 | [0.000, 1.000] | t = 1.01 |
+| **0.30** | **1.00, 1.00, 1.00** | **1.000** | **[1.000, 1.000]** | **t = 4.71** |
 
-Two readings, and the second is better supported. It could be that five seeds
-is too few to separate anything with this much variance, which is true but
-unsatisfying. Or it could be that **0.15 is the wrong value for this
-simulator**, which is the reading the MuJoCo matrix makes hard to dismiss: there
-the useful floor was different for every randomisation level, and a value tuned
-on one distribution took another to zero. Isaac is a different contact model,
-different arm, different action scaling — much further from the MuJoCo nominal
-world than `low` randomisation is. Transferring 0.15 across that gap was the
-same mistake as transferring it from `none` to `low`, and it was made for the
-same reason: it was the number that happened to be to hand.
+Three seeds of three at 1.000, a zero-width interval, and the largest effect in
+this repository. The curves show the escape happening: at floor 0.30 the peak
+lift sits at 0.002 m through 10 500 steps and then jumps to 0.203 m at 12 000 —
+the policy is in the grasp-and-hold basin and climbs out of it. At floor 0.05 it
+never leaves: 0.0056 m at 15 000 steps, flat throughout.
 
-Sweeping the floor inside Isaac would settle it. That is about six hours of GPU
-per value on this hardware, sequentially, and it is recorded here as untested
-rather than assumed either way.
+So the second engine reproduces the failure **and** the fix, and the reason the
+first attempt missed it is the finding rather than an excuse: **the useful floor
+is a property of the distribution, not of the algorithm**. In MuJoCo the value
+that works ranges from 0.05 at `low` to 0.15 at `none`, and here — a different
+contact solver, a different arm, a different action scale — it is 0.30, with
+0.05 scoring zero. A single number carried across simulators would have been
+wrong, and was.
 
 ### Randomisation in Isaac costs much more than in MuJoCo
 

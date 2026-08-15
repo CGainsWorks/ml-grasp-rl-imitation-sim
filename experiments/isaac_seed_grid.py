@@ -149,6 +149,24 @@ def main() -> None:
 
     if not args.summarise_only:
         os.makedirs(LOGS, exist_ok=True)
+        # A lock, because this has now happened twice. Isaac runs are long, so a
+        # driver that looks stalled invites a second launch, and two simulators
+        # against one run directory interleave their writes into the same
+        # progress.csv. The failure is quiet: both processes train the same seed
+        # correctly and only the bookkeeping is wrong, which is worse than a
+        # crash. The lock names the level and tag so unrelated grids still run
+        # side by side.
+        lock = os.path.join(LOGS, ".isaac_grid_{}{}.lock".format(
+            args.randomisation, "_" + args.tag if args.tag else ""))
+        try:
+            fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            print("another driver holds {} -- refusing to start a second "
+                  "simulator against the same run directories. Delete the lock "
+                  "if no driver is running.".format(lock))
+            return
+        os.write(fd, str(os.getpid()).encode("ascii"))
+        os.close(fd)
         jobs = [job(arm, seed, args.steps, args.num_envs, args.randomisation, args.tag)
                 for arm in args.arms for seed in args.seeds]
         t0 = time.time()
@@ -160,6 +178,7 @@ def main() -> None:
             with open(os.path.join(LOGS, spec["name"] + ".log"), "w", encoding="utf-8") as log:
                 subprocess.call(spec["cmd"], cwd=REPO, stdout=log, stderr=subprocess.STDOUT)
             print("[{:>5.0f}s] done  {}".format(time.time() - t0, spec["name"]), flush=True)
+        os.remove(lock)
 
     output = args.output
     if output is None and args.randomisation == "none":

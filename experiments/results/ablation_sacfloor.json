@@ -1,0 +1,1137 @@
+{
+  "prefix": "sacfloor",
+  "episodes": 100,
+  "checkpoint": "policy.pt",
+  "n_seeds": 5,
+  "rows": [
+    {
+      "level": "none",
+      "n_seeds": 5,
+      "runs": [
+        "experiments\\runs\\sacfloor_none_s0",
+        "experiments\\runs\\sacfloor_none_s1",
+        "experiments\\runs\\sacfloor_none_s2",
+        "experiments\\runs\\sacfloor_none_s3",
+        "experiments\\runs\\sacfloor_none_s4"
+      ],
+      "train_level": {
+        "across_seeds": {
+          "point": 0.9860000000000001,
+          "low": 0.9671722519668443,
+          "high": 1.0,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.9860000000000001,
+          "low": 0.9720000000000001,
+          "high": 0.9960000000000001,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.986,
+          "low": 0.9713869308622147,
+          "high": 0.9932022102091564,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.96,
+            "low": 0.9016292856411208,
+            "high": 0.9843366960084523,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.99,
+            "low": 0.9455138038212946,
+            "high": 0.9982325679358593,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 1.0,
+            "low": 0.9630065017930143,
+            "high": 1.0,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.99,
+            "low": 0.9455138038212946,
+            "high": 0.9982325679358593,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.99,
+            "low": 0.9455138038212946,
+            "high": 0.9982325679358593,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.96,
+          0.99,
+          1.0,
+          0.99,
+          0.99
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "shifted": {
+        "across_seeds": {
+          "point": 0.0,
+          "low": 0.0,
+          "high": 0.0,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.0,
+          "low": 0.0,
+          "high": 0.0,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.0,
+          "low": 4.336808689942018e-19,
+          "high": 0.007624340461552241,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "gap": 0.9860000000000001,
+      "per_run_detail": [
+        {
+          "run": "experiments\\runs\\sacfloor_none_s0",
+          "train_randomisation": "none",
+          "seed": 0,
+          "levels": {
+            "none": {
+              "successes": 96,
+              "episodes": 100,
+              "success_rate": 0.96,
+              "grasp_rate": 0.97,
+              "mean_return": 735.6159789695608,
+              "mean_max_lift": 0.12646200180686257
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.48,
+              "mean_return": -59.45884616536211,
+              "mean_max_lift": 0.018459847156953146
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_none_s1",
+          "train_randomisation": "none",
+          "seed": 1,
+          "levels": {
+            "none": {
+              "successes": 99,
+              "episodes": 100,
+              "success_rate": 0.99,
+              "grasp_rate": 1.0,
+              "mean_return": 774.7374473066889,
+              "mean_max_lift": 0.13127183679830348
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.39,
+              "mean_return": -62.736455273311,
+              "mean_max_lift": 0.02057192814601234
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_none_s2",
+          "train_randomisation": "none",
+          "seed": 2,
+          "levels": {
+            "none": {
+              "successes": 100,
+              "episodes": 100,
+              "success_rate": 1.0,
+              "grasp_rate": 1.0,
+              "mean_return": 776.9779495821267,
+              "mean_max_lift": 0.13026492604656467
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.42,
+              "mean_return": -61.18262217618817,
+              "mean_max_lift": 0.015283530175955526
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_none_s3",
+          "train_randomisation": "none",
+          "seed": 3,
+          "levels": {
+            "none": {
+              "successes": 99,
+              "episodes": 100,
+              "success_rate": 0.99,
+              "grasp_rate": 1.0,
+              "mean_return": 764.3938002493411,
+              "mean_max_lift": 0.12614086492907797
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.51,
+              "mean_return": -62.25989240914925,
+              "mean_max_lift": 0.016892696208486272
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_none_s4",
+          "train_randomisation": "none",
+          "seed": 4,
+          "levels": {
+            "none": {
+              "successes": 99,
+              "episodes": 100,
+              "success_rate": 0.99,
+              "grasp_rate": 1.0,
+              "mean_return": 769.0921398784203,
+              "mean_max_lift": 0.12873265127391534
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.45,
+              "mean_return": -58.43375917797958,
+              "mean_max_lift": 0.008596423805630398
+            }
+          }
+        }
+      ]
+    },
+    {
+      "level": "low",
+      "n_seeds": 5,
+      "runs": [
+        "experiments\\runs\\sacfloor_low_s0",
+        "experiments\\runs\\sacfloor_low_s1",
+        "experiments\\runs\\sacfloor_low_s2",
+        "experiments\\runs\\sacfloor_low_s3",
+        "experiments\\runs\\sacfloor_low_s4"
+      ],
+      "train_level": {
+        "across_seeds": {
+          "point": 0.22799999999999998,
+          "low": 0.0,
+          "high": 0.5266490934591966,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.22799999999999998,
+          "low": 0.041999999999999996,
+          "high": 0.42000000000000004,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.228,
+          "low": 0.19338176911500068,
+          "high": 0.26676587209608377,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.42,
+            "low": 0.3279838267435473,
+            "high": 0.5179351329695703,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.54,
+            "low": 0.44264860323368227,
+            "high": 0.6343919169097589,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.15,
+            "low": 0.0930598528365663,
+            "high": 0.23283559590832364,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.03,
+            "low": 0.010254524024038925,
+            "high": 0.0845193642905276,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.42,
+          0.54,
+          0.15,
+          0.0,
+          0.03
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "shifted": {
+        "across_seeds": {
+          "point": 0.002,
+          "low": 0.0,
+          "high": 0.007552,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.002,
+          "low": 0.0,
+          "high": 0.006,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.002,
+          "low": 0.00035313639455927456,
+          "high": 0.011240706705146758,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.01,
+            "low": 0.0017674320641406505,
+            "high": 0.054486196178705315,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.0,
+          0.01,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "gap": 0.22599999999999998,
+      "per_run_detail": [
+        {
+          "run": "experiments\\runs\\sacfloor_low_s0",
+          "train_randomisation": "low",
+          "seed": 0,
+          "levels": {
+            "low": {
+              "successes": 42,
+              "episodes": 100,
+              "success_rate": 0.42,
+              "grasp_rate": 0.79,
+              "mean_return": 283.7141919891041,
+              "mean_max_lift": 0.10076302589406559
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.35,
+              "mean_return": -62.30744633235413,
+              "mean_max_lift": 0.010117161103533374
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_low_s1",
+          "train_randomisation": "low",
+          "seed": 1,
+          "levels": {
+            "low": {
+              "successes": 54,
+              "episodes": 100,
+              "success_rate": 0.54,
+              "grasp_rate": 0.86,
+              "mean_return": 383.7983431202572,
+              "mean_max_lift": 0.11807889994611025
+            },
+            "shifted": {
+              "successes": 1,
+              "episodes": 100,
+              "success_rate": 0.01,
+              "grasp_rate": 0.49,
+              "mean_return": -51.873565602646195,
+              "mean_max_lift": 0.019717957238793046
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_low_s2",
+          "train_randomisation": "low",
+          "seed": 2,
+          "levels": {
+            "low": {
+              "successes": 15,
+              "episodes": 100,
+              "success_rate": 0.15,
+              "grasp_rate": 0.69,
+              "mean_return": 95.29755204833069,
+              "mean_max_lift": 0.0568664944186259
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.37,
+              "mean_return": -57.786592873970356,
+              "mean_max_lift": 0.0072458143926114795
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_low_s3",
+          "train_randomisation": "low",
+          "seed": 3,
+          "levels": {
+            "low": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.64,
+              "mean_return": -7.375911807320564,
+              "mean_max_lift": 0.010534865961028364
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.18,
+              "mean_return": -61.12901270300998,
+              "mean_max_lift": 0.005391635855158584
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_low_s4",
+          "train_randomisation": "low",
+          "seed": 4,
+          "levels": {
+            "low": {
+              "successes": 3,
+              "episodes": 100,
+              "success_rate": 0.03,
+              "grasp_rate": 0.71,
+              "mean_return": 19.468027645466492,
+              "mean_max_lift": 0.05276748518776239
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.32,
+              "mean_return": -53.47757366007243,
+              "mean_max_lift": 0.009174433966011869
+            }
+          }
+        }
+      ]
+    },
+    {
+      "level": "medium",
+      "n_seeds": 5,
+      "runs": [
+        "experiments\\runs\\sacfloor_medium_s0",
+        "experiments\\runs\\sacfloor_medium_s1",
+        "experiments\\runs\\sacfloor_medium_s2",
+        "experiments\\runs\\sacfloor_medium_s3",
+        "experiments\\runs\\sacfloor_medium_s4"
+      ],
+      "train_level": {
+        "across_seeds": {
+          "point": 0.364,
+          "low": 0.004339228805809281,
+          "high": 0.7236607711941907,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.364,
+          "low": 0.132,
+          "high": 0.5780000000000001,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.364,
+          "low": 0.32301143591892645,
+          "high": 0.4070623846866158,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.1,
+            "low": 0.0552291370606751,
+            "high": 0.17436566150491345,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.56,
+            "low": 0.4622810465167699,
+            "high": 0.6532797336983921,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.61,
+            "low": 0.5120301704584073,
+            "high": 0.6998312599360558,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.55,
+            "low": 0.45244602997442135,
+            "high": 0.6438546202048803,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.1,
+          0.56,
+          0.61,
+          0.0,
+          0.55
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "shifted": {
+        "across_seeds": {
+          "point": 0.004,
+          "low": 0.0,
+          "high": 0.015104,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.004,
+          "low": 0.0,
+          "high": 0.012,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.004,
+          "low": 0.0010976305226827934,
+          "high": 0.014465715215177033,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.02,
+            "low": 0.00550196755016235,
+            "high": 0.07001179072854388,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.0,
+          0.0,
+          0.02,
+          0.0,
+          0.0
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "gap": 0.36,
+      "per_run_detail": [
+        {
+          "run": "experiments\\runs\\sacfloor_medium_s0",
+          "train_randomisation": "medium",
+          "seed": 0,
+          "levels": {
+            "medium": {
+              "successes": 10,
+              "episodes": 100,
+              "success_rate": 0.1,
+              "grasp_rate": 0.79,
+              "mean_return": 101.00518154996311,
+              "mean_max_lift": 0.10060788485159623
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.77,
+              "mean_return": -31.972878040253335,
+              "mean_max_lift": 0.010973814767560534
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_medium_s1",
+          "train_randomisation": "medium",
+          "seed": 1,
+          "levels": {
+            "medium": {
+              "successes": 56,
+              "episodes": 100,
+              "success_rate": 0.56,
+              "grasp_rate": 0.9,
+              "mean_return": 405.31352194098275,
+              "mean_max_lift": 0.12381655446554284
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.58,
+              "mean_return": -46.30993187681014,
+              "mean_max_lift": 0.016507208955180267
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_medium_s2",
+          "train_randomisation": "medium",
+          "seed": 2,
+          "levels": {
+            "medium": {
+              "successes": 61,
+              "episodes": 100,
+              "success_rate": 0.61,
+              "grasp_rate": 0.92,
+              "mean_return": 429.20577275690766,
+              "mean_max_lift": 0.1303604078617137
+            },
+            "shifted": {
+              "successes": 2,
+              "episodes": 100,
+              "success_rate": 0.02,
+              "grasp_rate": 0.56,
+              "mean_return": -45.924502957673525,
+              "mean_max_lift": 0.02348012600885409
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_medium_s3",
+          "train_randomisation": "medium",
+          "seed": 3,
+          "levels": {
+            "medium": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.84,
+              "mean_return": 27.152888898718423,
+              "mean_max_lift": 0.11357538805763834
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.53,
+              "mean_return": -37.01662348191859,
+              "mean_max_lift": 0.009757549758474626
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_medium_s4",
+          "train_randomisation": "medium",
+          "seed": 4,
+          "levels": {
+            "medium": {
+              "successes": 55,
+              "episodes": 100,
+              "success_rate": 0.55,
+              "grasp_rate": 0.94,
+              "mean_return": 410.81935370420814,
+              "mean_max_lift": 0.13058383291909448
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.58,
+              "mean_return": -39.95454749844022,
+              "mean_max_lift": 0.0271930305815834
+            }
+          }
+        }
+      ]
+    },
+    {
+      "level": "high",
+      "n_seeds": 5,
+      "runs": [
+        "experiments\\runs\\sacfloor_high_s0",
+        "experiments\\runs\\sacfloor_high_s1",
+        "experiments\\runs\\sacfloor_high_s2",
+        "experiments\\runs\\sacfloor_high_s3",
+        "experiments\\runs\\sacfloor_high_s4"
+      ],
+      "train_level": {
+        "across_seeds": {
+          "point": 0.22800000000000004,
+          "low": 0.020189003409347983,
+          "high": 0.4358109965906521,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.22800000000000004,
+          "low": 0.10000000000000002,
+          "high": 0.354,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.228,
+          "low": 0.19338176911500068,
+          "high": 0.26676587209608377,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.03,
+            "low": 0.010254524024038925,
+            "high": 0.0845193642905276,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.25,
+            "low": 0.17545211362287672,
+            "high": 0.34304463548061603,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.31,
+            "low": 0.22779697212376038,
+            "high": 0.40626055719489407,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.1,
+            "low": 0.0552291370606751,
+            "high": 0.17436566150491345,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.45,
+            "low": 0.3561453797951198,
+            "high": 0.5475539700255787,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.03,
+          0.25,
+          0.31,
+          0.1,
+          0.45
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "shifted": {
+        "across_seeds": {
+          "point": 0.006,
+          "low": 0.0,
+          "high": 0.017104,
+          "n": 5,
+          "method": "t"
+        },
+        "across_seeds_bootstrap": {
+          "point": 0.006,
+          "low": 0.0,
+          "high": 0.014000000000000002,
+          "n": 5,
+          "method": "bootstrap"
+        },
+        "pooled_wilson": {
+          "point": 0.006,
+          "low": 0.0020425962719602363,
+          "high": 0.01749025210405338,
+          "n": 500,
+          "method": "wilson"
+        },
+        "per_seed": [
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.01,
+            "low": 0.0017674320641406505,
+            "high": 0.054486196178705315,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.0,
+            "low": 3.469446951953614e-18,
+            "high": 0.03699349820698568,
+            "n": 100,
+            "method": "wilson"
+          },
+          {
+            "point": 0.02,
+            "low": 0.00550196755016235,
+            "high": 0.07001179072854388,
+            "n": 100,
+            "method": "wilson"
+          }
+        ],
+        "per_seed_rates": [
+          0.0,
+          0.0,
+          0.01,
+          0.0,
+          0.02
+        ],
+        "n_seeds": 5,
+        "episodes_per_seed": [
+          100,
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "gap": 0.22200000000000003,
+      "per_run_detail": [
+        {
+          "run": "experiments\\runs\\sacfloor_high_s0",
+          "train_randomisation": "high",
+          "seed": 0,
+          "levels": {
+            "high": {
+              "successes": 3,
+              "episodes": 100,
+              "success_rate": 0.03,
+              "grasp_rate": 0.59,
+              "mean_return": 9.917824144354515,
+              "mean_max_lift": 0.060577816080718216
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.28,
+              "mean_return": -55.43751639452577,
+              "mean_max_lift": 0.008460103306086828
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_high_s1",
+          "train_randomisation": "high",
+          "seed": 1,
+          "levels": {
+            "high": {
+              "successes": 25,
+              "episodes": 100,
+              "success_rate": 0.25,
+              "grasp_rate": 0.75,
+              "mean_return": 165.07013845636374,
+              "mean_max_lift": 0.08560092022518727
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.31,
+              "mean_return": -56.8180397525039,
+              "mean_max_lift": 0.014511326607151789
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_high_s2",
+          "train_randomisation": "high",
+          "seed": 2,
+          "levels": {
+            "high": {
+              "successes": 31,
+              "episodes": 100,
+              "success_rate": 0.31,
+              "grasp_rate": 0.83,
+              "mean_return": 228.22210232265593,
+              "mean_max_lift": 0.10242609664042167
+            },
+            "shifted": {
+              "successes": 1,
+              "episodes": 100,
+              "success_rate": 0.01,
+              "grasp_rate": 0.51,
+              "mean_return": -45.07488740193552,
+              "mean_max_lift": 0.024749663892837094
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_high_s3",
+          "train_randomisation": "high",
+          "seed": 3,
+          "levels": {
+            "high": {
+              "successes": 10,
+              "episodes": 100,
+              "success_rate": 0.1,
+              "grasp_rate": 0.77,
+              "mean_return": 71.25041833213682,
+              "mean_max_lift": 0.07639170518804625
+            },
+            "shifted": {
+              "successes": 0,
+              "episodes": 100,
+              "success_rate": 0.0,
+              "grasp_rate": 0.36,
+              "mean_return": -41.51927520487431,
+              "mean_max_lift": 0.017740658115131404
+            }
+          }
+        },
+        {
+          "run": "experiments\\runs\\sacfloor_high_s4",
+          "train_randomisation": "high",
+          "seed": 4,
+          "levels": {
+            "high": {
+              "successes": 45,
+              "episodes": 100,
+              "success_rate": 0.45,
+              "grasp_rate": 0.87,
+              "mean_return": 325.32902178235304,
+              "mean_max_lift": 0.12274789417387667
+            },
+            "shifted": {
+              "successes": 2,
+              "episodes": 100,
+              "success_rate": 0.02,
+              "grasp_rate": 0.54,
+              "mean_return": -37.95625940669503,
+              "mean_max_lift": 0.029915995786637502
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "comparisons": {
+    "shifted_high_vs_none": {
+      "diff": 0.006,
+      "t": 1.5,
+      "dof": 4.0
+    },
+    "shifted_medium_vs_none": {
+      "diff": 0.004,
+      "t": 1.0,
+      "dof": 4.0
+    }
+  },
+  "note": "own = the level the policy trained on; shifted = held-out worlds outside the training ranges. Intervals are 95% t across seeds."
+}

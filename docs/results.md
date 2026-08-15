@@ -93,14 +93,29 @@ the budget — that came from comparing floored runs at 300 000 steps against a
 baseline at 200 000. The second, after the matched control, claimed the floor is
 harmful at `low` — that came from testing one floor value at one level.
 
-The tables in this document were produced before that fix and are left as they
-are; they record what a standard SAC configuration does here.
+**The grid has been rerun with the tuned floor, at the same budget.** The
+original rows are kept beside it — they record what a standard SAC configuration
+does here — and the floored rows record what the task allows. Both at 200 000
+steps, five seeds, evaluated on the same fixed distributions:
 
-Under randomisation, from-scratch SAC barely gets off the ground at all: 0.15,
-0.22 and 0.12 at low, medium and wide randomisation on the nominal world, and
-essentially zero on `shifted`. The right conclusion is not "domain
-randomisation does not work" but "200 000 steps is not a budget from-scratch
-SAC can absorb randomisation on".
+| trained with | on `none` | on `medium` | on `shifted` |
+| --- | ---: | ---: | ---: |
+| `none` → `none` + floor | 0.402 → **0.986** | 0.272 → **0.640** | 0.002 → 0.000 |
+| `low` → `low` + floor | 0.146 → **0.364** | 0.080 → **0.206** | 0.008 → 0.002 |
+| `medium` → `medium` + floor | 0.220 → **0.582** | 0.128 → **0.364** | 0.004 → 0.004 |
+| `high` → `high` + floor | 0.122 → **0.390** | 0.058 → **0.240** | 0.000 → 0.006 |
+
+Roughly a tripling everywhere except the `shifted` column, which does not move.
+That last part matters: **fixing the collapse does not fix transfer.** The
+obvious objection to section 5's sim-to-real result — that the baseline was
+simply undertrained — is ruled out by policies that are three times better on
+their own distribution and no better at all off it.
+
+Under randomisation, from-scratch SAC still barely gets off the ground: even
+with the floor, `low` reaches 0.364 and `high` 0.390 on the nominal world. The
+right conclusion is not "domain randomisation does not work" but "200 000 steps
+is not a budget from-scratch SAC can absorb randomisation on" — the same runs
+given 300 000 steps reach 0.587 and 0.467 on their own distributions.
 
 ## 4. Demonstrations are what make the budget viable
 
@@ -113,20 +128,28 @@ any useful sense.
 
 That was written as the practical finding of this repository — on a CPU budget,
 on a contact-rich task with a shaped reward, the difference between "works" and
-"does not work" was the demonstrations, not the algorithm — and the entropy
-investigation has since weakened it. From scratch, with a floor tuned for the
-level, SAC reaches 0.993 on the nominal world and 0.680 at `medium`: the same
-place the demonstration-seeded runs get to. What demonstrations buy is the
-*budget*: 30 000 steps against 100 000 nominal and 300 000 randomised, and no
-hyperparameter to tune per distribution.
+"does not work" was the demonstrations, not the algorithm. The entropy
+investigation has since taken it apart. At an **identical 200 000-step budget**,
+from-scratch SAC with each level's own entropy floor:
 
-That is still the practical finding, restated honestly. On this hardware an
-order of magnitude in sample efficiency is the difference between an experiment
-that fits in a lunch break and one that does not, and the from-scratch route
-only works once somebody has diagnosed the collapse and swept the floor for that
-distribution. But "demonstrations or it does not work" is not what the data
-says, and the version of this paragraph that claimed it was written before the
-comparison existed.
+| evaluated on | from scratch | + tuned floor | demonstration-seeded |
+| --- | ---: | ---: | ---: |
+| `none` | 0.402 | **0.986** | 1.000 |
+| `medium` | 0.272 | **0.640** | 0.516 |
+| `shifted` | 0.002 | 0.000 | 0.002 |
+
+(`none`-trained policies in every column, so the comparison is like for like.)
+From scratch with a floor is level with the seeded version on the nominal world
+and *ahead of it* on the harder evaluation.
+
+What demonstrations still buy is real but narrower than claimed: **speed**,
+reaching that level inside 30 000 steps rather than 200 000, and **no
+hyperparameter** — nobody using them has to know the collapse exists or what
+floor value this distribution wants. On a CPU budget an order of magnitude in
+sample efficiency is the difference between an experiment that fits in a lunch
+break and one that does not, so this is still the practical finding. But
+"demonstrations or it does not work" is not what the data says, and the version
+of this paragraph that claimed it was written before the comparison existed.
 
 ### The dip at 100 000 steps is the schedule, not noise
 

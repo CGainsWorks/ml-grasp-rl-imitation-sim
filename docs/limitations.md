@@ -46,7 +46,7 @@ results say so rather than quietly extending the budget for the conditions that
 needed it.
 
 **The from-scratch runs have an entropy-collapse failure mode, and it is now
-fixed — but the headline tables predate the fix.** The seeds that stall settle
+fixed.** The seeds that stall settle
 at an entropy coefficient around 0.025 while the seeds that solve the task sit
 near 0.17. A floor under that coefficient rescues all five seeds at half the
 budget (0.993 mean, 95% t [0.975, 1.000], against 0.400 and [0.000, 1.000]
@@ -68,12 +68,16 @@ Getting there took three wrong turns, all recorded in
 steps, then decisive against an unmatched baseline at 300 000 against 200 000,
 then harmful at `low` when only one floor value had been tried there.
 
-The grid in the README was run before this and is deliberately left alone: it is
-a fair record of what a standard SAC configuration does here, and rerunning
-three hours of compute to replace an honest result with a flattering one would
-not change either conclusion it supports. Read the from-scratch rows as a
-demonstration of seed variance and of what demonstrations buy, not as the best
-this algorithm can do on this task.
+The original grid is kept and the floored grid sits beside it, at the same
+200 000-step budget: `none` goes from 0.402 to 0.986 on a fixed evaluation,
+`medium` from 0.220 to 0.582, `high` from 0.122 to 0.390. Read the un-floored
+rows as what a standard SAC configuration does here, not as the best this
+algorithm can do on this task.
+
+Fixing the collapse does **not** fix transfer. The floored policies score 0.000
+to 0.006 on `shifted`, the same as the un-floored ones, so the poor transfer in
+this repository is not an artefact of an undertrained baseline — which is the
+first thing one would want to check before believing it.
 
 **One task.** Lift-and-hold, one hold point, one box shape.
 

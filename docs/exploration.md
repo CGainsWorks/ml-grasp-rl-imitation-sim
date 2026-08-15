@@ -104,13 +104,12 @@ Results in `experiments/results/exploration.json`; per-run curves in
 ## What this does and does not change
 
 The headline tables elsewhere in this repository were produced **before** this
-fix and are left as they are. They are a fair record of what SAC does on this
-task with a standard configuration, and the from-scratch rows should be read
-that way: as a demonstration of seed variance and of what demonstrations buy,
-not as the best this algorithm can do here. Rerunning the full 50-run grid with
-the floor would be about three hours of compute and would replace an honest
-result with a better-looking one, without changing either conclusion the grid
-supports.
+fix. They are kept, because they are a fair record of what SAC does on this task
+with a standard configuration — and the grid has now been rerun beside them with
+each level's own floor, at the same 200 000-step budget, so the pair can be read
+together (`experiments/tuned_floor_grid.py`, the `SAC + entropy floor` rows in
+the README). Rerunning at a *different* budget would have been worse than not
+rerunning at all; that mistake is documented twice below.
 
 What it does change is the standing of the finding itself. "Three of five seeds
 stall and we do not know why" is now "three of five seeds stall because the

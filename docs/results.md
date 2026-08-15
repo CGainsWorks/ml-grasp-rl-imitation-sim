@@ -362,9 +362,52 @@ per-seed best is 0.34 against a final of 0.131.
 
 That is the same shape as the MuJoCo cliff in section 4, but it cannot have the
 same cause: the behaviour-cloning coefficient is *held* in these runs, not
-decayed. A policy that peaks early under randomisation and then degrades while
-its anchor is still in place is a critic problem, not a schedule problem, and
-this repository has not diagnosed it.
+decayed.
+
+#### The mechanism is the critic, the critic is fixable, and fixing it does not help
+
+Two candidates fit the symptom, both with literature behind them. The runs end
+with the entropy coefficient at **0.0011** — twenty times below the value that
+marks the collapse basin — and with critic loss twenty times *higher* than it
+started, which is the signature of
+[Q-value divergence in offline-to-online fine-tuning](https://arxiv.org/pdf/2310.04411);
+a demonstration-seeded run is exactly that setting. The alternative is
+[plasticity loss](https://arxiv.org/abs/2411.04832), where a network's ability
+to keep learning degrades with training regardless of data quality.
+
+One flag separates them. Adding the floor that solves Isaac's nominal world
+(0.30) to the same demonstration-seeded runs, three seeds, everything else
+identical:
+
+| | critic loss across training | final success |
+| --- | --- | ---: |
+| no floor, s0 | 29 → 53 → **639** → 208 | 0.031 |
+| no floor, s1 | 24 → 74 → 236 → 324 | 0.094 |
+| no floor, s2 | 24 → 80 → 181 → 165 | 0.281 |
+| floor 0.30, s0 | 21 → 21 → **17** → 17 | 0.000 |
+| floor 0.30, s1 | 21 → 53 → 41 → 18 | 0.031 |
+| floor 0.30, s2 | 27 → 44 → 33 → 31 | 0.000 |
+
+**The floor prevents the critic blow-up on every seed** — peaks of 639, 324 and
+236 become 21, 53 and 44. So the two candidates are not competing explanations
+at all: the entropy coefficient collapsing is what drives the critic loss up,
+and clamping it fixes the value function.
+
+**And success gets worse, not better**: 0.010 [0.000, 0.055] against 0.131 for
+the unfloored control, Welch t = −2.33. The floored runs still peak at their
+first evaluation and decline, exactly as before.
+
+So both hypotheses are dead as *causes* of the poor randomised performance.
+They are real, they are linked, they are fixable, and fixing them costs
+performance rather than buying it. Whatever makes randomisation expensive in
+Isaac is not in the optimiser — it is upstream, in the reward or the
+randomisation ranges as this port applies them, and that is where the next
+investigation should start rather than in another SAC hyperparameter.
+
+This is worth stating plainly because the tempting write-up was available and
+wrong: "critic loss grows twentyfold, we clamped the entropy coefficient, the
+critic is stable now" is true, publishable-sounding, and describes an
+intervention that makes the task harder.
 
 Two things follow. Randomisation costs far more in Isaac than in MuJoCo and the
 budget does not explain it. And the 0.275 figure is a peak caught by a short

@@ -40,6 +40,12 @@ METHODS = [
     ("sac_low", "sac_low_s*", "SAC, low randomisation"),
     ("sac_medium", "sac_medium_s*", "SAC, medium randomisation"),
     ("sac_high", "sac_high_s*", "SAC, wide randomisation"),
+    # Same algorithm as the sac_* rows, with each level's own entropy floor
+    # (docs/exploration.md). Same 200 000-step budget, so the pair is readable.
+    ("sacfloor_none", "sacfloor_none_s*", "SAC + entropy floor, no randomisation"),
+    ("sacfloor_low", "sacfloor_low_s*", "SAC + entropy floor, low randomisation"),
+    ("sacfloor_medium", "sacfloor_medium_s*", "SAC + entropy floor, medium randomisation"),
+    ("sacfloor_high", "sacfloor_high_s*", "SAC + entropy floor, wide randomisation"),
     ("bcrl_none", "bcrl_none_s*", "BC + SAC, no randomisation"),
     ("bcrl_low", "bcrl_low_s*", "BC + SAC, low randomisation"),
     ("bcrl_medium", "bcrl_medium_s*", "BC + SAC, medium randomisation"),

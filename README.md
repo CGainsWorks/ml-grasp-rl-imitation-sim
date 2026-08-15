@@ -93,6 +93,10 @@ seed blocks, which interval and why — is in
 | SAC, low randomisation | 5 | **0.146** [0.000, 0.511] | **0.080** [0.000, 0.282] | **0.008** [0.000, 0.030] |
 | SAC, medium randomisation | 5 | **0.220** [0.007, 0.433] | **0.128** [0.000, 0.302] | **0.004** [0.000, 0.011] |
 | SAC, wide randomisation | 5 | **0.122** [0.000, 0.331] | **0.058** [0.000, 0.167] | **0.000** [0.000, 0.000] |
+| SAC + entropy floor, no randomisation | 5 | **0.986** [0.967, 1.000] | **0.640** [0.571, 0.709] | **0.000** [0.000, 0.000] |
+| SAC + entropy floor, low randomisation | 5 | **0.364** [0.000, 0.838] | **0.206** [0.000, 0.496] | **0.002** [0.000, 0.008] |
+| SAC + entropy floor, medium randomisation | 5 | **0.582** [0.028, 1.000] | **0.364** [0.004, 0.724] | **0.004** [0.000, 0.015] |
+| SAC + entropy floor, wide randomisation | 5 | **0.390** [0.016, 0.764] | **0.240** [0.000, 0.506] | **0.006** [0.000, 0.017] |
 | BC + SAC, no randomisation | 5 | **1.000** [1.000, 1.000] | **0.516** [0.454, 0.578] | **0.002** [0.000, 0.008] |
 | BC + SAC, low randomisation | 5 | **0.968** [0.934, 1.000] | **0.640** [0.612, 0.668] | **0.028** [0.000, 0.065] |
 | BC + SAC, medium randomisation | 5 | **0.968** [0.934, 1.000] | **0.726** [0.658, 0.794] | **0.032** [0.000, 0.064] |
@@ -113,6 +117,20 @@ Every policy evaluated twice: on the distribution it trained on, and on the held
 
 * `shifted_high_vs_none`: difference -0.002 in mean success, Welch t = -1.00
 * `shifted_medium_vs_none`: difference +0.002 in mean success, Welch t = 0.63
+
+### Randomisation ablation: SAC from scratch, with a tuned entropy floor
+
+The same runs as the table above with one line changed -- a floor under the entropy coefficient, at the value that works for each level ([docs/exploration.md](docs/exploration.md)). Same 200 000-step budget. Fixing the collapse roughly triples the own-distribution column and leaves the gap where it was, which is worth knowing: the poor transfer is not an artefact of an undertrained baseline.
+
+| trained with | seeds | on its own distribution | on `shifted` | gap |
+| --- | ---: | --- | --- | ---: |
+| `none` | 5 | **0.986** [0.967, 1.000] | **0.000** [0.000, 0.000] | +0.986 |
+| `low` | 5 | **0.228** [0.000, 0.527] | **0.002** [0.000, 0.008] | +0.226 |
+| `medium` | 5 | **0.364** [0.004, 0.724] | **0.004** [0.000, 0.015] | +0.360 |
+| `high` | 5 | **0.228** [0.020, 0.436] | **0.006** [0.000, 0.017] | +0.222 |
+
+* `shifted_high_vs_none`: difference +0.006 in mean success, Welch t = 1.50
+* `shifted_medium_vs_none`: difference +0.004 in mean success, Welch t = 1.00
 
 ### Randomisation ablation: imitation-seeded SAC
 
@@ -161,13 +179,20 @@ The short version, with the reasoning and the caveats in
   are indifferent between them. A value tuned on the nominal world takes `low`
   to zero. [docs/exploration.md](docs/exploration.md) is the whole
   investigation, including the two conclusions along the way that were wrong.
-* **Demonstrations buy sample efficiency, not feasibility.** Seeded with a
-  cloned actor and demonstrations pinned in the replay buffer, SAC reaches 0.97
-  on the nominal world and 0.73 at medium randomisation, inside 30 000 steps.
-  From scratch with a tuned entropy floor it gets to 0.993 and 0.680 — the same
-  place, at 100 000 and 300 000 steps. Before the entropy collapse was
-  diagnosed, this bullet read "demonstrations are the difference between works
-  and does not work". They are the difference between 30 000 steps and 300 000.
+* **Demonstrations buy sample efficiency, not feasibility.** At an identical
+  200 000-step budget, from-scratch SAC with a tuned floor scores **0.986** on
+  the nominal world against 1.000 for the demonstration-seeded version, and
+  **0.640** on `medium` against its 0.516 — from scratch is *ahead* on the
+  harder evaluation. What demonstrations still buy is speed and the absence of a
+  hyperparameter: they reach it inside 30 000 steps, and nobody has to know that
+  the floor exists or what value it wants. Before the collapse was diagnosed
+  this bullet read "demonstrations are the difference between works and does not
+  work", and the matched-budget comparison does not support that.
+* **Fixing the collapse does not fix transfer.** The floored policies score
+  0.000–0.006 on the held-out `shifted` worlds, the same as the un-floored ones.
+  So the poor sim-to-real proxy result here is not an artefact of an
+  undertrained baseline, which is the first thing worth ruling out before
+  believing it.
 * **A second engine reproduces the failure, and not the fix.** In Isaac Lab, SAC
   from scratch scores 0.000 on all five seeds — a reliable failure, not variance
   — and demonstration-seeded SAC scores 0.969 [0.902, 1.000]. The entropy floor

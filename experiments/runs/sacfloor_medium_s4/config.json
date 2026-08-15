@@ -1,0 +1,119 @@
+{
+  "algorithm": "sac",
+  "sac": {
+    "gamma": 0.98,
+    "tau": 0.005,
+    "lr_actor": 0.0003,
+    "lr_critic": 0.0003,
+    "lr_alpha": 0.0003,
+    "batch_size": 256,
+    "buffer_size": 400000,
+    "start_steps": 5000,
+    "update_every": 50,
+    "updates_per_step": 1.0,
+    "target_entropy_scale": 1.0,
+    "init_alpha": 0.1,
+    "alpha_floor": 0.15,
+    "critic_warmup_updates": 0,
+    "hidden": [
+      128,
+      128
+    ],
+    "bc_coef": 0.0,
+    "bc_q_scale": 2.5,
+    "bc_q_filter": false,
+    "bc_decay_steps": 0,
+    "demo_sample_fraction": 0.0
+  },
+  "steps": 200000,
+  "seed": 4,
+  "randomisation": "medium",
+  "randomisation_ranges": {
+    "name": "medium",
+    "scale": 1.0,
+    "params": {
+      "object_half_size": {
+        "low": 0.85,
+        "high": 1.1,
+        "mode": "scale"
+      },
+      "object_mass": {
+        "low": 0.5,
+        "high": 2.0,
+        "mode": "scale"
+      },
+      "object_friction": {
+        "low": 0.9,
+        "high": 1.6,
+        "mode": "scale"
+      },
+      "table_friction": {
+        "low": 0.6,
+        "high": 1.5,
+        "mode": "scale"
+      },
+      "gripper_gain": {
+        "low": 0.7,
+        "high": 1.4,
+        "mode": "scale"
+      },
+      "hand_compliance": {
+        "low": 0.7,
+        "high": 1.8,
+        "mode": "scale"
+      },
+      "action_latency": {
+        "low": 0.0,
+        "high": 2.0,
+        "mode": "absolute"
+      },
+      "gravity": {
+        "low": 0.95,
+        "high": 1.05,
+        "mode": "scale"
+      },
+      "obs_noise_pos": {
+        "low": 0.0,
+        "high": 0.004,
+        "mode": "absolute"
+      },
+      "obs_noise_vel": {
+        "low": 0.0,
+        "high": 0.03,
+        "mode": "absolute"
+      },
+      "action_noise": {
+        "low": 0.0,
+        "high": 0.05,
+        "mode": "absolute"
+      }
+    }
+  },
+  "exploration": "white",
+  "alpha_floor": 0.15,
+  "reward_config": null,
+  "reward_weights": {
+    "w_reach": 1.0,
+    "w_align": 0.3,
+    "w_grasp": 0.5,
+    "w_lift": 4.0,
+    "w_place": 6.0,
+    "w_hold": 3.0,
+    "w_success": 5.0,
+    "w_drop": 5.0,
+    "w_action": 0.02,
+    "w_time": 0.0,
+    "lift_target": 0.12,
+    "goal_tolerance": 0.05,
+    "reach_scale": 0.1,
+    "hold_scale": 0.05
+  },
+  "max_steps": 100,
+  "eval_episodes": 30,
+  "eval_every": 25000,
+  "demos": null,
+  "demo_meta": null,
+  "init_actor": null,
+  "obs_dim": 32,
+  "act_dim": 4
+}

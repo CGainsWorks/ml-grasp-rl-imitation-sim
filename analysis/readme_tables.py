@@ -134,6 +134,19 @@ def build() -> str:
             "the simulator rather than the task.",
         )))
 
+    ablation_floor = _load("ablation_sacfloor.json")
+    if ablation_floor:
+        blocks.append("\n".join(ablation_table(
+            ablation_floor,
+            "Randomisation ablation: SAC from scratch, with a tuned entropy floor",
+            "The same runs as the table above with one line changed -- a floor under "
+            "the entropy coefficient, at the value that works for each level "
+            "([docs/exploration.md](docs/exploration.md)). Same 200 000-step budget. "
+            "Fixing the collapse roughly triples the own-distribution column and "
+            "leaves the gap where it was, which is worth knowing: the poor transfer "
+            "is not an artefact of an undertrained baseline.",
+        )))
+
     ablation_bcrl = _load("ablation_bcrl.json")
     if ablation_bcrl:
         blocks.append("\n".join(ablation_table(

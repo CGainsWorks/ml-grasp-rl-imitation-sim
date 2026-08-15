@@ -1,0 +1,47 @@
+{
+  "question": "is 0.15 the wrong entropy floor for Isaac?",
+  "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+  "steps": 15000,
+  "num_envs": 32,
+  "randomisation": "none",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "rows": [
+    {
+      "alpha_floor": 0.0,
+      "per_seed": [
+        0.09375,
+        0.875,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point": 0.19375,
+      "low": 0.0,
+      "high": 0.6692159793297519,
+      "n": 5,
+      "method": "t"
+    },
+    {
+      "alpha_floor": 0.15,
+      "per_seed": [
+        0.8125,
+        0.0,
+        0.5,
+        1.0,
+        0.0
+      ],
+      "point": 0.4625,
+      "low": 0.0,
+      "high": 1.0,
+      "n": 5,
+      "method": "t"
+    }
+  ],
+  "note": "floor 0.00 is experiments/runs/isaacfloor_scratch_s* and floor 0.15 is isaacfloor_floor_s*, both five seeds; the new values are three seeds each. Compare down the column, and against the MuJoCo matrix in experiments/results/floor_by_level.json."
+}

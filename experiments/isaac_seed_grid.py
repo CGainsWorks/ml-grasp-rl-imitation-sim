@@ -72,7 +72,15 @@ def job(arm: str, seed: int, steps: int, num_envs: int, level: str,
     ]
     if arm == "floor":
         cmd += ["--alpha-floor", "0.15"]
-    if arm == "bcrl":
+    if arm == "bcrlfloor":
+        # Demonstration-seeded *and* floored, at the value the Isaac sweep found.
+        # This is the discriminating arm for the randomised degradation: if the
+        # decline is the entropy coefficient collapsing (it reaches 0.0011 by the
+        # end of a bcrl run, twenty times below the basin value), a floor stops
+        # it. If the decline is bootstrapping error in the critic, a floor does
+        # nothing and the critic loss still grows an order of magnitude.
+        cmd += ["--alpha-floor", "0.30"]
+    if arm in ("bcrl", "bcrlfloor"):
         # Hold the anchor rather than decaying it: the decaying schedule
         # collapses at the decay point, which is measured in the Isaac README.
         cmd += ["--demos", DEMOS, "--bc-decay-steps", "1000000"]

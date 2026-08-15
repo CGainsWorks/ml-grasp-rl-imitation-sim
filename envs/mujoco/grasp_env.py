@@ -441,8 +441,29 @@ class GraspEnv(_BASE):
         if self.world.obs_noise_vel > 0.0:
             obs[3:6] += self.np_random.normal(0, self.world.obs_noise_vel, 3)
             obs[20:23] += self.np_random.normal(0, self.world.obs_noise_vel, 3)
+        if self.world.obs_noise_rot > 0.0:
+            # Perturb the *frame*, not the six numbers independently. A pose
+            # estimator returns one orientation with one error; noising the two
+            # reported columns separately would hand the policy a pair of axes
+            # that are no longer orthogonal, which no real estimator produces.
+            noisy = self._rotation_error() @ rot
+            obs[14:17] = noisy[:, 0]
+            obs[17:20] = noisy[:, 1]
 
         return obs.astype(np.float32)
+
+    def _rotation_error(self) -> np.ndarray:
+        """A small random rotation, angle ~ N(0, obs_noise_rot) about a random axis."""
+        axis = self.np_random.normal(size=3)
+        axis /= max(float(np.linalg.norm(axis)), 1e-9)
+        angle = float(self.np_random.normal(0.0, self.world.obs_noise_rot))
+        skew = np.array([
+            [0.0, -axis[2], axis[1]],
+            [axis[2], 0.0, -axis[0]],
+            [-axis[1], axis[0], 0.0],
+        ])
+        return (np.eye(3) + np.sin(angle) * skew
+                + (1.0 - np.cos(angle)) * (skew @ skew))
 
     def _info(self, success: bool, dropped: bool, grasped: float) -> Dict:
         return {

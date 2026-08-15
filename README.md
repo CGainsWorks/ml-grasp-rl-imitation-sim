@@ -211,6 +211,14 @@ The short version, with the reasoning and the caveats in
 * **Behaviour cloning degrades faster than the expert it copies.** 1.00 in
   distribution, 0.24 on the shifted worlds against the expert's 0.47: the
   expert filters its pose estimate and the memoryless clone does not.
+* **And it depends on an input the expert never reads.** The randomisation
+  ranges were guessed; checked against published measurements they turn out
+  optimistic on latency and sensing, and to omit object-orientation error
+  entirely ([docs/randomisation-sources.md](docs/randomisation-sources.md)).
+  Adding the measured 8°–18° costs the scripted expert **+0.030** — it never
+  reads that input — and costs its clone **−0.444**. Cloning cannot distinguish
+  an input the teacher used from one that merely correlated with what the
+  teacher did.
 * **A second simulator agrees about the local optimum.** Running the same SAC in
   Isaac Lab, from scratch, for 480 000 transitions produced a policy that grasps
   the box on essentially every episode and lifts it on none — the same local

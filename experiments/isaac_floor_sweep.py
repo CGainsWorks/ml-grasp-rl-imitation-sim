@@ -45,20 +45,24 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNS = os.path.join("experiments", "runs")
 LOGS = os.path.join("experiments", "logs")
 
+# Only the nominal world has runs to reuse; a randomised sweep trains everything.
 EXISTING = {
-    0.0: "isaacfloor_scratch_s{}",
-    0.15: "isaacfloor_floor_s{}",
+    ("none", 0.0): "isaacfloor_scratch_s{}",
+    ("none", 0.15): "isaacfloor_floor_s{}",
 }
 
 
-def run_dir(floor: float, seed: int) -> str:
-    if floor in EXISTING:
-        return os.path.join(RUNS, EXISTING[floor].format(seed))
-    return os.path.join(RUNS, "isaacsweep_{:03d}_s{}".format(int(round(floor * 100)), seed))
+def run_dir(floor: float, seed: int, level: str = "none") -> str:
+    if (level, floor) in EXISTING:
+        return os.path.join(RUNS, EXISTING[(level, floor)].format(seed))
+    suffix = "" if level == "none" else "_" + level
+    return os.path.join(RUNS, "isaacsweep{}_{:03d}_s{}".format(
+        suffix, int(round(floor * 100)), seed))
 
 
-def job(floor: float, seed: int, steps: int, num_envs: int) -> Dict:
-    out = run_dir(floor, seed)
+def job(floor: float, seed: int, steps: int, num_envs: int,
+        level: str = "none") -> Dict:
+    out = run_dir(floor, seed, level)
     return {
         "name": os.path.basename(out),
         "output": out,
@@ -66,7 +70,7 @@ def job(floor: float, seed: int, steps: int, num_envs: int) -> Dict:
             sys.executable, "scripts/isaac_train.py",
             "--num-envs", str(num_envs), "--steps", str(steps),
             "--eval-every", str(max(1, steps // 10)), "--eval-episodes", "1",
-            "--randomisation", "none", "--seed", str(seed),
+            "--randomisation", level, "--seed", str(seed),
             "--alpha-floor", str(floor), "--output", out,
         ],
     }
@@ -80,13 +84,15 @@ def read(run: str) -> Optional[float]:
         return json.load(fh)["final_success_rate"]
 
 
-def summarise(floors: List[float], seeds: List[int], output: str) -> None:
+def summarise(floors: List[float], seeds: List[int], output: str,
+              level: str = "none") -> None:
     sys.path.insert(0, REPO)
     from src.utils.stats import t_interval
 
     rows = []
     for floor in floors:
-        values = [v for v in (read(run_dir(floor, s)) for s in seeds) if v is not None]
+        values = [v for v in (read(run_dir(floor, s, level)) for s in seeds)
+                  if v is not None]
         if not values:
             continue
         interval = t_interval(values)
@@ -104,7 +110,7 @@ def summarise(floors: List[float], seeds: List[int], output: str) -> None:
         "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
         "steps": 15_000,
         "num_envs": 32,
-        "randomisation": "none",
+        "randomisation": level,
         "seeds": seeds,
         "rows": rows,
         "note": "floor 0.00 is experiments/runs/isaacfloor_scratch_s* and floor "
@@ -124,6 +130,7 @@ def main() -> None:
     parser.add_argument("--train", type=float, nargs="+", default=[0.05, 0.30])
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     parser.add_argument("--train-seeds", type=int, nargs="+", default=[0, 1, 2])
+    parser.add_argument("--randomisation", default="none")
     parser.add_argument("--steps", type=int, default=15_000)
     parser.add_argument("--num-envs", type=int, default=32)
     parser.add_argument("--summarise-only", action="store_true")
@@ -136,7 +143,7 @@ def main() -> None:
 
     if not args.summarise_only:
         os.makedirs(LOGS, exist_ok=True)
-        lock = os.path.join(LOGS, ".isaac_sweep.lock")
+        lock = os.path.join(LOGS, ".isaac_sweep_{}.lock".format(args.randomisation))
         try:
             fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
@@ -147,7 +154,7 @@ def main() -> None:
         os.close(fd)
         # Interleaved by seed, so an interrupted sweep leaves both values at the
         # same number of seeds rather than one complete and one empty.
-        jobs = [job(floor, seed, args.steps, args.num_envs)
+        jobs = [job(floor, seed, args.steps, args.num_envs, args.randomisation)
                 for seed in args.train_seeds for floor in args.train]
         t0 = time.time()
         for spec in jobs:
@@ -160,7 +167,7 @@ def main() -> None:
             print("[{:>5.0f}s] done  {}".format(time.time() - t0, spec["name"]), flush=True)
         os.remove(lock)
 
-    summarise(args.floors, args.seeds, args.output)
+    summarise(args.floors, args.seeds, args.output, args.randomisation)
 
 
 if __name__ == "__main__":

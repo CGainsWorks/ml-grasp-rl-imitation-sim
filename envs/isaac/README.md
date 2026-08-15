@@ -257,9 +257,12 @@ level actually on the config.
 1. **The floor is only swept on the nominal world here.** 0.30 solves it
    there, three seeds of three; whether it is still the right value under
    randomisation in this simulator is untested, and MuJoCo says not to assume.
-2. **Nobody knows why the randomised runs degrade.** They peak at the first or
-   second evaluation and fall away with the behaviour-cloning anchor still
-   held, so the MuJoCo schedule explanation does not apply. Undiagnosed.
+2. **Why the randomised runs degrade is half-answered.** The entropy
+   coefficient collapses to 0.0011 and critic loss grows twentyfold; clamping
+   the coefficient prevents the critic blow-up on all three seeds and makes
+   success *worse* (0.010 against 0.131). So the mechanism is identified and
+   fixable, and it is not the cause. What is left is upstream of the optimiser:
+   the reward, or the randomisation ranges as this port applies them.
 3. **The unmapped randomisation parameters** listed above.
 4. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.

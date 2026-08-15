@@ -4,11 +4,39 @@ Written to be read before the results, not after them.
 
 ## The environment is a simplification, in specific ways
 
-**There is no arm.** The MuJoCo hand is a free body dragged by a mocap weld.
-No joint limits, no self-collision, no arm inertia, no singularities, no
-reachability constraint. Every one of those is a real failure mode in a real
-cell. A policy trained here needs a reachability check and a joint-limit clamp
-between it and any servo loop.
+**There is no arm in the MuJoCo half.** The hand is a free body dragged by a
+mocap weld: no joint limits, no self-collision, no arm inertia, no
+singularities, no reachability constraint. Every one of those is a real failure
+mode in a real cell. A policy trained here needs a reachability check and a
+joint-limit clamp between it and any servo loop. (The Isaac port *does* have a
+real Franka, which is how its near-singular start pose was found — so this
+limitation is specific to MuJoCo, not to the repository.)
+
+**A six-jointed arm variant exists and does not work yet.**
+`envs/mujoco/assets/grasp_scene_arm.xml` carries a generic 6R arm with joint
+limits and self-collision, and `make_env(..., arm=True)` drives it through
+damped-least-squares IK so the policy keeps its Cartesian action space — the
+wrist experiment above is why the joints are not exposed to the policy directly.
+
+What works: the model loads, the IK converges, and 25 of 27 workspace corners
+are reachable to within 15 mm.
+
+What does not: the IK is collision-blind, as IK generally is, and it reaches the
+table by folding the arm *through* it. Twenty resets produce about a hundred
+penetrating contacts, up to 120 mm deep, and the first physics step of an
+episode resolves them explosively — the scripted expert scores 0.000 with a mean
+peak object height of 13.9 m, which is the box being thrown across the room.
+
+The fix is a nullspace posture bias: solve for the Cartesian target in the range
+space and pull the redundant degrees of freedom towards a reference posture that
+keeps the elbow above the table. That is a known technique and perhaps two
+hours' work. Restricting the elbow joint's range was tried first and made the
+penetration worse, not better.
+
+Until then the flag is off by default, no training script uses it, and no number
+in this repository comes from it. It is recorded here rather than deleted
+because a half-built arm that is honestly labelled is more useful than the
+absence of one.
 
 **The hand cannot rotate — by default.** The pads close along world *x*, so a
 square box at 45° of yaw presents √2 times its side and above roughly 27 mm of

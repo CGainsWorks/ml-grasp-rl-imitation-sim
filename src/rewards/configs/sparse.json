@@ -1,0 +1,17 @@
+{
+  "w_reach": 0.0,
+  "w_align": 0.0,
+  "w_grasp": 0.0,
+  "w_lift": 0.0,
+  "w_place": 0.0,
+  "w_hold": 0.0,
+  "w_success": 1.0,
+  "w_drop": 0.0,
+  "w_action": 0.0,
+  "w_time": 0.0,
+  "w_yaw": 0.0,
+  "lift_target": 0.12,
+  "goal_tolerance": 0.05,
+  "reach_scale": 0.1,
+  "hold_scale": 0.05
+}

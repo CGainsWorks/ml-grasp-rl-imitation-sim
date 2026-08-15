@@ -1,0 +1,25 @@
+{
+  "question": "which difference in applying the policy breaks cross-simulator transfer?",
+  "policy": "experiments/policies/bcrl_high_s2.ts.pt",
+  "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+  "randomisation": "probe_sticky",
+  "num_envs": 16,
+  "episodes_per_arm": 4,
+  "arms": [
+    {
+      "arm": "baseline",
+      "successes": 1,
+      "episodes": 64,
+      "success_rate": 0.015625,
+      "wilson": {
+        "point": 0.015625,
+        "low": 0.002763541923337505,
+        "high": 0.08334101600094265,
+        "n": 64,
+        "method": "wilson"
+      },
+      "mean_peak_lift": 0.17443761602044106
+    }
+  ],
+  "note": "One modification per arm, applied to the action only. The policy is unchanged throughout; this asks whether the transfer failure is a control-gain mismatch that a constant could fix."
+}

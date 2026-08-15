@@ -1,0 +1,17 @@
+{
+  "name": "probe_slippery",
+  "scale": 1.0,
+  "params": {
+    "object_friction": {
+      "low": 0.5,
+      "high": 0.5,
+      "mode": "scale"
+    }
+  },
+  "_comment": [
+    "A probe distribution, not a training one: every parameter pinned so the",
+    "only difference from nominal is the one named. Used by",
+    "scripts/isaac_transfer_probe.py to ask whether cross-simulator transfer",
+    "fails on contact rather than control."
+  ]
+}

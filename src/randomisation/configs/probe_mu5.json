@@ -1,0 +1,16 @@
+{
+  "name": "probe_mu5",
+  "scale": 1.0,
+  "params": {
+    "object_friction": {
+      "low": 5.0,
+      "high": 5.0,
+      "mode": "scale"
+    }
+  },
+  "_comment": [
+    "Probe distribution: object friction pinned at 5x nominal, everything",
+    "else at its nominal value. Used to find where cross-simulator transfer",
+    "saturates in friction."
+  ]
+}

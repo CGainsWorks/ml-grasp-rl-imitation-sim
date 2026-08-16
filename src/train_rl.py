@@ -38,6 +38,7 @@ from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.sac import SAC, SACConfig  # noqa: E402
 from src.randomisation.domain_rand import load_randomisation  # noqa: E402
 from src.rewards.grasp_reward import load_reward_config  # noqa: E402
+from src.rewards.place_reward import load_place_config  # noqa: E402
 from src.utils.exploration import ColoredNoiseProcess  # noqa: E402
 from src.utils.rollout import evaluate_policy, torch_policy  # noqa: E402
 
@@ -76,10 +77,10 @@ def train(args: argparse.Namespace) -> Dict:
     )
 
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   wrist=args.wrist, task=args.task,
+                   wrist=args.wrist, task=args.task, arm=args.arm,
                    reward_config=args.reward_config)
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
-                        wrist=args.wrist, task=args.task,
+                        wrist=args.wrist, task=args.task, arm=args.arm,
                         reward_config=args.reward_config)
 
     obs_dim, act_dim = env.obs_dim, env.act_dim
@@ -112,7 +113,11 @@ def train(args: argparse.Namespace) -> Dict:
         "exploration": args.exploration,
         "alpha_floor": args.alpha_floor,
         "reward_config": args.reward_config,
-        "reward_weights": load_reward_config(args.reward_config).to_dict(),
+        # The config record has to use the same loader the environment did,
+        # or a place run with a place config dies here on a key the lift
+        # schema has never heard of.
+        "reward_weights": (load_place_config if args.task == "place"
+                           else load_reward_config)(args.reward_config).to_dict(),
         "max_steps": args.max_steps,
         "eval_episodes": args.eval_episodes,
         "eval_every": args.eval_every,
@@ -123,6 +128,7 @@ def train(args: argparse.Namespace) -> Dict:
         "act_dim": act_dim,
         "wrist": args.wrist,
         "task": args.task,
+        "arm": args.arm,
     }
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
         json.dump(config_blob, fh, indent=2)
@@ -241,6 +247,12 @@ def build_parser() -> argparse.ArgumentParser:
                              "policies and results are not comparable with the "
                              "4-D ones (docs/limitations.md)")
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--arm", action="store_true",
+                        help="drive the hand through the six-jointed arm rather "
+                             "than a mocap weld. Same observation and action "
+                             "space; joint limits, self-collision and IK "
+                             "failures are real, so the numbers are not "
+                             "comparable with the weld runs")
     parser.add_argument("--task", default="lift", choices=("lift", "place"),
                         help="lift-and-hold (the default) or pick-and-place; "
                              "same observation and action space, different goal "

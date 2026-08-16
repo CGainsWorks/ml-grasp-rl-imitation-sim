@@ -199,6 +199,49 @@ def test_place_task_refuses_a_lift_reward_config():
         make_env("none", seed=0, task="place", reward_cfg=GraspRewardConfig())
 
 
+def test_the_carry_gate_prices_sliding_at_nothing_and_lifting_at_something():
+    """The three gate settings, and why only one of them is the default.
+
+    Sliding means clearance zero, which the ramp and the latch both price at
+    zero and the ungated version pays in full. Half-lifted means the ramp pays
+    half while the latch still pays nothing -- that is the difference between a
+    hill and a cliff, and it is the difference between 0.000 and a working
+    policy."""
+    from src.rewards.place_reward import PlaceRewardConfig, place_reward
+
+    goal = np.array([[0.10, 0.0, 0.423]])
+
+    def carry(gate, clearance, lifted):
+        _, terms = place_reward(
+            grip_pos=goal, object_pos=goal + np.array([[0.10, 0.0, clearance]]),
+            goal_pos=goal, object_start=np.array([[-0.10, 0.0, 0.423]]),
+            object_rest_z=np.array([0.423]), grasped=np.array([1.0]),
+            lifted=np.array([lifted]), dropped=np.array([0.0]),
+            object_speed=np.array([0.0]), action=np.zeros((1, 4)),
+            cfg=PlaceRewardConfig(carry_gate=gate))
+        return float(np.asarray(terms.carry)[0])
+
+    assert carry("none", 0.0, 0.0) > 0.5          # sliding pays, which is the bug
+    assert carry("latch", 0.0, 0.0) == 0.0
+    assert carry("ramp", 0.0, 0.0) == 0.0
+    half = PlaceRewardConfig().lift_threshold / 2.0
+    assert carry("latch", half, 0.0) == 0.0       # the cliff
+    assert carry("ramp", half, 0.0) == pytest.approx(carry("none", half, 0.0) / 2.0)
+
+
+def test_an_unknown_carry_gate_is_rejected():
+    from src.rewards.place_reward import PlaceRewardConfig, place_reward
+
+    with pytest.raises(ValueError):
+        place_reward(
+            grip_pos=np.zeros((1, 3)), object_pos=np.zeros((1, 3)),
+            goal_pos=np.zeros((1, 3)), object_start=np.zeros((1, 3)),
+            object_rest_z=np.array([0.0]), grasped=np.array([1.0]),
+            lifted=np.array([0.0]), dropped=np.array([0.0]),
+            object_speed=np.array([0.0]), action=np.zeros((1, 4)),
+            cfg=PlaceRewardConfig(carry_gate="teleport"))
+
+
 def test_unknown_task_is_rejected():
     with pytest.raises(ValueError):
         make_env("none", seed=0, task="stack")

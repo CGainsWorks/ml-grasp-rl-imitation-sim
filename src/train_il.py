@@ -118,9 +118,9 @@ def train(args: argparse.Namespace) -> Dict:
 
     actor = SquashedGaussianActor(OBS_DIM, ACT_DIM, (args.hidden, args.hidden))
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   task=args.task)
+                   task=args.task, arm=args.arm)
     eval_env = make_env(args.randomisation, seed=args.seed + 999,
-                        max_steps=args.max_steps, task=args.task)
+                        max_steps=args.max_steps, task=args.task, arm=args.arm)
     expert = ScriptedExpert(noise=0.0, rng=rng)
 
     t0 = time.time()
@@ -214,6 +214,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--randomisation", default="none")
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
+    parser.add_argument("--arm", action="store_true")
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)

@@ -94,6 +94,36 @@ Both failures share a shape: a term that is correct at the optimum and wrong on
 the path to it. Checking the reward at the optimum is not enough; the table
 above exists because the useful check is the whole path.
 
+## The same failure again, on a different task
+
+Everything above was learned on one task, which makes it a story about this
+reward rather than about designing rewards. `src/rewards/place_reward.py` is a
+second task -- pick the box up, carry it somewhere else on the table, put it
+down -- and it was written by someone who had just written all of the above.
+
+It failed in the same way on the first attempt.
+
+`carry` pays for progress across the table towards the target and was gated on
+`grasped`, by direct analogy with `place` in the lift reward. `grasped` means
+both pads in contact with the object, and both pads can be in contact with an
+object that is being **pushed**. Five from-scratch seeds found that: grasp rate
+0.63-0.83, mean peak lift 0.010 m against a 0.04 m latch, 0/20 episodes ever
+picking the box up, and 0.002 [0.000, 0.008] success. The largest dense term in
+the reward was payable without doing the task, so it was collected without doing
+the task.
+
+The fix is one line -- `carry` is multiplied by the lift latch, so transport
+pays nothing until the object has actually been picked up -- and it is the same
+fix as the yaw term's proximity gate in the lift reward, arrived at
+independently.
+
+What this costs to learn is worth stating plainly: three separate shaping terms,
+across two tasks, each correct at the optimum, each wrong on the path, each
+found only by training on it and reading what the policy actually did. The
+diagnosis in every case came from a behavioural quantity (peak lift height,
+grasp rate) rather than from the return curve, which in the sliding case was
+climbing perfectly happily.
+
 ## Termination
 
 * **Drop** — the box falls below 0.34 m (6 cm under the table top). Terminal,

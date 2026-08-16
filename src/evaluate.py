@@ -65,6 +65,7 @@ def evaluate_run(
     checkpoint: str,
     max_steps: int,
     task: str = "lift",
+    arm: bool = False,
 ) -> Dict:
     path = os.path.join(run_dir, checkpoint)
     if not os.path.exists(path):
@@ -79,7 +80,7 @@ def evaluate_run(
 
     out: Dict[str, Dict] = {}
     for level in eval_levels:
-        env = make_env(level, seed=1234, max_steps=max_steps, task=task)
+        env = make_env(level, seed=1234, max_steps=max_steps, task=task, arm=arm)
         result = evaluate_policy(
             env, torch_policy(actor, deterministic=True),
             n_episodes=episodes, seed=FINAL_SEED_BLOCK,
@@ -98,12 +99,12 @@ def evaluate_run(
 
 
 def evaluate_expert(eval_levels: List[str], episodes: int, max_steps: int,
-                    task: str = "lift") -> Dict:
+                    task: str = "lift", arm: bool = False) -> Dict:
     """The scripted expert, on the same episodes, as a reference line."""
     out = {}
     expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
     for level in eval_levels:
-        env = make_env(level, seed=1234, max_steps=max_steps, task=task)
+        env = make_env(level, seed=1234, max_steps=max_steps, task=task, arm=arm)
         expert = expert_cls()
 
         def policy(obs, _expert=expert):
@@ -138,6 +139,8 @@ def main() -> None:
                         help="which task the policies were trained on; the "
                              "observation is identical, so nothing else warns "
                              "you if you evaluate a lift policy on place")
+    parser.add_argument("--arm", action="store_true",
+                        help="evaluate through the six-jointed arm")
     parser.add_argument("--label", default=None, help="name for this group of seeds")
     parser.add_argument("--expert", action="store_true", help="also evaluate the scripted expert")
     parser.add_argument("--threads", type=int, default=1)
@@ -155,12 +158,12 @@ def main() -> None:
     t0 = time.time()
     per_run = [
         evaluate_run(d, args.eval_levels, args.episodes, args.checkpoint,
-                     args.max_steps, args.task)
+                     args.max_steps, args.task, args.arm)
         for d in run_dirs
     ]
     if args.expert:
         per_run.append(evaluate_expert(args.eval_levels, args.episodes,
-                                       args.max_steps, args.task))
+                                       args.max_steps, args.task, args.arm))
 
     policy_runs = [r for r in per_run if r["run"] != "scripted-expert"]
     aggregate: Dict[str, Dict] = {}

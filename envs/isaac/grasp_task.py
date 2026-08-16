@@ -47,6 +47,7 @@ the normal Isaac Lab pattern::
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 from typing import Sequence
@@ -85,6 +86,11 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from src.randomisation.domain_rand import CONFIG_DIR  # noqa: E402
+from src.rewards.place_reward import (  # noqa: E402
+    PlaceRewardConfig,
+    place_reward,
+    place_success_condition,
+)
 from src.rewards.grasp_reward import (  # noqa: E402
     GraspRewardConfig,
     grasp_reward,
@@ -97,6 +103,11 @@ OBS_DIM = 32
 ACT_DIM = 4
 POS_STEP = 0.02          # metres per unit action, matches MuJoCo
 OBJECT_HALF_SIZE = 0.022
+# Pick-and-place target placement, matching envs/mujoco/grasp_env.py.
+PLACE_TARGET_X = 0.15
+PLACE_TARGET_Y = 0.18
+PLACE_MIN_TRAVEL = 0.12
+PLACE_MAX_TRAVEL = 0.30
 TABLE_CENTRE_X = 0.48    # in front of the Franka base, inside its comfortable reach
 # Offset from the panda_hand frame to the point between the fingertips. Isaac
 # Lab's own Franka lift task uses the same number; without it the controller
@@ -308,6 +319,11 @@ class GraspTaskCfg(DirectRLEnvCfg if ISAAC_AVAILABLE else object):
     observation_space = OBS_DIM
     state_space = 0
     randomisation_level = "medium"
+    # "lift" or "place". The second task shares this file rather than forking it,
+    # for the same reason the reward is shared: two copies of a task definition
+    # drift, and "it is the same task in both simulators" then stops meaning
+    # anything. See src/rewards/place_reward.py.
+    task = "lift"
 
     def __post_init__(self):
         """Attach the randomisation, driven by the shared JSON ranges."""
@@ -432,7 +448,9 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
 
         super().__init__(cfg, render_mode, **kwargs)
 
-        self.reward_cfg = GraspRewardConfig()
+        self.task = getattr(cfg, "task", "lift")
+        self.place = self.task == "place"
+        self.reward_cfg = PlaceRewardConfig() if self.place else GraspRewardConfig()
         self.ranges = load_randomisation_ranges(cfg.randomisation_level)
         # Sensing noise, applied exactly as the MuJoCo environment applies it.
         obs_params = self.ranges.get("params", {})
@@ -504,6 +522,11 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
             (self.num_envs,), TABLE_HEIGHT + OBJECT_HALF_SIZE, device=self.device
         )
         self.last_action = torch.zeros((self.num_envs, ACT_DIM), device=self.device)
+        # Pick-and-place state. `lifted` is a per-episode latch, set once the
+        # object clears the table while grasped and never cleared, which is what
+        # stops a policy from sliding the box to the target and scoring.
+        self.lifted = torch.zeros(self.num_envs, device=self.device)
+        self.object_start = torch.zeros((self.num_envs, 3), device=self.device)
 
     # ------------------------------------------------------------------
     def _setup_scene(self) -> None:
@@ -638,12 +661,37 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         )
         return {"policy": obs}
 
+    def _object_speed(self) -> torch.Tensor:
+        return torch.linalg.norm(
+            self._object.data.root_lin_vel_w, dim=-1)
+
+    def _update_lift_latch(self, obj_pos: torch.Tensor,
+                           grasped: torch.Tensor) -> None:
+        """Read from the simulator's true height, never from the observation.
+
+        Sensing noise must not be able to hand a policy credit for a lift that
+        did not happen, which is the same rule the MuJoCo environment follows.
+        """
+        clear = obj_pos[:, 2] - self.object_rest_z
+        picked = (grasped > 0.5) & (clear >= self.reward_cfg.lift_threshold)
+        self.lifted = torch.where(picked, torch.ones_like(self.lifted),
+                                  self.lifted)
+
     def _get_rewards(self) -> torch.Tensor:
         obj_pos = self._object_pos()
         dropped = (obj_pos[:, 2] < TABLE_HEIGHT - 0.06).float()
+        grasped = self._grasped()
+        if self.place:
+            self._update_lift_latch(obj_pos, grasped)
+            reward, _ = place_reward(
+                self._grip_pos(), obj_pos, self.goal_pos, self.object_start,
+                self.object_rest_z, grasped, self.lifted, dropped,
+                self._object_speed(), self.last_action, self.reward_cfg,
+            )
+            return reward
         reward, _ = grasp_reward(
             self._grip_pos(), obj_pos, self.goal_pos, self.object_rest_z,
-            self._grasped(), dropped, self.last_action, self.reward_cfg,
+            grasped, dropped, self.last_action, self.reward_cfg,
         )
         return reward
 
@@ -653,6 +701,11 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         return dropped, time_out
 
     def success(self) -> torch.Tensor:
+        if self.place:
+            return place_success_condition(
+                self._object_pos(), self.goal_pos, self._grasped(), self.lifted,
+                self._object_speed(), self.reward_cfg,
+            )
         return success_condition(
             self._object_pos(), self.goal_pos, self._grasped(), self.reward_cfg
         )
@@ -679,14 +732,39 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         self._object.write_root_state_to_sim(root_state, env_ids)
 
         self.object_rest_z[env_ids] = offsets[:, 2]
-        self.goal_pos[env_ids] = torch.stack(
-            [
-                offsets[:, 0],
-                offsets[:, 1],
-                torch.full((n,), TABLE_HEIGHT + HOLD_HEIGHT, device=self.device),
-            ],
-            dim=-1,
-        )
+        self.object_start[env_ids] = offsets
+        self.lifted[env_ids] = 0.0
+        if self.place:
+            # Rejection sampling would need a per-environment loop on the GPU,
+            # so the target is drawn as a bearing plus a radius inside the
+            # allowed band and then clipped to the table. Clipping biases the
+            # distribution towards the edges, which the MuJoCo version avoids by
+            # rejecting -- the band is well inside the table here, so the clip
+            # almost never binds, and envs/isaac/README.md records the
+            # difference rather than implying the two are identical.
+            bearing = torch.empty(n, device=self.device).uniform_(-math.pi, math.pi)
+            radius = torch.empty(n, device=self.device).uniform_(
+                PLACE_MIN_TRAVEL, PLACE_MAX_TRAVEL)
+            self.goal_pos[env_ids] = torch.stack(
+                [
+                    (offsets[:, 0] + radius * torch.cos(bearing)).clamp(
+                        TABLE_CENTRE_X - PLACE_TARGET_X,
+                        TABLE_CENTRE_X + PLACE_TARGET_X),
+                    (offsets[:, 1] + radius * torch.sin(bearing)).clamp(
+                        -PLACE_TARGET_Y, PLACE_TARGET_Y),
+                    offsets[:, 2],
+                ],
+                dim=-1,
+            )
+        else:
+            self.goal_pos[env_ids] = torch.stack(
+                [
+                    offsets[:, 0],
+                    offsets[:, 1],
+                    torch.full((n,), TABLE_HEIGHT + HOLD_HEIGHT, device=self.device),
+                ],
+                dim=-1,
+            )
         self._ik.reset(env_ids)
         if self._max_latency > 0:
             self._action_queue[env_ids] = 0.0

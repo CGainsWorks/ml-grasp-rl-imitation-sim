@@ -106,3 +106,74 @@ def test_dropped_condition_uses_the_table_height():
     above = np.array([[0.0, 0.0, 0.45]])
     assert dropped_condition(below, 0.40)[0]
     assert not dropped_condition(above, 0.40)[0]
+
+
+# --------------------------------------------------------------------------
+# The place task shares this contract, because the Isaac port shares the file
+# --------------------------------------------------------------------------
+def _random_place_batch(n: int, rng: np.random.Generator):
+    grip = rng.uniform(-0.3, 0.3, size=(n, 3)) + np.array([0.0, 0.0, 0.55])
+    obj = rng.uniform(-0.3, 0.3, size=(n, 3)) + np.array([0.0, 0.0, 0.45])
+    goal = rng.uniform(-0.15, 0.15, size=(n, 3)) + np.array([0.0, 0.0, 0.423])
+    start = rng.uniform(-0.15, 0.15, size=(n, 3)) + np.array([0.0, 0.0, 0.423])
+    rest = np.full(n, 0.423)
+    grasped = rng.integers(0, 2, size=n).astype(float)
+    lifted = rng.integers(0, 2, size=n).astype(float)
+    dropped = rng.integers(0, 2, size=n).astype(float)
+    speed = rng.uniform(0.0, 0.3, size=n)
+    action = rng.uniform(-1.0, 1.0, size=(n, 4))
+    return grip, obj, goal, start, rest, grasped, lifted, dropped, speed, action
+
+
+@pytest.mark.parametrize("mode", ["hover", "goal", "both"])
+def test_place_reward_matches_between_numpy_and_torch(mode):
+    """Every `approach_mode` has to agree across backends, not just the default.
+
+    The Isaac port selects the mode from the same config object, so a mode that
+    only worked under numpy would make the ported task quietly different from
+    the one the MuJoCo numbers came from.
+    """
+    from src.rewards.place_reward import PlaceRewardConfig, PlaceTerms, place_reward
+
+    rng = np.random.default_rng(7)
+    cfg = PlaceRewardConfig(approach_mode=mode)
+    args = _random_place_batch(256, rng)
+
+    np_reward, np_terms = place_reward(*args, cfg=cfg)
+    torch_args = [torch.as_tensor(a, dtype=torch.float64) for a in args]
+    torch_reward, torch_terms = place_reward(*torch_args, cfg=cfg)
+
+    assert np.allclose(np_reward, torch_reward.numpy(), atol=1e-6)
+    for name in PlaceTerms.names():
+        a = np.asarray(getattr(np_terms, name), dtype=float)
+        b = np.asarray(getattr(torch_terms, name).numpy(), dtype=float)
+        assert np.allclose(np.broadcast_to(a, b.shape), b, atol=1e-6), name
+
+
+def test_place_success_condition_matches_between_backends():
+    from src.rewards.place_reward import PlaceRewardConfig, place_success_condition
+
+    rng = np.random.default_rng(8)
+    cfg = PlaceRewardConfig()
+    _, obj, goal, _, _, grasped, lifted, _, speed, _ = _random_place_batch(128, rng)
+    np_ok = place_success_condition(obj, goal, grasped, lifted, speed, cfg)
+    torch_ok = place_success_condition(
+        torch.as_tensor(obj), torch.as_tensor(goal), torch.as_tensor(grasped),
+        torch.as_tensor(lifted), torch.as_tensor(speed), cfg,
+    )
+    assert np.array_equal(np_ok, torch_ok.numpy())
+
+
+def test_place_carry_gates_match_between_backends():
+    """All three `carry_gate` settings, since two of them exist only so the
+    failed runs on disk stay reproducible and would otherwise never be tested."""
+    from src.rewards.place_reward import PlaceRewardConfig, place_reward
+
+    rng = np.random.default_rng(9)
+    args = _random_place_batch(64, rng)
+    torch_args = [torch.as_tensor(a, dtype=torch.float64) for a in args]
+    for gate in ("none", "latch", "ramp"):
+        cfg = PlaceRewardConfig(carry_gate=gate)
+        np_reward, _ = place_reward(*args, cfg=cfg)
+        torch_reward, _ = place_reward(*torch_args, cfg=cfg)
+        assert np.allclose(np_reward, torch_reward.numpy(), atol=1e-6), gate

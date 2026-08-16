@@ -27,6 +27,70 @@ running simulator rather than asserted: the reward computed on the GPU from
 torch tensors agrees with the numpy implementation the MuJoCo environment uses
 to eight decimal places, on the same states.
 
+
+## The second task is ported too
+
+`GraspTaskCfg.task = "place"` runs pick-and-place here, sharing this file and
+`src/rewards/place_reward.py` rather than forking either. Two copies of a task
+definition drift within a week, after which "it is the same task in both
+simulators" stops meaning anything — the same argument that put the lift reward
+in a shared module in the first place.
+
+All eight bring-up checks pass at `none`, including the one the port exists for:
+
+```
+[PASS] environment constructs and resets                observation (4, 32)
+[PASS] box stays on the table under zero actions        object z [0.422 ...]
+[PASS] observation layout matches the MuJoCo table      goal on the table at the resting height
+[PASS] reward matches the shared numpy implementation   max difference 6.94e-08
+[PASS] scripted expert lifts the box                    8/8 lifted
+[PASS] scripted expert places the box on the target     2/8 placed
+[PASS] the lift latch fires, nothing is being slid      4/4 episodes picked the object up
+[PASS] randomisation is inert at level 'none'
+```
+
+The **place** reward computed on the GPU agrees with the shared numpy
+implementation to 6.9e-08 on the same states, which is the same standard the
+lift reward is held to.
+
+At `medium` randomisation, **seven of the eight pass and one fails**, and the
+one that fails is the expert:
+
+```
+[PASS] reward matches the shared numpy implementation   max difference 2.78e-08
+[PASS] observation layout matches the MuJoCo table
+[PASS] scripted expert lifts the box                    8/8 lifted
+[FAIL] scripted expert places the box on the target     0/8 placed
+[PASS] the lift latch fires, nothing is being slid      4/4 picked the object up
+[PASS] randomisation actually varies the world          mass spread 0.115 kg
+```
+
+Everything that tests whether this is *the same task* passes at both levels.
+What fails is `ScriptedPlaceExpert`'s success rate on a robot it was not written
+for, which is a fact about the expert.
+
+Two honest caveats, neither hidden:
+
+* **The expert places 2 of 8 at `none` and 0 of 8 at `medium`**, against 40 of
+  40 and 40 of 40 in MuJoCo. The Franka's pre-grasp pose and gripper are not the
+  MuJoCo hand's, and `ScriptedPlaceExpert` was tuned against the latter — it
+  lifts reliably here (8/8) and then puts the box down badly. A port is checked
+  for being the same *task*, not for reproducing a success rate, and the check
+  is written as `> 0` for that reason. It does mean **no Isaac place training
+  number exists and none is claimed**: demonstrations cannot be recorded from an
+  expert this weak, and from-scratch RL does not solve this task in MuJoCo
+  either.
+* **Target sampling differs in method.** MuJoCo rejection-samples the target
+  until the travel distance falls in the allowed band, which keeps the marginal
+  distribution uniform over the usable region. Doing that per-environment on the
+  GPU would need a loop, so this draws a bearing and a radius inside the band and
+  clips to the table. The band sits well inside the table so the clip almost
+  never binds, but it is a different sampler and it is recorded as one.
+
+One check failed on the first run — the observation-layout check asserted the
+goal sits at the lift task's hold height, which a correct place port must
+violate. The check was wrong, not the port, and it is now task-specific.
+
 ## Cross-simulator transfer
 
 Policies trained in MuJoCo, exported to TorchScript and run here with no

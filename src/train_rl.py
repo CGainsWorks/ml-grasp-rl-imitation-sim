@@ -76,10 +76,10 @@ def train(args: argparse.Namespace) -> Dict:
     )
 
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   wrist=args.wrist,
+                   wrist=args.wrist, task=args.task,
                    reward_config=args.reward_config)
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
-                        wrist=args.wrist,
+                        wrist=args.wrist, task=args.task,
                         reward_config=args.reward_config)
 
     obs_dim, act_dim = env.obs_dim, env.act_dim
@@ -122,6 +122,7 @@ def train(args: argparse.Namespace) -> Dict:
         "obs_dim": obs_dim,
         "act_dim": act_dim,
         "wrist": args.wrist,
+        "task": args.task,
     }
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
         json.dump(config_blob, fh, indent=2)
@@ -240,6 +241,10 @@ def build_parser() -> argparse.ArgumentParser:
                              "policies and results are not comparable with the "
                              "4-D ones (docs/limitations.md)")
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--task", default="lift", choices=("lift", "place"),
+                        help="lift-and-hold (the default) or pick-and-place; "
+                             "same observation and action space, different goal "
+                             "and reward -- see src/rewards/place_reward.py")
     parser.add_argument("--reward-config", default=None,
                         help="JSON of reward weights; defaults to the documented ones")
     parser.add_argument("--output", default="experiments/runs/sac")

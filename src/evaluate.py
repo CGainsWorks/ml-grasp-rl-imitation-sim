@@ -34,7 +34,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from envs.mujoco.grasp_env import ACT_DIM, OBS_DIM, make_env  # noqa: E402
 from src.policies.networks import SquashedGaussianActor  # noqa: E402
-from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
+from src.policies.scripted_expert import ScriptedExpert
+from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
 from src.utils.rollout import evaluate_policy, torch_policy  # noqa: E402
 from src.utils.stats import summarise_seeds  # noqa: E402
 
@@ -63,6 +64,7 @@ def evaluate_run(
     episodes: int,
     checkpoint: str,
     max_steps: int,
+    task: str = "lift",
 ) -> Dict:
     path = os.path.join(run_dir, checkpoint)
     if not os.path.exists(path):
@@ -77,7 +79,7 @@ def evaluate_run(
 
     out: Dict[str, Dict] = {}
     for level in eval_levels:
-        env = make_env(level, seed=1234, max_steps=max_steps)
+        env = make_env(level, seed=1234, max_steps=max_steps, task=task)
         result = evaluate_policy(
             env, torch_policy(actor, deterministic=True),
             n_episodes=episodes, seed=FINAL_SEED_BLOCK,
@@ -95,12 +97,14 @@ def evaluate_run(
             "seed": config.get("seed"), "levels": out}
 
 
-def evaluate_expert(eval_levels: List[str], episodes: int, max_steps: int) -> Dict:
+def evaluate_expert(eval_levels: List[str], episodes: int, max_steps: int,
+                    task: str = "lift") -> Dict:
     """The scripted expert, on the same episodes, as a reference line."""
     out = {}
+    expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
     for level in eval_levels:
-        env = make_env(level, seed=1234, max_steps=max_steps)
-        expert = ScriptedExpert()
+        env = make_env(level, seed=1234, max_steps=max_steps, task=task)
+        expert = expert_cls()
 
         def policy(obs, _expert=expert):
             return _expert.act(obs)
@@ -130,6 +134,10 @@ def main() -> None:
     parser.add_argument("--checkpoint", default="policy.pt",
                         help="policy.pt (final) or best.pt (best during training)")
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--task", default="lift", choices=("lift", "place"),
+                        help="which task the policies were trained on; the "
+                             "observation is identical, so nothing else warns "
+                             "you if you evaluate a lift policy on place")
     parser.add_argument("--label", default=None, help="name for this group of seeds")
     parser.add_argument("--expert", action="store_true", help="also evaluate the scripted expert")
     parser.add_argument("--threads", type=int, default=1)
@@ -146,11 +154,13 @@ def main() -> None:
 
     t0 = time.time()
     per_run = [
-        evaluate_run(d, args.eval_levels, args.episodes, args.checkpoint, args.max_steps)
+        evaluate_run(d, args.eval_levels, args.episodes, args.checkpoint,
+                     args.max_steps, args.task)
         for d in run_dirs
     ]
     if args.expert:
-        per_run.append(evaluate_expert(args.eval_levels, args.episodes, args.max_steps))
+        per_run.append(evaluate_expert(args.eval_levels, args.episodes,
+                                       args.max_steps, args.task))
 
     policy_runs = [r for r in per_run if r["run"] != "scripted-expert"]
     aggregate: Dict[str, Dict] = {}

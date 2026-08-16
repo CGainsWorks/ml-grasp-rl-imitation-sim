@@ -1,11 +1,22 @@
-"""MuJoCo lift-and-hold grasp environment.
+"""MuJoCo grasp environment: lift-and-hold, and pick-and-place.
 
 Task
 ----
 A parallel-jaw hand starts above a table. A box sits somewhere on the table at
-a random position and yaw. The hand must close on the box, lift it to a hold
-point 0.15 m above the table, and still be holding it there when the episode
-ends. Success is read at the **final** step, so letting go early scores zero.
+a random position and yaw.
+
+``task="lift"`` -- the default, and what every headline number in this
+repository was produced with: close on the box, lift it to a hold point 0.15 m
+above the table, and still be holding it there when the episode ends. Success is
+read at the **final** step, so letting go early scores zero.
+
+``task="place"`` -- carry the box to a target patch elsewhere on the table and
+**let go of it there**. Success is read at the final step too, and requires the
+object to have been picked up rather than slid across. Same observation, same
+action space, a different goal placement and a different reward; the reasoning
+is in ``src/rewards/place_reward.py``. It exists because a reward design
+validated on exactly one task is not evidence about the design *method*, which
+is what ``docs/limitations.md`` said before this task was added.
 
 Control
 -------
@@ -93,6 +104,11 @@ from src.rewards.grasp_reward import (  # noqa: E402
     grasp_reward,
     success_condition,
 )
+from src.rewards.place_reward import (  # noqa: E402
+    PlaceRewardConfig,
+    place_reward,
+    place_success_condition,
+)
 
 SCENE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "grasp_scene.xml")
 ARM_SCENE_PATH = os.path.join(
@@ -142,6 +158,24 @@ WRIST_STEP = np.deg2rad(9.0)  # per control step at full command
 # impossible misaligned, which is exactly the regime the wrist exists for.
 WRIST_MAX_HALF_SIZE = 0.034
 
+# The pick-and-place variant. See src/rewards/place_reward.py for why a second
+# task exists at all and what it is meant to break.
+#
+# The observation and action spaces are *identical* to the lift task: the hold
+# point already occupies indices 26:29, so moving it onto the table is a change
+# of where the goal is, not of what the policy can see. Every network shape,
+# demonstration file and training script carries over.
+#
+# Where the target may be placed, and how far it must be from the object. The
+# lower bound is what makes this a transport task rather than a lift with extra
+# steps -- at 5 cm the goal tolerance and the start position overlap. The upper
+# bound keeps the pair inside the workspace with room for the hand.
+PLACE_TARGET_X = 0.15
+PLACE_TARGET_Y = 0.18
+PLACE_MIN_TRAVEL = 0.12
+PLACE_MAX_TRAVEL = 0.30
+TASKS = ("lift", "place")
+
 
 class GraspEnv(_BASE):
     """Gymnasium-style environment. Also usable without gymnasium installed."""
@@ -164,7 +198,12 @@ class GraspEnv(_BASE):
         wrist: bool = False,
         arm: bool = False,
         max_half_size: Optional[float] = None,
+        task: str = "lift",
     ) -> None:
+        if task not in TASKS:
+            raise ValueError("task must be one of {}, got {!r}".format(TASKS, task))
+        self.task = task
+        self.place = task == "place"
         self.arm = bool(arm)
         self.wrist = bool(wrist)
         # Overridable so the wrist can be ablated properly: the same box
@@ -179,7 +218,11 @@ class GraspEnv(_BASE):
             ARM_SCENE_PATH if self.arm else SCENE_PATH)
         self.data = mujoco.MjData(self.model)
 
-        self.reward_cfg = reward_cfg or GraspRewardConfig()
+        self.reward_cfg = reward_cfg or (
+            PlaceRewardConfig() if self.place else GraspRewardConfig())
+        if self.place and not isinstance(self.reward_cfg, PlaceRewardConfig):
+            raise TypeError("the place task needs a PlaceRewardConfig, got "
+                            + type(self.reward_cfg).__name__)
         self.rand_cfg: RandomisationConfig = (
             randomisation
             if isinstance(randomisation, RandomisationConfig)
@@ -250,6 +293,16 @@ class GraspEnv(_BASE):
         else:
             self._grip_ctrl = np.arange(self.model.nu)
         self._goal_sid = self.model.site("goal").id
+        if self.place:
+            # Draw the target as a flat patch on the table rather than the lift
+            # task's floating sphere, because that is what it is: somewhere to
+            # put something down. The radius is exactly the success tolerance,
+            # so anyone watching a rollout video can see for themselves whether
+            # the box finished inside it.
+            self.model.site_type[self._goal_sid] = mujoco.mjtGeom.mjGEOM_CYLINDER
+            self.model.site_size[self._goal_sid] = np.array(
+                [self.reward_cfg.goal_tolerance, 0.001, 0.0])
+            self.model.site_rgba[self._goal_sid] = np.array([0.95, 0.62, 0.15, 0.65])
         self._pad_gids = (self.model.geom("left_pad").id, self.model.geom("right_pad").id)
         self._object_qadr = self.model.jnt_qposadr[self.model.joint("object_free").id]
         # The arm variant's hand has no free joint: it is a link in a chain.
@@ -282,6 +335,8 @@ class GraspEnv(_BASE):
         self._latency_queue: deque = deque()
         self._steps = 0
         self._goal = np.zeros(3)
+        self._object_start = np.zeros(3)
+        self._lifted = 0.0
         self._grasp_latch = 0
         self._object_rest_z = TABLE_HEIGHT
         self._prev_grip = np.zeros(3)
@@ -410,7 +465,12 @@ class GraspEnv(_BASE):
         mujoco.mj_forward(self.model, self.data)
 
         self._object_rest_z = float(self.data.xpos[self._object_bid][2])
-        self._goal = np.array([ox, oy, TABLE_HEIGHT + self.hold_height])
+        self._object_start = self._object_pos().copy()
+        self._lifted = 0.0
+        if self.place:
+            self._goal = self._sample_target(ox, oy)
+        else:
+            self._goal = np.array([ox, oy, TABLE_HEIGHT + self.hold_height])
         self.model.site_pos[self._goal_sid] = self._goal
         # The latency queue starts full of zero actions: for the first few
         # steps of a laggy episode the hand holds still and the gripper sits
@@ -430,6 +490,31 @@ class GraspEnv(_BASE):
         # the observation reads site positions.
         mujoco.mj_forward(self.model, self.data)
         return self._observation(), self._info(False, False, 0.0)
+
+    def _sample_target(self, ox: float, oy: float) -> np.ndarray:
+        """Where the object has to end up, for the place task.
+
+        Rejection-sampled rather than drawn as an offset at a random bearing,
+        because an offset can land off the table and clipping it back piles
+        targets up against the edges -- the policy would then learn a boundary,
+        not a task. Rejection keeps the marginal distribution uniform over the
+        region that is actually usable.
+
+        The height is the object's *resting* height, measured after the object
+        has been placed, so the success check can simply ask how far the object
+        is from the goal in z. That matters once shapes are randomised: a
+        cylinder on its side and a cube do not rest at the same height, and a
+        hard-coded table offset would quietly make one of them impossible.
+        """
+        for _ in range(200):
+            tx = self.np_random.uniform(-PLACE_TARGET_X, PLACE_TARGET_X)
+            ty = self.np_random.uniform(-PLACE_TARGET_Y, PLACE_TARGET_Y)
+            travel = float(np.hypot(tx - ox, ty - oy))
+            if PLACE_MIN_TRAVEL <= travel <= PLACE_MAX_TRAVEL:
+                return np.array([tx, ty, self._object_rest_z])
+        # Unreachable with the current constants; if it ever fires, a fixed
+        # fallback beats a silently biased sample.
+        return np.array([ox, oy + PLACE_MIN_TRAVEL, self._object_rest_z])
 
     # ------------------------------------------------------------------
     # Step
@@ -489,23 +574,52 @@ class GraspEnv(_BASE):
         grasped = float(self._grasped())
         object_pos = self._object_pos()
         dropped = bool(dropped_condition(object_pos, TABLE_HEIGHT))
-        success = bool(
-            success_condition(
-                object_pos[None, :], self._goal[None, :], np.array([grasped]), self.reward_cfg
-            )[0]
-        )
 
-        reward, terms = grasp_reward(
-            self._grip_pos()[None, :],
-            object_pos[None, :],
-            self._goal[None, :],
-            np.array([self._object_rest_z]),
-            np.array([grasped]),
-            np.array([float(dropped)]),
-            action[None, :],
-            self.reward_cfg,
-            yaw_error=(np.array([self._yaw_error()]) if self.wrist else None),
-        )
+        if self.place:
+            # The pick latch. Set once, never cleared: it records that the
+            # object was carried rather than shoved, which is a fact about the
+            # episode and not about the current step. Read from the simulator's
+            # true height, not the observation, so sensing noise cannot hand a
+            # policy credit for a lift that did not happen.
+            if (grasped > 0.5 and object_pos[2] - self._object_rest_z
+                    >= self.reward_cfg.lift_threshold):
+                self._lifted = 1.0
+            speed = float(np.linalg.norm(self.data.cvel[self._object_bid][3:6]))
+            success = bool(place_success_condition(
+                object_pos[None, :], self._goal[None, :], np.array([grasped]),
+                np.array([self._lifted]), np.array([speed]), self.reward_cfg)[0])
+            reward, terms = place_reward(
+                self._grip_pos()[None, :],
+                object_pos[None, :],
+                self._goal[None, :],
+                self._object_start[None, :],
+                np.array([self._object_rest_z]),
+                np.array([grasped]),
+                np.array([self._lifted]),
+                np.array([float(dropped)]),
+                np.array([speed]),
+                action[None, :],
+                self.reward_cfg,
+            )
+        else:
+            success = bool(
+                success_condition(
+                    object_pos[None, :], self._goal[None, :], np.array([grasped]),
+                    self.reward_cfg
+                )[0]
+            )
+
+            reward, terms = grasp_reward(
+                self._grip_pos()[None, :],
+                object_pos[None, :],
+                self._goal[None, :],
+                np.array([self._object_rest_z]),
+                np.array([grasped]),
+                np.array([float(dropped)]),
+                action[None, :],
+                self.reward_cfg,
+                yaw_error=(np.array([self._yaw_error()]) if self.wrist else None),
+            )
         reward = float(reward[0])
         self._last_terms = {
             k: float(np.asarray(v).reshape(-1)[0]) for k, v in terms.as_dict().items()
@@ -817,6 +931,10 @@ class GraspEnv(_BASE):
             "dropped": bool(dropped),
             "grasped": float(grasped),
             "object_height": float(self._object_pos()[2] - self._object_rest_z),
+            "lifted": float(self._lifted),
+            "goal_distance": float(np.linalg.norm(
+                (self._object_pos() - self._goal)[:2] if self.place
+                else self._object_pos() - self._goal)),
             "goal": self._goal.copy(),
             "reward_terms": dict(self._last_terms),
             "world": self.world.as_dict(),
@@ -847,9 +965,14 @@ def make_env(
 ) -> GraspEnv:
     """Convenience constructor used by every script in ``src/``."""
     from src.rewards.grasp_reward import load_reward_config
+    from src.rewards.place_reward import load_place_config
 
+    # The two tasks have different weight sets, so which loader applies is
+    # decided by the task rather than by the file: passing a lift config to the
+    # place task would silently drop every place-specific weight to a default.
+    load = load_place_config if kwargs.get("task") == "place" else load_reward_config
     env = GraspEnv(
-        reward_cfg=load_reward_config(reward_config),
+        reward_cfg=load(reward_config),
         randomisation=randomisation,
         seed=seed,
         **kwargs,

@@ -1,0 +1,162 @@
+{
+  "policies": [
+    "bcrl_medium_s0",
+    "bcrl_medium_s1",
+    "bcrl_medium_s2",
+    "bcrl_medium_s3",
+    "bcrl_medium_s4"
+  ],
+  "episodes_per_policy": 40,
+  "level": "none",
+  "ground_truth": {
+    "across_seeds": {
+      "point": 0.985,
+      "low": 0.95724,
+      "high": 1.0,
+      "n": 5,
+      "method": "t"
+    },
+    "across_seeds_bootstrap": {
+      "point": 0.985,
+      "low": 0.9650000000000001,
+      "high": 1.0,
+      "n": 5,
+      "method": "bootstrap"
+    },
+    "pooled_wilson": {
+      "point": 0.985,
+      "low": 0.9568342712073097,
+      "high": 0.9948857622067417,
+      "n": 200,
+      "method": "wilson"
+    },
+    "per_seed": [
+      {
+        "point": 1.0,
+        "low": 0.9123783988027135,
+        "high": 1.0,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 0.975,
+        "low": 0.8711863103652591,
+        "high": 0.9955731684973186,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 1.0,
+        "low": 0.9123783988027135,
+        "high": 1.0,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 1.0,
+        "low": 0.9123783988027135,
+        "high": 1.0,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 0.95,
+        "low": 0.8349612263085903,
+        "high": 0.9861793326138516,
+        "n": 40,
+        "method": "wilson"
+      }
+    ],
+    "per_seed_rates": [
+      1.0,
+      0.975,
+      1.0,
+      1.0,
+      0.95
+    ],
+    "n_seeds": 5,
+    "episodes_per_seed": [
+      40,
+      40,
+      40,
+      40,
+      40
+    ]
+  },
+  "perception": {
+    "across_seeds": {
+      "point": 0.8049999999999999,
+      "low": 0.6781668718354703,
+      "high": 0.9318331281645296,
+      "n": 5,
+      "method": "t"
+    },
+    "across_seeds_bootstrap": {
+      "point": 0.8049999999999999,
+      "low": 0.72,
+      "high": 0.8800000000000001,
+      "n": 5,
+      "method": "bootstrap"
+    },
+    "pooled_wilson": {
+      "point": 0.805,
+      "low": 0.7445595562538726,
+      "high": 0.8539447946559949,
+      "n": 200,
+      "method": "wilson"
+    },
+    "per_seed": [
+      {
+        "point": 0.925,
+        "low": 0.8013576647568946,
+        "high": 0.9741639742254119,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 0.85,
+        "low": 0.709276756335103,
+        "high": 0.9293881228267964,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 0.825,
+        "low": 0.6805000966821229,
+        "high": 0.9125458625396408,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 0.65,
+        "low": 0.49505880837257693,
+        "high": 0.7786547112682372,
+        "n": 40,
+        "method": "wilson"
+      },
+      {
+        "point": 0.775,
+        "low": 0.6249690325768998,
+        "high": 0.8768390867645927,
+        "n": 40,
+        "method": "wilson"
+      }
+    ],
+    "per_seed_rates": [
+      0.925,
+      0.85,
+      0.825,
+      0.65,
+      0.775
+    ],
+    "n_seeds": 5,
+    "episodes_per_seed": [
+      40,
+      40,
+      40,
+      40,
+      40
+    ]
+  },
+  "note": "Sim-only perception: one camera, one lighting condition, one box texture, no domain gap. Tests whether a policy trained on ground-truth pose survives a real estimator's error structure, not whether it would work from real images."
+}

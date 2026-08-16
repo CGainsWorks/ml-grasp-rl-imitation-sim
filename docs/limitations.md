@@ -143,10 +143,53 @@ No bottles, no bags, no clutter, no bin, and still nothing here demonstrates
 grasp *selection* — choosing where to grasp an unfamiliar shape — which is what
 most of the grasping literature is actually about.
 
-**The policy is handed the object pose.** No camera, no point cloud, no
-detector. The sensing randomisation adds Gaussian noise to a ground-truth pose,
-which is a weak model of a real pose estimator: its error is correlated across
-steps, biased by viewpoint, and worst when the gripper occludes the object.
+**The policy is handed the object pose by default, and there is now a camera
+path that does not.** `src/perception/pose_cnn.py` estimates the object position
+from 64x64 renders of the fixed front camera; `scripts/collect_pose_data.py`
+builds the dataset from mixed expert and random rollouts (24 000 frames, 44% of
+them with the hand between camera and box); `experiments/perception_eval.py`
+substitutes the estimate for the object entries of the observation and runs the
+policies on it.
+
+The estimator is deliberately small — four strided convolutions, about 200k
+parameters, a few minutes on a CPU. A better one would estimate pose better and
+answer the question worse, because the question is what the error *looks like*,
+not how small it can be made.
+
+**Two of the three claims this paragraph used to make are now measured and one
+is wrong.** Validation split by episode, not by frame, because neighbouring
+frames are near-duplicates and a frame split reports several times better than
+the truth:
+
+| | modelled | measured |
+| --- | --- | --- |
+| position error | 0.004–0.010 m, from published YCB-Video results | **0.0065 m** ✓ |
+| lag-1 autocorrelation | 0.9, chosen for plausibility | **0.947, 0.933** ✓ |
+| worse under occlusion | asserted, never modelled | **0.0068 visible vs 0.0060 occluded** ✗ |
+
+The magnitude taken from the literature holds, and the correlation coefficient
+guessed for `obs_noise_corr` turns out to be slightly conservative rather than
+invented. The occlusion claim does not survive: error under occlusion is if
+anything *lower*. The likely reason is specific and worth stating — when the
+hand is over the box, the hand is large, unoccluded and directly above it, so
+the estimator can read the box's position off the gripper. A real system with a
+wrist camera, clutter, or a moving viewpoint would not get that for free.
+
+Closing the loop, five demonstration-seeded policies, 40 episodes each:
+
+| | success |
+| --- | ---: |
+| ground-truth pose | 0.985 [0.957, 1.000] |
+| **estimated pose** | **0.805** [0.678, 0.932] |
+
+So a policy trained on perfect pose loses about 18 points when it has to use an
+estimate whose error is 6.5 mm and strongly correlated in time — a larger cost
+than the independent-noise model predicts, and the reason the model was worth
+checking.
+
+What this is **not**: one camera, one lighting condition, one box texture, no
+domain gap, no detector failures, no clutter. It is not evidence that any of
+these policies would work from real images.
 
 **The reward is dense and hand-designed, and removing it is not recoverable
 here.** The sparse version was built and run: reward 1.0 on the step the success

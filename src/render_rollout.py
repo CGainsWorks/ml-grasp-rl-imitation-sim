@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
+from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
 
 
 def _overlay(frame: np.ndarray, ok: bool, height_frac: float) -> np.ndarray:
@@ -56,10 +57,11 @@ def render(
     height: int,
     max_steps: int,
     on_episode_start=None,
+    task: str = "lift",
 ) -> List[np.ndarray]:
     env = make_env(
         randomisation, seed=seed, render_mode="rgb_array", camera=camera,
-        width=width, height=height, max_steps=max_steps,
+        width=width, height=height, max_steps=max_steps, task=task,
     )
     frames: List[np.ndarray] = []
     successes = 0
@@ -75,7 +77,7 @@ def render(
                 _overlay(
                     env.render(),
                     bool(info.get("is_success", False)),
-                    float(info.get("object_height", 0.0)) / 0.15,
+                    float(info.get("object_height", 0.0)) / (0.06 if task == "place" else 0.15),
                 )
             )
             if terminated or truncated:
@@ -111,6 +113,7 @@ def main() -> None:
     parser.add_argument("--width", type=int, default=480)
     parser.add_argument("--height", type=int, default=360)
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--task", default="lift", choices=("lift", "place"))
     parser.add_argument("--fps", type=int, default=25)
     parser.add_argument("--output", default=None, help="path to an .mp4")
     parser.add_argument("--gif", default=None, help="path to a .gif")
@@ -123,7 +126,7 @@ def main() -> None:
 
     on_start: Optional[callable] = None
     if args.expert:
-        expert = ScriptedExpert()
+        expert = (ScriptedPlaceExpert() if args.task == "place" else ScriptedExpert())
         on_start = expert.reset
         policy_fn = expert.act
     else:
@@ -131,7 +134,7 @@ def main() -> None:
 
     frames = render(
         policy_fn, args.randomisation, args.episodes, args.seed,
-        args.camera, args.width, args.height, args.max_steps, on_start,
+        args.camera, args.width, args.height, args.max_steps, on_start, args.task,
     )
 
     import imageio.v2 as imageio

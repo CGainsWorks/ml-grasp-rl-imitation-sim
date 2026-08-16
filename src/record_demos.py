@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
+from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
 
 
 def record(
@@ -38,10 +39,12 @@ def record(
     expert_noise: float,
     keep_failures: bool,
     max_steps: int,
+    task: str = "lift",
 ) -> dict:
-    env = make_env(randomisation, seed=seed, max_steps=max_steps)
+    env = make_env(randomisation, seed=seed, max_steps=max_steps, task=task)
     rng = np.random.default_rng(seed)
-    expert = ScriptedExpert(noise=expert_noise, rng=rng)
+    expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
+    expert = expert_cls(noise=expert_noise, rng=rng)
 
     obs_list, act_list, rew_list, next_list, done_list = [], [], [], [], []
     episode_starts, episode_lengths, episode_success = [], [], []
@@ -103,8 +106,10 @@ def record(
                 "expert_noise": expert_noise,
                 "keep_failures": keep_failures,
                 "max_steps": max_steps,
+                "task": task,
                 "wall_seconds": round(time.time() - t0, 1),
-                "source": "src/policies/scripted_expert.py",
+                "source": ("src/policies/scripted_place_expert.py" if task == "place"
+                           else "src/policies/scripted_expert.py"),
             }
         ),
     }
@@ -121,12 +126,13 @@ def main() -> None:
                              "the cheapest available cure for compounding error.")
     parser.add_argument("--keep-failures", action="store_true")
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--task", default="lift", choices=("lift", "place"))
     parser.add_argument("--output", default="demonstrations/expert.npz")
     args = parser.parse_args()
 
     data = record(
         args.episodes, args.randomisation, args.seed,
-        args.expert_noise, args.keep_failures, args.max_steps,
+        args.expert_noise, args.keep_failures, args.max_steps, args.task,
     )
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     np.savez_compressed(args.output, **data)

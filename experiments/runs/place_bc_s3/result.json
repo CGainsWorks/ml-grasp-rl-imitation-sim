@@ -1,0 +1,37 @@
+{
+  "algorithm": "bc",
+  "final_success_rate": 0.8,
+  "final_grasp_rate": 1.0,
+  "final_val_mse": 0.015443784184753895,
+  "transitions": 20000,
+  "demo_episodes": 200,
+  "history": [
+    {
+      "round": 0,
+      "transitions": 20000,
+      "train_mse": 0.006859598740358168,
+      "val_mse": 0.015443784184753895,
+      "success_rate": 0.8,
+      "grasp_rate": 1.0
+    }
+  ],
+  "seed": 3,
+  "randomisation": "low",
+  "demos": "demonstrations\\expert_place_low.npz",
+  "demo_meta": {
+    "episodes_requested": 200,
+    "episodes_attempted": 200,
+    "episodes_kept": 200,
+    "expert_success_rate": 1.0,
+    "randomisation": "low",
+    "seed": 7,
+    "expert_noise": 0.02,
+    "keep_failures": false,
+    "max_steps": 100,
+    "task": "place",
+    "wall_seconds": 10.4,
+    "source": "src/policies/scripted_place_expert.py"
+  },
+  "epochs": 60,
+  "wall_seconds": 11.1
+}

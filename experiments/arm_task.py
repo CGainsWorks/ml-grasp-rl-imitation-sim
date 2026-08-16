@@ -39,18 +39,32 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from experiments.place_task import REPO, RUNS, run_batch  # noqa: E402
 
-DEMOS = os.path.join("demonstrations", "expert_arm_low.npz")
+# Two demonstration sets, because the choice matters far more here than it does
+# for the weld. The weld's expert succeeds on essentially every `low` episode,
+# so recording there costs nothing. The arm's expert succeeds on 19% of them --
+# 200 kept episodes out of 1054 attempted -- so a `low` set is both a weaker
+# teacher and a biased sample of the easy worlds. On the nominal world the same
+# expert manages 0.671. Which one clones better is a question, not an
+# assumption, so both are recorded and both are trained.
+DEMO_SETS = {"low": os.path.join("demonstrations", "expert_arm_low.npz"),
+             "none": os.path.join("demonstrations", "expert_arm_none.npz")}
+DEMOS = DEMO_SETS["low"]
 ALPHA_FLOOR = "0.15"
 HIDDEN = "128"
 LEVEL = "medium"
 
 
-def job_bc(seed: int) -> Dict:
-    out = os.path.join(RUNS, "arm_bc_s{}".format(seed))
+def _tag(source: str) -> str:
+    return "" if source == "low" else "nom"
+
+
+def job_bc(seed: int, source: str = "low") -> Dict:
+    out = os.path.join(RUNS, "arm_bc{}_s{}".format(_tag(source), seed))
     return {
         "name": os.path.basename(out), "output": out,
-        "cmd": [sys.executable, "src/train_il.py", "--demos", DEMOS,
-                "--seed", str(seed), "--epochs", "60", "--randomisation", "low",
+        "cmd": [sys.executable, "src/train_il.py", "--demos", DEMO_SETS[source],
+                "--seed", str(seed), "--epochs", "60",
+                "--randomisation", source,
                 "--arm", "--hidden", HIDDEN, "--eval-episodes", "50",
                 "--quiet", "--output", out],
     }
@@ -68,16 +82,17 @@ def job_sac(seed: int, steps: int) -> Dict:
     }
 
 
-def job_bcrl(seed: int, steps: int) -> Dict:
-    out = os.path.join(RUNS, "arm_bcrl_s{}".format(seed))
-    init = os.path.join(RUNS, "arm_bc_s{}".format(seed), "policy.pt")
+def job_bcrl(seed: int, steps: int, source: str = "low") -> Dict:
+    out = os.path.join(RUNS, "arm_bcrl{}_s{}".format(_tag(source), seed))
+    init = os.path.join(RUNS, "arm_bc{}_s{}".format(_tag(source), seed),
+                        "policy.pt")
     return {
         "name": os.path.basename(out), "output": out, "needs": init,
         "cmd": [sys.executable, "src/train_rl.py", "--steps", str(steps),
                 "--seed", str(seed), "--randomisation", LEVEL, "--arm",
                 "--hidden", HIDDEN, "--eval-every", "25000",
                 "--eval-episodes", "30", "--quiet",
-                "--demos", DEMOS, "--demo-fraction", "0.25",
+                "--demos", DEMO_SETS[source], "--demo-fraction", "0.25",
                 "--bc-coef", "50.0", "--bc-decay-steps", str(steps // 2),
                 "--critic-warmup", "3000", "--target-entropy-scale", "2.0",
                 "--init-alpha", "0.02", "--init-actor", init, "--output", out],
@@ -91,6 +106,12 @@ def main() -> None:
     parser.add_argument("--jobs", type=int, default=5)
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--eval-levels", nargs="+", default=["none", "shifted"])
+    parser.add_argument("--demo-source", default="low", choices=("low", "none"),
+                        help="which randomisation level the arm demonstrations "
+                             "were recorded at; see DEMO_SETS")
+    parser.add_argument("--skip-sac", action="store_true",
+                        help="only the imitation arms, for a second "
+                             "demonstration set")
     args = parser.parse_args()
     os.chdir(REPO)
 
@@ -101,12 +122,16 @@ def main() -> None:
              "--randomisation", "low", "--arm", "--output", DEMOS],
             cwd=REPO, check=True)
 
-    run_batch([job_bc(s) for s in args.seeds], args.jobs)
-    run_batch([job_sac(s, args.steps) for s in args.seeds]
-              + [job_bcrl(s, args.steps) for s in args.seeds], args.jobs)
+    src = args.demo_source
+    run_batch([job_bc(s, src) for s in args.seeds], args.jobs)
+    rl = [] if args.skip_sac else [job_sac(s, args.steps) for s in args.seeds]
+    run_batch(rl + [job_bcrl(s, args.steps, src) for s in args.seeds], args.jobs)
 
     results = {}
-    for label in ("arm_sac", "arm_bcrl", "arm_bc"):
+    labels = ["arm_bcrl" + _tag(src), "arm_bc" + _tag(src)]
+    if not args.skip_sac:
+        labels.insert(0, "arm_sac")
+    for label in labels:
         out = os.path.join("experiments", "results", label + "_eval.json")
         cmd = [sys.executable, "src/evaluate.py", "--runs",
                "experiments/runs/{}_s*".format(label), "--arm",
@@ -120,7 +145,8 @@ def main() -> None:
             with open(out, "r", encoding="utf-8") as fh:
                 results[label] = json.load(fh)
 
-    summary = os.path.join("experiments", "results", "arm_task.json")
+    summary = os.path.join("experiments", "results",
+                           "arm_task{}.json".format(_tag(src)))
     with open(summary, "w", encoding="utf-8") as fh:
         json.dump({"level": LEVEL, "steps": args.steps, "seeds": args.seeds,
                    "note": "the arm's own scripted expert scores 0.680 on the "

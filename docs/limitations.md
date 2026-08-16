@@ -68,10 +68,42 @@ Manipulators](https://arxiv.org/pdf/2504.12719)): y = −0.72, z = 0.85, which
 reaches every cell of the grasp region with the pads down and nothing inside the
 table.
 
-Not yet done: no policy has been *trained* on the arm variant, so nothing is
-claimed about learned performance, and the randomisation parameters are applied
-to it unchanged apart from `hand_compliance`, which maps to arm joint stiffness
-the way the Isaac port maps it.
+**Policies have now been trained on it, and they are poor.** Five seeds, 100
+episodes each, the same 200 000 steps, network, entropy floor and demonstration
+pipeline the weld runs used:
+
+| | none | shifted |
+| --- | ---: | ---: |
+| scripted expert | 0.680 | 0.000 |
+| behaviour cloning | 0.202 [0.175, 0.229] | 0.000 |
+| BC + RL | 0.176 [0.083, 0.269] | 0.000 |
+| **SAC from scratch** | **0.000**, grasp rate 0.000 | 0.000 |
+
+Three things in that table are worth separating.
+
+**From-scratch RL through six joints never closes on the box at all** — grasp
+rate 0.000 across every seed, not a low success rate on top of a working grasp.
+The weld version at the same settings reaches 0.593. Whatever the mocap weld is
+abstracting away, exploration is where the cost lands.
+
+**RL fine-tuning stops helping.** 0.176 against the clone's 0.202, Welch
+t = 0.74 — indistinguishable. Through the weld, demonstration-seeded RL improves
+on its clone; here it does not, and the honest reading is that a critic trained
+on a distribution the policy cannot reliably reach has nothing to add.
+
+**The teacher is much worse, and the demonstration set is worse still.** The arm
+expert succeeds on 19% of `low` episodes against the weld expert's ~100%, so 200
+kept demonstrations came from 1054 attempts and are a biased sample of the easy
+worlds. A second set recorded on the nominal world, where the same expert
+manages 0.671, is trained separately rather than assumed to be better.
+
+So the arm variant is structurally sound and the *method* does not carry across
+to it at this budget. That is the more useful version of the claim than "there
+is an arm".
+
+Randomisation parameters are applied to the arm unchanged apart from
+`hand_compliance`, which maps to arm joint stiffness the way the Isaac port maps
+it.
 
 **The hand cannot rotate — by default.** The pads close along world *x*, so a
 square box at 45° of yaw presents √2 times its side and above roughly 27 mm of
@@ -132,12 +164,28 @@ shape for this hand, because a hand that cannot rotate has no way to profit from
 knowing a box's yaw — the box's difficulty *is* its orientation, and a sphere
 has none.
 
-Learned, on the mixed distribution at 200 000 steps against the box-only control
-at the same budget, the variance swallows the comparison: 0.167 [0.000, 0.884]
-across three seeds (0.50, 0.00, 0.00) against 0.407 for boxes alone across five.
-Adding shape variety plausibly makes learning harder at a fixed budget, in the
-same way every other widening of the distribution does here, but three seeds
-with that spread cannot establish it.
+Learned, the three-seed version of this comparison could not settle anything --
+0.167 [0.000, 0.884] against 0.407 -- and the reason was visible in the seeds
+rather than in the interval: the outcome is *bimodal*, a run either finds the
+behaviour or collapses to exactly zero. Five samples from a bimodal distribution
+is the case where a mean and a t interval mislead most, so both arms were taken
+to **ten seeds** at matched budget, matched entropy floor and matched
+update-to-data ratio (`experiments/shapes_seeds.py`).
+
+| trained on | tested on `none` | tested on `shapes` |
+| --- | ---: | ---: |
+| mixed shapes | 0.142 [0.000, 0.322] | 0.124 [0.000, 0.271] |
+| boxes only | **0.593** [0.315, 0.871] | **0.450** [0.247, 0.653] |
+
+Welch t = −3.08 and −2.94. Shape variety at a fixed budget costs about 45
+points, and the part that is not obvious: **box-only training beats
+shape-trained policies even when both are tested on shapes.** Widening the
+training distribution did not buy performance on the wider distribution; it
+bought fewer seeds that learn anything at all. Seven of the ten shape seeds
+finish at exactly 0.000 against two of ten for boxes.
+
+This is a budget statement, not a claim that shape variety is harmful. Every
+widening of the distribution in this repository costs at 200 000 steps.
 
 No bottles, no bags, no clutter, no bin, and still nothing here demonstrates
 grasp *selection* — choosing where to grasp an unfamiliar shape — which is what
@@ -327,20 +375,29 @@ not**, and four reward designs and a tripled budget have not moved it off zero.
 What each attempt actually did, read from behaviour rather than from the return
 curve:
 
-| `carry` gated on | peak lift | success |
-| --- | ---: | ---: |
-| `grasped` only | 0.010 m | 0.002 |
-| the binary lift latch | 0.006-0.016 m | 0.000 |
-| clearance/4 cm, `clear` at 3.0 x 0.06 | 0.009 m | 0.000 |
-| clearance/4 cm, `clear` at the lift task's 4.0 x 0.12 | *running* | *running* |
+| `carry` gated on | `clear` pays | peak lift | success |
+| --- | ---: | ---: | ---: |
+| `grasped` only | 0.18/step | 0.010 m | 0.002 |
+| the binary lift latch | 0.18/step | 0.006-0.016 m | 0.000 |
+| clearance / 4 cm | 0.18/step | 0.009 m | 0.000 |
+| clearance / 4 cm | **0.48/step** | 0.010 m | 0.002 |
 
 The first design paid the largest term in the reward to a policy that closed the
 pads on the box and *pushed*; the second closed that exploit and replaced it
-with a cliff. Both are the failures [reward-design.md](reward-design.md) already
-records for the lift task, met again on a task written after they were written
-down. The budget control excludes the boring explanation: the first design at
-600 000 steps -- more gradient updates than the entire lift grid was trained
-with -- is still at 0.000 with a peak lift of 0.010 m.
+with a cliff the policy never crossed; the third turned the cliff into a hill
+and the fourth made the hill as steep as the lift task's own height term
+(4.0 x 0.12, taken from there rather than searched for, because getting the box
+off the table is the identical sub-problem). The first two failures are exactly
+what [reward-design.md](reward-design.md) already records for the lift task, met
+again on a task written after they were written down.
+
+The budget control excludes the boring explanation. The first design at 600 000
+steps, three seeds -- more gradient updates than the entire lift grid was
+trained with -- finishes at 0.000, 0.067, 0.067, still grasping on 73-97% of
+steps and still with a peak lift of 0.021 m. It is sliding the box, faster.
+
+Demonstrations solve the same task on the first attempt, on both reward
+versions: 0.978 cloned, 0.916 and 0.870 demonstration-seeded.
 
 The most likely structural reason, and it is a hypothesis rather than a result:
 in the lift task the shaped progress term and the height term point the same

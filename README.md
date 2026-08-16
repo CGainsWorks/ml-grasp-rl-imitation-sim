@@ -7,12 +7,20 @@
 > client: no employer source code, schematics, calibration data, client data or internal
 > documentation. It exists to demonstrate the architecture and engineering approach only.
 
-Learned grasping in simulation: a MuJoCo lift-and-hold task, a documented reward
-design, SAC from scratch, behaviour cloning and DAgger from recorded
-demonstrations, the two combined, and a domain-randomisation ablation measured
-against a held-out distribution that stands in for a real robot. Every success
-rate is reported over five seeds with confidence intervals, because a
+Learned grasping in simulation: two MuJoCo tasks, a documented reward design,
+SAC from scratch, behaviour cloning and DAgger from recorded demonstrations, the
+two combined, a perception stack that replaces the ground-truth object pose with
+an estimate from a camera, and a domain-randomisation ablation measured against a
+held-out distribution that stands in for a real robot. Every success rate is
+reported over five seeds with confidence intervals, because a
 reinforcement-learning number from one seed is noise.
+
+The second task is the interesting one. Pick-and-place was added specifically to
+test whether the reward design *method* generalises, and it does not: imitation
+carried over to it unchanged at 0.978, while from-scratch RL has been through
+four reward designs and a tripled budget without clearing 0.002 — twice
+reproducing failures this repository had already documented on the first task.
+That is written up rather than buried, in [docs/results.md](docs/results.md) §7.
 
 ![expert rollout](videos/expert_nominal.gif)
 
@@ -26,11 +34,14 @@ condition is being met. Blue bar: lift height.*
 | | |
 | --- | --- |
 | **Task** | Close a parallel-jaw hand on a box, lift it to a hold point 0.15 m above the table, and still be holding it 4 s in |
+| **Second task** | `task="place"`: carry the box to a target patch elsewhere on the table and **let go** of it there, having picked it up rather than slid it. Same observation and action space |
 | **Simulator** | MuJoCo 3.11, hand-written MJCF, contact-based grasp detection |
 | **Observation / action** | 32-D state / 4-D Cartesian delta plus gripper (34-D / 5-D with the optional wrist) |
 | **Algorithms** | SAC (written out, not imported), behaviour cloning, DAgger, and BC+SAC with pinned demonstrations and a scale-normalised cloning term |
 | **Randomisation** | 13 parameters across dynamics, actuation and sensing; four training levels, a held-out shifted distribution, and a `measured` one built from published values |
-| **Reporting** | 5 seeds x 100 episodes per cell, mean with a 95% t interval across seeds |
+| **Perception** | A CNN pose estimator from 64x64 renders, used to check the sensing noise model rather than replace it — two of its three claims held, one was refuted |
+| **Arm** | An optional six-jointed UR5-proportioned arm with joint limits, self-collision and damped-least-squares IK, in place of the mocap weld |
+| **Reporting** | 5 seeds x 100 episodes per cell (10 where the spread turned out bimodal), mean with a 95% t interval across seeds |
 | **Isaac Lab** | Ported and **working on Isaac Sim 5.1**: all 7 bring-up checks pass, including reward parity with the MuJoCo implementation to ~5e-08 and randomisation driven by the same JSON — [envs/isaac/README.md](envs/isaac/README.md) |
 
 Nothing here has touched hardware. `shifted` is a **proxy** for a real robot,

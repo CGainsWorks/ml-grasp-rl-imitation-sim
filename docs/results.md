@@ -602,11 +602,12 @@ feasibility.
 Read from behaviour rather than from the return curve, which was climbing
 happily throughout:
 
-| `carry` gated on | grasp rate | peak lift | success |
-| --- | ---: | ---: | ---: |
-| `grasped` only | 0.63-0.83 | 0.010 m | 0.002 |
-| the binary lift latch | — | 0.006-0.016 m | 0.000 |
-| clearance / 4 cm, `clear` at 3.0 x 0.06 | 0.37-0.70 | 0.009 m | 0.000 |
+| `carry` gated on | `clear` pays | grasp rate | peak lift | success |
+| --- | ---: | ---: | ---: | ---: |
+| `grasped` only | 0.18/step | 0.63-0.83 | 0.010 m | 0.002 |
+| the binary lift latch | 0.18/step | — | 0.006-0.016 m | 0.000 |
+| clearance / 4 cm | 0.18/step | 0.37-0.70 | 0.009 m | 0.000 |
+| clearance / 4 cm | 0.48/step | 0.67-0.73 | 0.010 m | 0.002 |
 
 The first design made the largest dense term in the reward payable to a policy
 that closed the pads on the box and *pushed* — both pads are in contact with a
@@ -621,10 +622,65 @@ wrong on the path to it, and a cliff where a hill was needed. They were walked
 into again on a task designed after they were documented, which is worth more as
 evidence about how easy this is to get wrong than any of the successes above.
 
-The budget control excludes the boring explanation. The unchanged reward at
-600 000 steps, three seeds — more gradient updates than the entire lift grid was
-trained with — is still at 0.000, still grasping, still with a peak lift of
-0.010 m.
+The fourth attempt is the one that rules out "the weight was just too small".
+`clear` there is the lift task's own height term — 4.0 x 0.12 — taken from a
+task where SAC solves the identical sub-problem from scratch rather than
+searched for on this one. It scores 0.002.
+
+The budget control excludes the other boring explanation. The unchanged reward
+at 600 000 steps, three seeds — more gradient updates than the entire lift grid
+was trained with — finishes at 0.000, 0.067, 0.067, grasping on 73-97% of steps
+with a peak lift of 0.021 m. It is sliding the box, faster.
+
+Meanwhile demonstrations solve the task on the first attempt under both reward
+versions: 0.978 cloned, 0.916 and 0.870 demonstration-seeded. **Four reward
+designs and a tripled budget against a working clone** is the shape of this
+result, and it is the strongest evidence in the repository that the reward
+design here is a per-task craft rather than a method.
+
+### The arm, and what the mocap weld was hiding
+
+Everything else in this document trains through a mocap weld: the action is a
+Cartesian displacement of a target the hand is dragged towards. `arm=True`
+replaces that with a six-jointed UR5-proportioned chain and damped-least-squares
+IK, keeping the same action space. Five seeds, same budget, same pipeline:
+
+| | none | shifted |
+| --- | ---: | ---: |
+| scripted expert | 0.680 | 0.000 |
+| behaviour cloning | 0.202 [0.175, 0.229] | 0.000 |
+| BC + RL | 0.176 [0.083, 0.269] | 0.000 |
+| SAC from scratch | **0.000**, grasp rate 0.000 | 0.000 |
+
+Against the weld's 0.593 from scratch and ~1.000 cloned, this is a large drop,
+and the two most informative numbers in it are the ones that are not the success
+rate:
+
+* **grasp rate 0.000 from scratch.** Not a working grasp with poor follow
+  through — the policy never closes on the box in 200 000 steps. Exploration is
+  where the abstraction was paying.
+* **BC + RL does not beat BC** (t = 0.74). Through the weld it does. A critic
+  trained on states the policy cannot reliably reach has nothing to add to the
+  clone.
+
+The teacher is also worse, and the demonstration set worse still: the arm expert
+succeeds on 19% of `low` episodes, so 200 kept demonstrations came from 1054
+attempts and are a biased sample of the easy worlds.
+
+### Shape variety costs more than it buys, at this budget
+
+Ten seeds per arm, matched budget, entropy floor and update-to-data ratio:
+
+| trained on | tested on `none` | tested on `shapes` |
+| --- | ---: | ---: |
+| mixed shapes | 0.142 [0.000, 0.322] | 0.124 [0.000, 0.271] |
+| boxes only | **0.593** [0.315, 0.871] | **0.450** [0.247, 0.653] |
+
+Welch t = −3.08 and −2.94. **Box-only training beats shape-trained policies even
+when both are tested on shapes**, which is the result the three-seed version
+could not reach. Seven of ten shape seeds finish at exactly 0.000; the outcome is
+bimodal, not noisy, and that is precisely the distribution where five seeds
+mislead.
 
 ## 8. What would change these numbers
 

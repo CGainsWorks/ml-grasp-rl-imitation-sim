@@ -51,6 +51,25 @@ class PlaceRewardConfig:
     w_clear: float = 4.0          # lift the object clear of the table before carrying
     w_carry: float = 6.0          # progress across the table, once grasped
     w_settle: float = 3.0         # object down, near the target, hand off it
+    # Carrying the object *over* the target, still in the hand and still up.
+    #
+    # This is the lift task's `hold` term transplanted, and it is here because
+    # of a measurement rather than a hunch. Decomposing what the scripted expert
+    # actually earns per step:
+    #
+    #     lift-and-hold    5.948/step positive, 51.8% from terms that only pay
+    #                      once the task is complete
+    #     pick-and-place   3.202/step positive, 80.7% from such terms
+    #
+    # The lift task's shaping is worth 2.87 a step on its own -- `hold` alone
+    # pays 1.73 -- and it rises continuously all the way to the goal. The place
+    # task's shaping was worth 0.62, and nothing in it paid *more* as the policy
+    # got closer to finishing. A reward that is 81% terminal is a sparse reward
+    # with decorations, which is exactly what four failed designs were saying.
+    #
+    # `approach` fills the gap between carrying and releasing: it pays a smooth
+    # bump for having the object above the target, off the table, in the hand.
+    w_approach: float = 3.0
     # Events
     w_success: float = 8.0        # paid every step the place condition holds
     w_drop: float = 5.0           # paid once if the object leaves the table
@@ -73,6 +92,7 @@ class PlaceRewardConfig:
     speed_tolerance: float = 0.05     # m/s, so a box in flight is not "placed"
     reach_scale: float = 0.10
     settle_scale: float = 0.05
+    approach_scale: float = 0.06
 
     # How `carry` -- progress across the table -- is gated on having picked the
     # object up. Three settings, and all three were run, because the first two
@@ -126,6 +146,7 @@ class PlaceTerms:
     grasp: Any
     clear: Any
     carry: Any
+    approach: Any
     settle: Any
     success: Any
     drop: Any
@@ -133,7 +154,8 @@ class PlaceTerms:
 
     def total(self):
         return (self.reach + self.align + self.grasp + self.clear + self.carry
-                + self.settle + self.success + self.drop + self.action)
+                + self.approach + self.settle + self.success + self.drop
+                + self.action)
 
     def as_dict(self) -> Dict[str, Any]:
         return dataclasses.asdict(self)
@@ -216,7 +238,17 @@ def place_reward(grip_pos, object_pos, goal_pos, object_start, object_rest_z,
        and gated on a binary latch it pays nothing until 4 cm up, which is a
        cliff. See ``carry_gate``; all three settings were trained.
     6. ``settle`` a smooth bump for the object being near the target, on the
-       table, with the hand off it. This is the term that pays for *letting go*,
+       table, with the hand off it, **and having been picked up first**. That
+       last gate looks redundant on the full task -- the object starts far from
+       the target, so an unlifted object is never near it -- and it is not. The
+       travel ladder in ``experiments/place_ladder.py`` shrinks the distance to
+       zero to isolate transport from release, and at zero travel an ungated
+       ``settle`` pays **+0.96 a step for doing nothing at all**, because the
+       object begins on the target. Five seeds duly did nothing, at a grasp rate
+       of exactly 0.000. That is the fifth term in this repository to be
+       satisfiable without doing the task, and the first found by an experiment
+       designed to measure something else. This is the term that pays for
+       *letting go*,
        and it is why the policy does not sit hovering over the target holding
        on: at the target with the box in hand the terms pay about 2.2 a step;
        settled and successful they pay about 11.
@@ -255,12 +287,19 @@ def place_reward(grip_pos, object_pos, goal_pos, object_start, object_rest_z,
         raise ValueError("carry_gate must be none, latch or ramp, got "
                          + repr(cfg.carry_gate))
 
+    # Over the target, up, and still holding it. Gated on the same clearance
+    # ramp as `carry`, so it cannot be collected by sliding the box onto the
+    # target and sitting on it.
+    lift_ramp = xp.clip(clearance / cfg.lift_threshold, 0.0, 1.0)
+    approach = (cfg.w_approach * xp.exp(-goal_xy / cfg.approach_scale)
+                * grasped * lift_ramp)
+
     # On the table, near the target, not in the hand. The height gate is what
     # stops the policy collecting this by releasing from altitude: a box in
     # freefall over the target is near it horizontally and pays nothing.
     on_table = xp.exp(-xp.clip(object_pos[..., 2] - object_rest_z, 0.0, 1.0) / 0.02)
     settle = (cfg.w_settle * xp.exp(-goal_xy / cfg.settle_scale)
-              * on_table * (1.0 - grasped))
+              * on_table * (1.0 - grasped) * lifted)
 
     success = cfg.w_success * placed
     drop = -cfg.w_drop * dropped
@@ -268,6 +307,7 @@ def place_reward(grip_pos, object_pos, goal_pos, object_start, object_rest_z,
 
     terms = PlaceTerms(
         reach=reach, align=align, grasp=grasp, clear=clear, carry=carry,
-        settle=settle, success=success, drop=drop, action=action_cost,
+        approach=approach, settle=settle, success=success, drop=drop,
+        action=action_cost,
     )
     return terms.total(), terms

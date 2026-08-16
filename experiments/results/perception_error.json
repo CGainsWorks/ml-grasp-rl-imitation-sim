@@ -1,0 +1,20 @@
+{
+  "frames_validation": 4800,
+  "mean_position_error_m": 0.006536656059324741,
+  "median_position_error_m": 0.005659963004291058,
+  "error_visible_m": 0.006816243752837181,
+  "error_occluded_m": 0.005967401433736086,
+  "occluded_fraction": 0.329375,
+  "lag1_autocorrelation_xy": [
+    0.9473042882060104,
+    0.9329496579623352
+  ],
+  "modelled": {
+    "obs_noise_pos_m": [
+      0.004,
+      0.01
+    ],
+    "obs_noise_corr": 0.9,
+    "occlusion_dependence": "not modelled"
+  }
+}

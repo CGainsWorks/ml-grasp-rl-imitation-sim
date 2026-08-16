@@ -27,11 +27,41 @@ penetrating contacts, up to 120 mm deep, and the first physics step of an
 episode resolves them explosively — the scripted expert scores 0.000 with a mean
 peak object height of 13.9 m, which is the box being thrown across the room.
 
-The fix is a nullspace posture bias: solve for the Cartesian target in the range
-space and pull the redundant degrees of freedom towards a reference posture that
-keeps the elbow above the table. That is a known technique and perhaps two
-hours' work. Restricting the elbow joint's range was tried first and made the
-penetration worse, not better.
+Four fixes were tried and measured. None worked, and the reason is a design
+problem rather than a bug:
+
+| attempt | penetrating contacts / 20 resets | workspace corners unreachable |
+| --- | ---: | ---: |
+| as built | 105 | 2 of 27 |
+| restrict the elbow's joint range | 105 | — |
+| nullspace posture bias | 90 | 9 of 27 |
+| IK restarts with a collision check (40 tries) | 113 | — |
+| mount the arm on a pedestal above the table | 41 | 24 of 27 |
+
+The nullspace attempt deserves recording because it is *mathematically vacuous*
+here and looked reasonable: six joints against a six-dimensional pose target
+leave no redundancy, so `I − J⁺J` is zero except at singularities. A nullspace
+posture bias needs a seventh joint, or a task that does not constrain all six
+degrees of freedom.
+
+The restart attempt is the informative one. Forty random restarts per reset,
+keeping any solution that is contact-free, found **zero** in twenty resets — so
+contact-free solutions reaching the start pose are not merely hard for the
+solver to find, they are close to absent for this arm in this scene. A separate
+search over 400 000 random configurations did find contact-free postures near
+the workspace centre with the pads facing down, which means the set is not empty
+but is small and awkwardly placed.
+
+And the last row is the trade laid bare: raising the base cuts penetration by
+more than half and costs almost all the reach.
+
+What this actually needs is kinematic *design*, not debugging: the links here
+are a naive serial stack of collinear capsules, where real arms use link offsets
+precisely so the elbow can clear the workspace it reaches over. Choosing link
+lengths, offsets and a base placement that give both reach and clearance is a
+half-day of geometry with a reachability map to check against — not something to
+converge on by adjusting one number at a time, which is what the table above is
+a record of.
 
 Until then the flag is off by default, no training script uses it, and no number
 in this repository comes from it. It is recorded here rather than deleted

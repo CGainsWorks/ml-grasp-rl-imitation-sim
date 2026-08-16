@@ -45,7 +45,16 @@ class SACConfig:
     buffer_size: int = 400_000
     start_steps: int = 5_000          # uniform-random actions before learning starts
     update_every: int = 50            # env steps between update bursts
-    updates_per_step: float = 1.0     # gradient steps per env step, on average
+    # Gradient steps per environment step. 0.5 rather than the SAC-usual 1.0,
+    # measured rather than guessed: on the nominal world 0.5 scores 1.000 across
+    # three seeds against 1.0's 0.989 and runs 1.94x faster, and on `medium`,
+    # where nothing saturates, the two are indistinguishable (0.522 against
+    # 0.467, Welch t = 0.18). Halving the updates is faster *and* no worse,
+    # which is what over-updating a critic on a small replay buffer looks like.
+    # experiments/compute_ablation.py is the evidence; docs/limitations.md
+    # records what was rejected, including a 2.39x setting that scored 1.000 on
+    # the saturated benchmark and 0.000 on every randomised seed.
+    updates_per_step: float = 0.5
     target_entropy_scale: float = 1.0
     init_alpha: float = 0.1
     alpha_floor: float = 0.0          # lower bound on the entropy coefficient

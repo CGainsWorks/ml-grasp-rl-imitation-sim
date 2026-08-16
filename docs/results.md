@@ -671,13 +671,29 @@ rate:
 * **grasp rate 0.000 from scratch.** Not a working grasp with poor follow
   through — the policy never closes on the box in 200 000 steps. Exploration is
   where the abstraction was paying.
-* **BC + RL does not beat BC** (t = 0.74). Through the weld it does. A critic
-  trained on states the policy cannot reliably reach has nothing to add to the
-  clone.
+* **BC + RL does not beat BC.** Through the weld it does. Four one-flag variants
+  say the damage is not fine-tuning as such:
+
+  | | success on `none` | vs the clone |
+  | --- | ---: | ---: |
+  | clone, no RL | 0.448 | — |
+  | BC term never decays | **0.536** | +0.088, t = +1.04 |
+  | fine-tune at `none`, where the demonstrations came from | 0.422 | −0.026, t = −0.33 |
+  | standard fine-tune, at `medium` | 0.298 | −0.150, t = −1.88 |
+  | critic warmup 3 000 → 20 000 | 0.228 | −0.220, **t = −2.38** |
+
+  Leash the actor to the demonstrations and it is the best arm on the board;
+  match the fine-tuning distribution to the demonstrations and the loss goes
+  away; give the critic seven times longer to warm up — the change that sounds
+  most like good practice — and it is the only one that separates from the
+  clone, downwards.
 
 The teacher is also worse, and the demonstration set worse still: the arm expert
 succeeds on 19% of `low` episodes, so 200 kept demonstrations came from 1054
-attempts and are a biased sample of the easy worlds.
+attempts and are a biased sample of the easy worlds. Recording on the nominal
+world instead, where the same expert manages 0.671, takes the clone from 0.202
+to 0.448 (t = −3.35) — the largest single effect measured on the arm, and it is
+a data-collection decision rather than an algorithmic one.
 
 ### Shape variety costs more than it buys, at this budget
 

@@ -3,13 +3,27 @@
     python experiments/arm_finetune.py --jobs 5
 
 Through the mocap weld, demonstration-seeded SAC improves on its own clone.
-Through the six-jointed arm it does the opposite, and the nominal-world
-demonstrations make the effect impossible to miss: clones at 0.24-0.62, and the
-same clones after 200 000 steps of fine-tuning at 0.000-0.067.
+Through the six-jointed arm it does not. Measured on a common evaluation, the
+nominal-world clones score 0.448 [0.246, 0.650] and the same clones after
+200 000 steps of fine-tuning score 0.298 [0.207, 0.389] -- a drop that does not
+clear the interval (Welch t = 1.88), so "does not help, and may hurt" is as
+strong as the data allows.
+
+On `medium`, the level the fine-tuning trains at, both are near zero: the clone
+manages 0.030 and the fine-tuned policy 0.010. That number matters, because it
+means the fine-tuning never had a working policy on its own training
+distribution to begin with.
 
 That is a *new* limitation, created by this repository's own arm variant, and it
 has three candidate mechanisms. Each is a one-flag change from the run that
 failed, so each gets a controlled arm rather than an argument.
+
+``level``   ``--randomisation none``: fine-tune where the demonstrations were
+            recorded. The clone scores 0.448 on `none` and 0.030 on `medium`, so
+            fine-tuning at `medium` starts from a policy that is already near
+            zero on that distribution and ends there, having given up the `none`
+            performance on the way. This is the arm that asks whether the effect
+            is fine-tuning at all, or a demonstration/training mismatch.
 
 ``hold``    ``--bc-decay-steps 0``: the cloning term never decays, so the actor
             is leashed to the demonstrations for the whole run while the critic
@@ -52,6 +66,14 @@ DEMOS = DEMO_SETS["none"]
 
 # arm -> the flags that differ from the run that failed
 VARIANTS = {
+    # Fine-tune on the distribution the demonstrations came from. Added after
+    # the first three, because measuring the clone at `medium` -- the level the
+    # fine-tuning trains at -- showed it was already scoring 0.01-0.04 there
+    # against 0.21-0.59 on `none`. There was never much to destroy at `medium`;
+    # what fine-tuning costs is the `none` performance the clone had. Demos
+    # recorded on the nominal world and fine-tuned under medium randomisation is
+    # a distribution mismatch, and this is the arm that tests it directly.
+    "level": ["--randomisation", "none"],
     "hold": ["--bc-decay-steps", "0"],
     "warmup": ["--critic-warmup", "20000"],
     "entropy": ["--target-entropy-scale", "0.5", "--alpha-floor", "0.0"],

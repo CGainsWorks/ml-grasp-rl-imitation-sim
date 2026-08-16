@@ -68,38 +68,65 @@ Manipulators](https://arxiv.org/pdf/2504.12719)): y = −0.72, z = 0.85, which
 reaches every cell of the grasp region with the pads down and nothing inside the
 table.
 
-**Policies have now been trained on it, and they are poor.** Five seeds, 100
-episodes each, the same 200 000 steps, network, entropy floor and demonstration
-pipeline the weld runs used:
+**Policies have now been trained on it.** Five seeds, 100 episodes each, the
+same 200 000 steps, network and entropy floor the weld runs used:
 
 | | none | shifted |
 | --- | ---: | ---: |
 | scripted expert | 0.680 | 0.000 |
-| behaviour cloning | 0.202 [0.175, 0.229] | 0.000 |
-| BC + RL | 0.176 [0.083, 0.269] | 0.000 |
+| behaviour cloning, `low` demonstrations | 0.202 [0.175, 0.229] | 0.000 |
+| behaviour cloning, nominal demonstrations | 0.448 [0.246, 0.650] | 0.000 |
 | **SAC from scratch** | **0.000**, grasp rate 0.000 | 0.000 |
-
-Three things in that table are worth separating.
 
 **From-scratch RL through six joints never closes on the box at all** — grasp
 rate 0.000 across every seed, not a low success rate on top of a working grasp.
 The weld version at the same settings reaches 0.593. Whatever the mocap weld is
-abstracting away, exploration is where the cost lands.
+abstracting away, exploration is where the cost lands, and that is the cleanest
+single statement about the abstraction the rest of this repository trains under.
 
-**RL fine-tuning stops helping.** 0.176 against the clone's 0.202, Welch
-t = 0.74 — indistinguishable. Through the weld, demonstration-seeded RL improves
-on its clone; here it does not, and the honest reading is that a critic trained
-on a distribution the policy cannot reliably reach has nothing to add.
+**Where the demonstrations are recorded matters more than anything else tried
+here.** The arm's expert succeeds on 19% of `low` episodes against the weld
+expert's ~100%, so a `low` set is both a weaker teacher and a biased sample of
+the easy worlds — 200 kept episodes out of 1054 attempted. Recording on the
+nominal world instead, where the same expert manages 0.671, more than doubles
+the clone: 0.202 to 0.448, Welch t = −3.35. For the weld this choice is free,
+because its expert succeeds everywhere.
 
-**The teacher is much worse, and the demonstration set is worse still.** The arm
-expert succeeds on 19% of `low` episodes against the weld expert's ~100%, so 200
-kept demonstrations came from 1054 attempts and are a biased sample of the easy
-worlds. A second set recorded on the nominal world, where the same expert
-manages 0.671, is trained separately rather than assumed to be better.
+### Fine-tuning the arm's clone: four diagnoses, and two of my own errors
 
-So the arm variant is structurally sound and the *method* does not carry across
-to it at this budget. That is the more useful version of the claim than "there
-is an arm".
+Demonstration-seeded RL made the clone *worse*, which is the opposite of what it
+does through the weld. Four one-flag variants, all from the same clones, all
+evaluated on the same distribution:
+
+| | success on `none` | vs the clone |
+| --- | ---: | ---: |
+| clone, no RL at all | 0.448 | — |
+| **BC term never decays** | **0.536** [0.415, 0.657] | +0.088, t = +1.04 |
+| fine-tune at `none`, where the demonstrations came from | 0.422 [0.339, 0.505] | −0.026, t = −0.33 |
+| standard fine-tune, at `medium` | 0.298 [0.207, 0.389] | −0.150, t = −1.88 |
+| critic warmup 3 000 → 20 000 | 0.228 [0.070, 0.386] | −0.220, **t = −2.38** |
+
+Nothing here beats the clone by a margin that clears its interval. What the
+table does establish is where the damage comes from, and it is *not* fine-tuning
+as such: leash the actor to the demonstrations for the whole run and the result
+is the best of the five; match the fine-tuning distribution to the demonstrations
+and the loss disappears; give the critic seven times longer to warm up — the
+change that sounded most like good practice — and it is the only arm that
+separates from the clone, downwards.
+
+**Two corrections belong in this section**, because both were mine and both
+would have been reported as findings.
+
+The first: I compared the clone's score on `none` against fine-tuned scores on
+`medium` and called it destruction of a working policy. The clone scores **0.030
+on `medium`**. There was never a working policy on the fine-tuning distribution
+to destroy.
+
+The second: I read the same variants' *training-level* evaluations, saw
+0.033-0.067, and concluded the BC leash had not helped. On the common evaluation
+it is the best arm on the board. Both mistakes have the same shape — comparing
+numbers measured on different distributions — and it is the mistake this
+repository warns about everywhere else.
 
 Randomisation parameters are applied to the arm unchanged apart from
 `hand_compliance`, which maps to arm joint stiffness the way the Isaac port maps

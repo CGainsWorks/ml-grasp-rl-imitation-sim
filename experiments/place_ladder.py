@@ -52,6 +52,9 @@ from experiments.place_task import (  # noqa: E402
 )
 
 
+NO_APPROACH = os.path.join("src", "rewards", "configs", "place_noapproach.json")
+
+
 def job(rung: str, seed: int, steps: int) -> Dict:
     lo, hi = PLACE_TRAVEL_LADDER[rung]
     out = os.path.join(RUNS, "place_rung{}_s{}".format(rung, seed))
@@ -60,6 +63,11 @@ def job(rung: str, seed: int, steps: int) -> Dict:
         "cmd": [sys.executable, "src/train_rl.py", "--steps", str(steps),
                 "--seed", str(seed), "--randomisation", LEVEL, "--task", "place",
                 "--place-travel", str(lo), str(hi),
+                # Pinned, not inherited. Three of these runs were started either
+                # side of a change to the default reward and had to be thrown
+                # away; a ladder measured under two rewards measures neither.
+                "--reward-config",
+                os.path.join("src", "rewards", "configs", "place_noapproach.json"),
                 "--hidden", str(HIDDEN), "--eval-every", "25000",
                 "--eval-episodes", "30", "--quiet",
                 "--alpha-floor", str(ALPHA_FLOOR), "--output", out],
@@ -93,6 +101,7 @@ def main() -> None:
         subprocess.run([sys.executable, "src/evaluate.py", "--runs",
                         "experiments/runs/{}_s*".format(label), "--task", "place",
                         "--place-travel", str(lo), str(hi),
+                        "--reward-config", NO_APPROACH,
                         "--eval-levels", "none", "--episodes", str(args.episodes),
                         "--label", label, "--output", out], cwd=REPO, check=False)
         if os.path.exists(out):

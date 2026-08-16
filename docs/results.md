@@ -602,41 +602,53 @@ feasibility.
 Read from behaviour rather than from the return curve, which was climbing
 happily throughout:
 
-| `carry` gated on | `clear` pays | grasp rate | peak lift | success |
-| --- | ---: | ---: | ---: | ---: |
-| `grasped` only | 0.18/step | 0.63-0.83 | 0.010 m | 0.002 |
-| the binary lift latch | 0.18/step | — | 0.006-0.016 m | 0.000 |
-| clearance / 4 cm | 0.18/step | 0.37-0.70 | 0.009 m | 0.000 |
-| clearance / 4 cm | 0.48/step | 0.67-0.73 | 0.010 m | 0.002 |
+| what the shaping was keyed on | success | peak lift |
+| --- | ---: | ---: |
+| `carry` on `grasped` only | 0.007 | 0.012 m |
+| `carry` on the binary lift latch | 0.000 | 0.010 m |
+| `carry` on a clearance ramp, `clear` 0.18/step | 0.000 | 0.011 m |
+| `carry` on a clearance ramp, `clear` 0.48/step | 0.007 | 0.011 m |
+| + `approach` peaking while hovering over the target | 0.000 | **0.130 m** |
+| + `approach` peaking at the release point | 0.000 | 0.036 m |
+| + `approach` rising monotonically through both | 0.000 | 0.063 m |
+| the first design at 600 000 steps | 0.044 | 0.021 m |
 
-The first design made the largest dense term in the reward payable to a policy
-that closed the pads on the box and *pushed* — both pads are in contact with a
-box being shoved, so `grasped` was true and the lift latch never fired in 20
-episodes out of 20. The second closed that exploit with a binary gate and
-replaced it with a cliff the policy never crossed: the transport term was
-invisible until the box was 4 cm up, so the seeds grasped and sat on the table.
+The peak-lift column carries the information, not the success column. The first
+four designs never pick the box up: they close the pads and push, or grasp and
+sit. The fifth produced *carrying* — the first thing in the investigation to do
+so — because its maximum sits where the object is held above the target, which
+is also where it pays nothing for finishing. Moving the maximum to the release
+point stopped the lifting. Making it rise through both recovers half the lifting
+and still scores zero.
 
-Both failures are already written down in [reward-design.md](reward-design.md)
-as things that happened on the *lift* task — a term correct at the optimum and
-wrong on the path to it, and a cliff where a hill was needed. They were walked
-into again on a task designed after they were documented, which is worth more as
-evidence about how easy this is to get wrong than any of the successes above.
+Two controls close off the boring explanations:
 
-The fourth attempt is the one that rules out "the weight was just too small".
-`clear` there is the lift task's own height term — 4.0 x 0.12 — taken from a
-task where SAC solves the identical sub-problem from scratch rather than
-searched for on this one. It scores 0.002.
+* **Budget** — the first design at 600 000 steps, more gradient updates than the
+  entire lift grid was trained with, reaches 0.044 and is still sliding.
+* **Task length** — `experiments/place_ladder.py` shrinks the object-to-target
+  distance to nothing. All three rungs, fifteen seeds, score 0.000, including
+  the rung with no transport to do at all.
 
-The budget control excludes the other boring explanation. The unchanged reward
-at 600 000 steps, three seeds — more gradient updates than the entire lift grid
-was trained with — finishes at 0.000, 0.067, 0.067, grasping on 73-97% of steps
-with a peak lift of 0.021 m. It is sliding the box, faster.
+And the measurement that explains it, from decomposing the scripted expert's
+per-step return:
 
-Meanwhile demonstrations solve the task on the first attempt under both reward
-versions: 0.978 cloned, 0.916 and 0.870 demonstration-seeded. **Four reward
-designs and a tripled budget against a working clone** is the shape of this
-result, and it is the strongest evidence in the repository that the reward
-design here is a per-task craft rather than a method.
+| | positive reward | share from terms that only pay once the task is done |
+| --- | ---: | ---: |
+| lift-and-hold | 5.948/step | 51.8% |
+| pick-and-place | 3.202/step | **80.7%** |
+
+**Shaping buys segments.** Put a maximum where a segment ends and the policy
+learns that segment and stops there — reaching, grasping, lifting and carrying
+were each bought exactly this way. Chaining segments is what these designs do
+not do, and pick-and-place is four in series where lift-and-hold is two.
+Demonstrations supply the chain for free, which is why cloning solved this task
+on the first attempt under every one of the seven rewards.
+
+Meanwhile the imitation column never moved: 0.978 cloned, and 0.870-0.967
+demonstration-seeded across the reward variants. **Seven reward designs and a
+tripled budget against a clone that worked immediately** is the shape of this
+result, and it is the strongest evidence in the repository that hand-designed
+dense shaping here is a per-task craft rather than a method.
 
 ### The arm, and what the mocap weld was hiding
 

@@ -371,40 +371,67 @@ used:
 | **SAC from scratch** | **0.002** [0.000, 0.008] | 0.000 |
 
 Imitation transfers to the second task without changes. **From-scratch RL does
-not**, and four reward designs and a tripled budget have not moved it off zero.
-What each attempt actually did, read from behaviour rather than from the return
-curve:
+not**, and it now has seven reward designs, a tripled budget and a task
+decomposition behind that sentence rather than a shrug. Every row is five seeds,
+200 000 steps, identical settings, and the diagnostic column is behavioural
+because the return curve was climbing in all of them:
 
-| `carry` gated on | `clear` pays | peak lift | success |
-| --- | ---: | ---: | ---: |
-| `grasped` only | 0.18/step | 0.010 m | 0.002 |
-| the binary lift latch | 0.18/step | 0.006-0.016 m | 0.000 |
-| clearance / 4 cm | 0.18/step | 0.009 m | 0.000 |
-| clearance / 4 cm | **0.48/step** | 0.010 m | 0.002 |
+| what `carry` and `approach` were keyed on | success | peak lift |
+| --- | ---: | ---: |
+| `carry` on `grasped` only | 0.007 | 0.012 m |
+| `carry` on the binary lift latch | 0.000 | 0.010 m |
+| `carry` on a clearance ramp, `clear` 0.18/step | 0.000 | 0.011 m |
+| `carry` on a clearance ramp, `clear` 0.48/step | 0.007 | 0.011 m |
+| + `approach` on horizontal distance (peaks while hovering) | 0.000 | **0.130 m** |
+| + `approach` on 3-D distance (peaks at the release) | 0.000 | 0.036 m |
+| + `approach` rising monotonically through both | 0.000 | 0.063 m |
+| the first design at **600 000 steps** | 0.044 | 0.021 m |
 
-The first design paid the largest term in the reward to a policy that closed the
-pads on the box and *pushed*; the second closed that exploit and replaced it
-with a cliff the policy never crossed; the third turned the cliff into a hill
-and the fourth made the hill as steep as the lift task's own height term
-(4.0 x 0.12, taken from there rather than searched for, because getting the box
-off the table is the identical sub-problem). The first two failures are exactly
-what [reward-design.md](reward-design.md) already records for the lift task, met
-again on a task written after they were written down.
+Read down the peak-lift column rather than the success column: that is where the
+information is. The first four designs never pick the box up at all — they close
+the pads and push it, or grasp it and sit. The fifth is the first thing in the
+investigation that produced *carrying*, and it did so because the term is
+maximised while holding the object above the target — where it also pays nothing
+for finishing, so five seeds carried and stopped. Correcting that so the maximum
+sits at the release point stopped the lifting again. Making it rise
+monotonically through lift, carry and descent — 1.125, 2.067, 3.000, with
+sliding at exactly 0.000 — recovers about half the lifting and still scores
+zero.
 
-The budget control excludes the boring explanation. The first design at 600 000
-steps, three seeds -- more gradient updates than the entire lift grid was
-trained with -- finishes at 0.000, 0.067, 0.067, still grasping on 73-97% of
-steps and still with a peak lift of 0.021 m. It is sliding the box, faster.
+Two controls rule out the boring explanations. **Budget**: the first design at
+600 000 steps, three seeds, more gradient updates than the entire lift grid was
+trained with, reaches 0.044 while still sliding. **Task length**: the travel
+ladder (`experiments/place_ladder.py`) shrinks the distance between object and
+target to nothing, so there is no transport left to do. All three rungs, fifteen
+seeds, score 0.000 — including the rung where the target sits where the object
+started. The difficulty is not the distance.
 
-Demonstrations solve the same task on the first attempt, on both reward
-versions: 0.978 cloned, 0.916 and 0.870 demonstration-seeded.
+The measurement that explains it is a decomposition of what the scripted expert
+earns per step on each task:
 
-The most likely structural reason, and it is a hypothesis rather than a result:
-in the lift task the shaped progress term and the height term point the same
-way, so climbing one climbs the other. In the place task they are orthogonal --
-the object must go *up*, which earns little, before going *sideways*, which
-earns most of the reward. Demonstrations supply exactly that missing sequence,
-which is consistent with cloning working on the first attempt.
+| | positive reward | share from terms that only pay once the task is done |
+| --- | ---: | ---: |
+| lift-and-hold | 5.948/step | 51.8% |
+| pick-and-place | 3.202/step | **80.7%** |
+
+The lift task's shaping is worth 2.87 a step on its own, and it rises
+continuously all the way to the goal — `hold` alone pays 1.73. The place task's
+shaping was worth 0.62, and nothing in it paid more as the policy got closer to
+finishing. A reward that is 81% terminal is a sparse reward with decorations,
+and this repository already has a section showing that the sparse version of the
+*first* task scores zero as well.
+
+**The honest conclusion is about the family of designs, not the next weight.**
+Hand-shaped dense rewards of this form solved lift-and-hold and did not solve
+pick-and-place, and seven attempts is enough to stop reporting the eighth as
+imminent. What the shaping *can* be made to do is buy individual segments of the
+behaviour — reaching, grasping, lifting, carrying — each time by putting a
+maximum where that segment ends, and each time the policy stops there. Chaining
+segments is the thing this method does not do, and demonstrations supply exactly
+that: the whole sequence, in order, for free.
+
+That is a limitation of the approach the repository demonstrates, and it took a
+second task to find it. One task could not have.
 
 **One box shape by default**, and see the shape paragraph above for what happens
 with three.

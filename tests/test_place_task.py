@@ -286,29 +286,42 @@ def test_settle_pays_nothing_for_an_object_that_was_never_picked_up():
     assert float(np.asarray(placed.settle)[0]) > 2.0
 
 
-def test_approach_pays_for_carrying_over_the_target_but_not_for_sliding():
-    """The lift task's `hold` term transplanted. It has to be unreachable by
-    shoving the box onto the target, or it reintroduces the sliding exploit."""
-    cfg = PlaceRewardConfig()
+def test_approach_rises_monotonically_along_the_sequence():
+    """The property the whole `approach` investigation is about.
+
+    Two earlier versions of this term each had their maximum in the wrong place.
+    `hover` peaked while holding the object above the target and paid *nothing*
+    at the point of release, so five seeds learned to carry and stop. `goal`
+    peaked at release and paid almost nothing during the lift, so the seeds
+    stopped lifting. What a shaping term has to do is rise all the way along the
+    sequence, and that is what this asserts rather than any particular value.
+    """
+    from src.rewards.place_reward import PlaceRewardConfig, place_reward
+
     goal = np.array([[0.10, 0.0, 0.423]])
-    kwargs = dict(grip_pos=goal, goal_pos=goal,
-                  object_start=np.array([[-0.10, 0.0, 0.423]]),
-                  object_rest_z=np.array([0.423]), lifted=np.array([1.0]),
-                  dropped=np.array([0.0]), object_speed=np.array([0.0]),
-                  action=np.zeros((1, 4)), cfg=cfg)
-    _, carried = place_reward(object_pos=goal + np.array([[0, 0, 0.08]]),
-                              grasped=np.array([1.0]), **kwargs)
-    _, slid = place_reward(object_pos=goal, grasped=np.array([1.0]), **kwargs)
-    _, elsewhere = place_reward(object_pos=goal + np.array([[0.2, 0, 0.08]]),
-                                grasped=np.array([1.0]), **kwargs)
-    assert float(np.asarray(carried.approach)[0]) > 2.5
-    assert float(np.asarray(slid.approach)[0]) == 0.0
-    # 20 cm away is nearly four scale lengths, so the bump has decayed to a few
-    # percent -- present, so there is still a gradient to follow, but nowhere
-    # near enough to be worth collecting instead of finishing.
-    assert float(np.asarray(elsewhere.approach)[0]) < 0.15
-    assert (float(np.asarray(elsewhere.approach)[0])
-            < 0.05 * float(np.asarray(carried.approach)[0]))
+
+    def approach(mode, obj, lifted=1.0, grasped=1.0):
+        cfg = PlaceRewardConfig(approach_mode=mode)
+        _, terms = place_reward(
+            grip_pos=goal, object_pos=obj, goal_pos=goal,
+            object_start=np.array([[-0.10, 0.0, 0.423]]),
+            object_rest_z=np.array([0.423]), grasped=np.array([grasped]),
+            lifted=np.array([lifted]), dropped=np.array([0.0]),
+            object_speed=np.array([0.0]), action=np.zeros((1, 4)), cfg=cfg)
+        return float(np.asarray(terms.approach)[0])
+
+    first_lift = approach("both", goal + np.array([[0, 0, 0.03]]), lifted=0.0)
+    carrying = approach("both", goal + np.array([[0, 0, 0.10]]))
+    releasing = approach("both", goal)
+    slid = approach("both", goal, lifted=0.0)
+
+    assert slid == 0.0                      # on the table, never picked up
+    assert 0.0 < first_lift < carrying < releasing
+
+    # And the two failed modes, kept reachable so their runs stay reproducible.
+    assert approach("hover", goal) == 0.0            # nothing at the release
+    assert approach("goal", goal + np.array([[0, 0, 0.03]]),
+                    lifted=0.0) == 0.0               # nothing during the lift
 
 
 def test_unknown_task_is_rejected():

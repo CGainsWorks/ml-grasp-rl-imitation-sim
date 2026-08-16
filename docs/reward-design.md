@@ -117,12 +117,42 @@ pays nothing until the object has actually been picked up -- and it is the same
 fix as the yaw term's proximity gate in the lift reward, arrived at
 independently.
 
-What this costs to learn is worth stating plainly: three separate shaping terms,
-across two tasks, each correct at the optimum, each wrong on the path, each
-found only by training on it and reading what the policy actually did. The
-diagnosis in every case came from a behavioural quantity (peak lift height,
-grasp rate) rather than from the return curve, which in the sliding case was
-climbing perfectly happily.
+That was not the end of it. Seven designs later the second task is still not
+solved from scratch, and the sequence is worth reading in one place because each
+step was a reasonable response to the previous failure:
+
+| design | what it was fixing | what the policy did |
+| --- | --- | --- |
+| `carry` on `grasped` | — | pushed the box along the table |
+| `carry` on the lift latch | the pushing | grasped and sat still |
+| `carry` on a clearance ramp | the cliff at the latch | grasped and sat still |
+| `clear` raised to the lift task's own weight | too shallow a hill | grasped and sat still |
+| `approach` on horizontal distance | nothing rewarded finishing | **lifted and carried**, then hovered |
+| `approach` on 3-D distance | the maximum was in the wrong place | stopped lifting again |
+| `approach` rising through both | each half worked alone | about half the lifting, still zero |
+
+Two of those are the same mistake in different clothes — a term whose maximum is
+somewhere other than the end of the task — and the fifth and sixth are that
+mistake made in *opposite directions* within an hour of each other.
+
+The general shape, stated as plainly as it can be: **shaping buys segments.**
+Put a maximum where a segment ends and the policy will reliably learn that
+segment and stop there. Reaching, grasping, lifting and carrying were each
+bought this way. What none of these designs bought is the *chaining* of segments,
+and pick-and-place is four of them in series where lift-and-hold is two.
+
+The measurement that makes this concrete is what the scripted expert earns per
+step: 51.8% of the lift task's positive reward comes from terms that only pay
+once the task is complete, against 80.7% for pick-and-place. A reward that is
+four-fifths terminal is a sparse reward with decorations, and the sparse version
+of the *first* task scores zero here too.
+
+What this costs to learn is worth stating plainly: seven shaping designs across
+two tasks, each correct at its own optimum, each wrong on the path to the task's.
+The diagnosis in every single case came from a behavioural quantity — peak lift
+height, grasp rate — and never from the return curve, which was climbing
+happily throughout every one of them. If there is one transferable lesson in
+this repository it is that: **instrument the behaviour, not the return.**
 
 ## Termination
 

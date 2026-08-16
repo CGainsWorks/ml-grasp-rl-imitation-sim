@@ -16,11 +16,14 @@ reported over five seeds with confidence intervals, because a
 reinforcement-learning number from one seed is noise.
 
 The second task is the interesting one. Pick-and-place was added specifically to
-test whether the reward design *method* generalises, and it does not: imitation
-carried over to it unchanged at 0.978, while from-scratch RL has been through
-four reward designs and a tripled budget without clearing 0.002 — twice
-reproducing failures this repository had already documented on the first task.
-That is written up rather than buried, in [docs/results.md](docs/results.md) §7.
+test whether the reward design *method* generalises, and it does not. Imitation
+carried over to it unchanged at 0.978. From-scratch RL has now been through
+**seven reward designs, a tripled budget and a task decomposition** without
+clearing 0.05, and the diagnosis is that shaping of this kind buys *segments* —
+put a maximum where a segment ends and the policy learns that segment and stops
+there. Reaching, grasping, lifting and carrying were each bought that way;
+chaining them was not. That is written up rather than buried, in
+[docs/results.md](docs/results.md) §7.
 
 ![expert rollout](videos/expert_nominal.gif)
 
@@ -41,7 +44,7 @@ condition is being met. Blue bar: lift height.*
 | **Randomisation** | 13 parameters across dynamics, actuation and sensing; four training levels, a held-out shifted distribution, and a `measured` one built from published values |
 | **Perception** | A CNN pose estimator from 64x64 renders, used to check the sensing noise model rather than replace it — two of its three claims held, one was refuted |
 | **Arm** | An optional six-jointed UR5-proportioned arm with joint limits, self-collision and damped-least-squares IK, in place of the mocap weld |
-| **Reporting** | 5 seeds x 100 episodes per cell (10 where the spread turned out bimodal), mean with a 95% t interval across seeds |
+| **Reporting** | 10 seeds x 100 episodes for the headline grid and the shape comparison, 5 elsewhere; mean with a 95% t interval across seeds |
 | **Isaac Lab** | Ported and **working on Isaac Sim 5.1**: all 7 bring-up checks pass, including reward parity with the MuJoCo implementation to ~5e-08 and randomisation driven by the same JSON — [envs/isaac/README.md](envs/isaac/README.md) |
 
 Nothing here has touched hardware. `shifted` is a **proxy** for a real robot,

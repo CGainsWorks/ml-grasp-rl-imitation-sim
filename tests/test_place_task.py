@@ -242,6 +242,33 @@ def test_an_unknown_carry_gate_is_rejected():
             cfg=PlaceRewardConfig(carry_gate="teleport"))
 
 
+def test_the_travel_ladder_samples_the_range_it_is_given():
+    """The rungs exist to decompose the task; a rung that quietly sampled the
+    default range would make the decomposition meaningless."""
+    from envs.mujoco.grasp_env import PLACE_TRAVEL_LADDER
+
+    for rung, (lo, hi) in PLACE_TRAVEL_LADDER.items():
+        e = make_env("none", seed=0, task="place", travel_range=(lo, hi))
+        for seed in range(15):
+            e.reset(seed=seed)
+            travel = float(np.linalg.norm((e._goal - e._object_start)[:2]))
+            assert lo - 1e-9 <= travel <= hi + 1e-9, (rung, travel)
+        e.close()
+
+
+def test_a_zero_travel_target_still_requires_a_pick_and_a_release():
+    """The `none` rung removes transport, not the task. If the object counted as
+    placed where it already sits, the rung would measure nothing."""
+    from envs.mujoco.grasp_env import PLACE_TRAVEL_LADDER
+
+    e = make_env("none", seed=0, task="place",
+                 travel_range=PLACE_TRAVEL_LADDER["none"])
+    obs, info = e.reset(seed=1)
+    assert not info["is_success"]      # sitting on the target is not placed
+    assert info["lifted"] == 0.0
+    e.close()
+
+
 def test_unknown_task_is_rejected():
     with pytest.raises(ValueError):
         make_env("none", seed=0, task="stack")

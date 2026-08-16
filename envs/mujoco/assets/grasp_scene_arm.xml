@@ -65,7 +65,7 @@
             friction="0.8 0.02 0.0002" condim="4"/>
     </body>
 
-    <body name="base" pos="0 -0.62 0.40">
+    <body name="base" pos="0 -0.72 0.85">
       <geom name="base" type="cylinder" size="0.06 0.03" rgba="0.30 0.32 0.36 1" mass="4.0"/>
       <body name="shoulder" pos="0 0 0.089">
         <joint name="j1" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="20" armature="0.1"/>

@@ -37,7 +37,26 @@ steps may simply be short. ``budget`` runs the unchanged reward at 600 000.
     ``ramp``   the same, with `clear` at the lift task's own 4.0 x 0.12 = 0.48.
                Getting the box off the table is the *identical* sub-problem in
                both tasks and SAC solves it from scratch in the other one, so
-               the weight is taken from there rather than searched for.
+               the weight is taken from there rather than searched for. 0.002.
+
+    ``approach``
+               the fifth design, and the first derived from a measurement rather
+               than from a hypothesis about what went wrong. Decomposing what
+               the scripted expert earns per step:
+
+                   lift-and-hold    5.948/step positive, 51.8% of it from terms
+                                    that only pay once the task is complete
+                   pick-and-place   3.202/step positive, 80.7% from such terms
+
+               The lift task's shaping is worth 2.87 a step by itself and rises
+               continuously to the goal; `hold` alone pays 1.73. The place
+               task's shaping was worth 0.62 and nothing in it paid *more* as
+               the policy got closer to finishing. A reward that is 81% terminal
+               is a sparse reward with decorations, which is what four failed
+               designs had been saying. `approach` transplants the lift task's
+               `hold`: a smooth bump for having the object over the target, off
+               the table, still in the hand. It takes the terminal share to
+               67.6% and the shaping to 1.24 a step.
 
 Every arm is at the **original 200 000 steps** except ``budget``. Matched budget
 on purpose: the mistake this repository has made before is reading a difference
@@ -74,7 +93,9 @@ CONFIGS = {"none": os.path.join("src", "rewards", "configs", "place_ungated.json
            "latch": os.path.join("src", "rewards", "configs", "place_latch.json"),
            "ramp_shallow": os.path.join("src", "rewards", "configs",
                                         "place_ramp_shallow.json"),
-           "ramp": None}
+           "ramp": os.path.join("src", "rewards", "configs",
+                                "place_noapproach.json"),
+           "approach": None}
 
 # run-name prefix -> (gate, demonstration-seeded, steps multiplier)
 ARMS = {
@@ -82,11 +103,12 @@ ARMS = {
     "gated": ("latch", False, 1),
     "ramp_shallow": ("ramp_shallow", False, 1),
     "ramp": ("ramp", False, 1),
-    "bcrl_ramp": ("ramp", True, 1),
+    "approach": ("approach", False, 1),
+    "bcrl_approach": ("approach", True, 1),
 }
 PREFIX = {"budget": "place_sacbudget", "gated": "place_sacgated",
           "ramp_shallow": "place_sacramp", "ramp": "place_saclift",
-          "bcrl_ramp": "place_bcrllift"}
+          "approach": "place_sacapproach", "bcrl_approach": "place_bcrlapproach"}
 
 
 def job(arm: str, seed: int, steps: int) -> Dict:

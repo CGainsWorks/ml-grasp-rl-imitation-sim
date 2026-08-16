@@ -269,6 +269,48 @@ def test_a_zero_travel_target_still_requires_a_pick_and_a_release():
     e.close()
 
 
+def test_settle_pays_nothing_for_an_object_that_was_never_picked_up():
+    """Found by the travel ladder rather than by inspection: at zero travel the
+    object starts on the target, and an ungated `settle` paid +0.96 a step for
+    doing nothing. Five seeds learned to do nothing, at a grasp rate of 0.000."""
+    cfg = PlaceRewardConfig()
+    goal = np.array([[0.10, 0.0, 0.423]])
+    kwargs = dict(grip_pos=goal + np.array([[0.0, 0.0, 0.2]]), object_pos=goal,
+                  goal_pos=goal, object_start=goal,
+                  object_rest_z=np.array([0.423]), grasped=np.array([0.0]),
+                  dropped=np.array([0.0]), object_speed=np.array([0.0]),
+                  action=np.zeros((1, 4)), cfg=cfg)
+    _, untouched = place_reward(lifted=np.array([0.0]), **kwargs)
+    _, placed = place_reward(lifted=np.array([1.0]), **kwargs)
+    assert float(np.asarray(untouched.settle)[0]) == 0.0
+    assert float(np.asarray(placed.settle)[0]) > 2.0
+
+
+def test_approach_pays_for_carrying_over_the_target_but_not_for_sliding():
+    """The lift task's `hold` term transplanted. It has to be unreachable by
+    shoving the box onto the target, or it reintroduces the sliding exploit."""
+    cfg = PlaceRewardConfig()
+    goal = np.array([[0.10, 0.0, 0.423]])
+    kwargs = dict(grip_pos=goal, goal_pos=goal,
+                  object_start=np.array([[-0.10, 0.0, 0.423]]),
+                  object_rest_z=np.array([0.423]), lifted=np.array([1.0]),
+                  dropped=np.array([0.0]), object_speed=np.array([0.0]),
+                  action=np.zeros((1, 4)), cfg=cfg)
+    _, carried = place_reward(object_pos=goal + np.array([[0, 0, 0.08]]),
+                              grasped=np.array([1.0]), **kwargs)
+    _, slid = place_reward(object_pos=goal, grasped=np.array([1.0]), **kwargs)
+    _, elsewhere = place_reward(object_pos=goal + np.array([[0.2, 0, 0.08]]),
+                                grasped=np.array([1.0]), **kwargs)
+    assert float(np.asarray(carried.approach)[0]) > 2.5
+    assert float(np.asarray(slid.approach)[0]) == 0.0
+    # 20 cm away is nearly four scale lengths, so the bump has decayed to a few
+    # percent -- present, so there is still a gradient to follow, but nowhere
+    # near enough to be worth collecting instead of finishing.
+    assert float(np.asarray(elsewhere.approach)[0]) < 0.15
+    assert (float(np.asarray(elsewhere.approach)[0])
+            < 0.05 * float(np.asarray(carried.approach)[0]))
+
+
 def test_unknown_task_is_rejected():
     with pytest.raises(ValueError):
         make_env("none", seed=0, task="stack")

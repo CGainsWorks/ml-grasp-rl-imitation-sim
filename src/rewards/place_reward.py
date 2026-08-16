@@ -66,6 +66,30 @@ class PlaceRewardConfig:
     reach_scale: float = 0.10
     settle_scale: float = 0.05
 
+    # How `carry` -- progress across the table -- is gated on having picked the
+    # object up. Three settings, and all three were run, because the first two
+    # are wrong in instructive ways.
+    #
+    # "none"   the first design. `carry` is the largest dense term and it was
+    #          payable to a policy that closed the pads on the box and *pushed*:
+    #          five from-scratch seeds grasped on 63-83% of steps, never lifted
+    #          the box above 1.9 cm against a 4 cm latch, and scored 0.002. A
+    #          shaping term that can be satisfied without doing the task will be.
+    #
+    # "latch"  multiply by the binary lift latch. This closes the exploit and
+    #          still scores 0.000 across five seeds, because it replaces the
+    #          exploit with a cliff: the largest term in the reward is invisible
+    #          until the object is 4 cm off the table, so the policy grasps, sits
+    #          there (peak lift 0.006-0.016 m) and never discovers transport.
+    #          This is the same failure as the lift task's missing `hold` term,
+    #          which docs/reward-design.md records, and it was walked into again.
+    #
+    # "ramp"   multiply by clearance/lift_threshold, clipped to one. Sliding is
+    #          still worth exactly nothing -- clearance is zero on the table --
+    #          but every millimetre of lift now buys a share of the transport
+    #          gradient, so the cliff becomes a hill. This is the default.
+    carry_gate: str = "ramp"
+
     def to_dict(self) -> Dict[str, float]:
         return dataclasses.asdict(self)
 
@@ -178,7 +202,11 @@ def place_reward(grip_pos, object_pos, goal_pos, object_start, object_rest_z,
     5. ``carry``  progress across the table towards the target, measured from
        where the object started rather than as an absolute distance -- the same
        argument as the lift task's ``place`` term, where an absolute distance
-       charged the policy a flat penalty for picking the box up at all.
+       charged the policy a flat penalty for picking the box up at all. Scaled
+       by how far the object is off the table, and that scaling is the single
+       most important line in this file: ungated the term pays for *sliding*,
+       and gated on a binary latch it pays nothing until 4 cm up, which is a
+       cliff. See ``carry_gate``; all three settings were trained.
     6. ``settle`` a smooth bump for the object being near the target, on the
        table, with the hand off it. This is the term that pays for *letting go*,
        and it is why the policy does not sit hovering over the target holding
@@ -205,12 +233,19 @@ def place_reward(grip_pos, object_pos, goal_pos, object_start, object_rest_z,
 
     grasp = cfg.w_grasp * grasped
 
-    clearance = xp.clip(object_pos[..., 2] - object_rest_z, 0.0, cfg.clear_target)
-    clear = cfg.w_clear * clearance * grasped
+    clearance = xp.clip(object_pos[..., 2] - object_rest_z, 0.0, 1.0)
+    clear = cfg.w_clear * xp.clip(clearance, 0.0, cfg.clear_target) * grasped
 
     start_dist = _norm((object_start - goal_pos)[..., :2], xp)
     goal_xy = _norm((object_pos - goal_pos)[..., :2], xp)
     carry = cfg.w_carry * (start_dist - goal_xy) * grasped
+    if cfg.carry_gate == "latch":
+        carry = carry * lifted
+    elif cfg.carry_gate == "ramp":
+        carry = carry * xp.clip(clearance / cfg.lift_threshold, 0.0, 1.0)
+    elif cfg.carry_gate != "none":
+        raise ValueError("carry_gate must be none, latch or ramp, got "
+                         + repr(cfg.carry_gate))
 
     # On the table, near the target, not in the hand. The height gate is what
     # stops the policy collecting this by releasing from altitude: a box in

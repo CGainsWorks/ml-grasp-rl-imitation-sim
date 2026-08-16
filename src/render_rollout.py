@@ -58,10 +58,11 @@ def render(
     max_steps: int,
     on_episode_start=None,
     task: str = "lift",
+    arm: bool = False,
 ) -> List[np.ndarray]:
     env = make_env(
         randomisation, seed=seed, render_mode="rgb_array", camera=camera,
-        width=width, height=height, max_steps=max_steps, task=task,
+        width=width, height=height, max_steps=max_steps, task=task, arm=arm,
     )
     frames: List[np.ndarray] = []
     successes = 0
@@ -114,6 +115,7 @@ def main() -> None:
     parser.add_argument("--height", type=int, default=360)
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
+    parser.add_argument("--arm", action="store_true")
     parser.add_argument("--fps", type=int, default=25)
     parser.add_argument("--output", default=None, help="path to an .mp4")
     parser.add_argument("--gif", default=None, help="path to a .gif")
@@ -134,7 +136,8 @@ def main() -> None:
 
     frames = render(
         policy_fn, args.randomisation, args.episodes, args.seed,
-        args.camera, args.width, args.height, args.max_steps, on_start, args.task,
+        args.camera, args.width, args.height, args.max_steps, on_start,
+        args.task, args.arm,
     )
 
     import imageio.v2 as imageio

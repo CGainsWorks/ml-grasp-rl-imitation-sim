@@ -113,7 +113,7 @@ IK_ITERS = 20
 # six joints against a six-dimensional pose target leaves no redundancy, so
 # I - J+J is zero except at singularities. It cost an hour and is recorded so
 # the next person does not repeat it.
-IK_RESET_ATTEMPTS = 40
+IK_RESET_ATTEMPTS = 120
 
 TABLE_HEIGHT = 0.40           # top face of the table, metres
 GRIPPER_OPEN_WIDTH = 0.078    # pad-to-pad gap with both slide joints at zero
@@ -215,11 +215,16 @@ class GraspEnv(_BASE):
                 [self.model.actuator(a).id for a in ["a1", "a2", "a3", "a4", "a5", "a6"]])
             self._grip_ctrl = np.array(
                 [self.model.actuator(a).id for a in ["left_drive", "right_drive"]])
-            # The orientation the pads should hold: read off the model at its
-            # home configuration rather than hard-coded, so a change to the
-            # hand's mounting does not silently rotate the grasp.
+            # The orientation the pads should hold, stated rather than read off
+            # the model's home configuration. Home is the arm standing straight
+            # up, where the hand's orientation is an accident of the chain and
+            # has nothing to do with grasping; using it as the IK target asked
+            # the arm to hold the pads facing the ceiling. This is the frame the
+            # weld version holds by construction: grip z down the table normal.
             mujoco.mj_kinematics(self.model, self.data)
-            self._rest_frame = self.data.site_xmat[self._grip_sid].reshape(3, 3).copy()
+            self._rest_frame = np.array([[1.0, 0.0, 0.0],
+                                         [0.0, -1.0, 0.0],
+                                         [0.0, 0.0, -1.0]])
             self._arm_home = self.data.qpos[self._arm_qpos].copy()
             # The posture the nullspace term pulls towards. Not hand-picked:
             # hand-picked ones were collision-free but sat a metre above the
@@ -235,6 +240,9 @@ class GraspEnv(_BASE):
             self._arm_target = np.zeros(3)
             self._arm_placements = 0
             self._arm_place_failures = 0
+            self._arm_last_good = None
+            self._start_pool = []
+            self._build_start_pool()
         else:
             self._grip_ctrl = np.arange(self.model.nu)
         self._goal_sid = self.model.site("goal").id
@@ -649,39 +657,64 @@ class GraspEnv(_BASE):
         self._noise_state[channel] = state
         return state
 
-    def _place_arm(self, target_pos: np.ndarray) -> None:
-        """Put the arm at the start pose without folding it through the table.
+    def _build_start_pool(self, size: int = 256) -> None:
+        """Precompute collision-free start configurations.
 
-        IK is collision-blind, so a converged solution is not necessarily a
-        usable one: reaching over a table it regularly returns a configuration
-        with a link inside it, and the first physics step then resolves a 12 cm
-        penetration by throwing the box across the room. Retrying from a fresh
-        random configuration and keeping the first contact-free solution is the
-        cheap, reliable fix -- the solver stays simple and the check is exact.
+        Sampling a Cartesian start pose and solving IK to it is the obvious
+        approach and it fails here: IK is collision-blind, so a converged
+        solution is often one with a link inside the table, and retrying from
+        random seeds found a clean solution on barely a third of resets.
 
-        If no attempt succeeds the last one is kept, which is honest: the
-        episode will be poor rather than silently pretending the arm is placed.
+        Sampling in *configuration* space instead makes validity constructive.
+        A configuration is kept only if it is contact-free, puts the grip inside
+        the workspace above the table, and holds the pads facing down. The exact
+        start pose does not matter to the task -- the hand only has to begin
+        above the table and offset from the object -- so choosing the pose to
+        suit the arm rather than the other way round costs nothing.
         """
         names = ("j1", "j2", "j3", "j4", "j5", "j6")
         lo = np.array([self.model.joint(n).range[0] for n in names])
         hi = np.array([self.model.joint(n).range[1] for n in names])
-        for attempt in range(IK_RESET_ATTEMPTS):
-            if attempt == 0:
-                seed_q = self._arm_home
-            else:
-                seed_q = self.np_random.uniform(lo, hi)
-            self.data.qpos[self._arm_qpos] = seed_q
+        rng = np.random.default_rng(0)
+        saved = self.data.qpos.copy()
+        pool = []
+        for _ in range(200_000):
+            if len(pool) >= size:
+                break
+            q = rng.uniform(lo, hi)
+            self.data.qpos[self._arm_qpos] = q
             mujoco.mj_kinematics(self.model, self.data)
-            self._solve_ik(target_pos, 0.0, iters=200, hold=False)
+            grip = self.data.site_xpos[self._grip_sid]
+            if not (abs(grip[0]) < 0.17 and abs(grip[1]) < 0.17
+                    and 0.56 < grip[2] < 0.70):
+                continue
+            if self.data.site_xmat[self._grip_sid].reshape(3, 3)[2, 2] > -0.80:
+                continue
             mujoco.mj_forward(self.model, self.data)
-            if np.linalg.norm(self._grip_pos() - target_pos) > 0.02:
+            if any(self.data.contact[i].dist < -0.001 for i in range(self.data.ncon)):
                 continue
-            if any(self.data.contact[i].dist < -0.001
-                   for i in range(self.data.ncon)):
-                continue
-            self._arm_placements += 1
+            pool.append((q.copy(), grip.copy()))
+        self.data.qpos[:] = saved
+        mujoco.mj_forward(self.model, self.data)
+        self._start_pool = pool
+
+    def _place_arm(self, target_pos: np.ndarray) -> None:
+        """Start the arm from a precomputed collision-free configuration.
+
+        ``target_pos`` is advisory: the pool entry closest to it is used, and
+        the commanded setpoint becomes that entry's actual grip position so the
+        controller does not begin the episode chasing an error.
+        """
+        if not self._start_pool:
+            self._arm_place_failures += 1
             return
-        self._arm_place_failures += 1
+        idx = int(np.argmin([np.linalg.norm(g - target_pos) for _, g in self._start_pool]))
+        q, grip = self._start_pool[idx]
+        self.data.qpos[self._arm_qpos] = q
+        self.data.ctrl[self._arm_ctrl] = q
+        mujoco.mj_forward(self.model, self.data)
+        self._arm_target = grip.copy()
+        self._arm_placements += 1
 
     def _solve_ik(self, target_pos: np.ndarray, target_yaw: float,
                   iters: int = IK_ITERS, hold: bool = True) -> None:

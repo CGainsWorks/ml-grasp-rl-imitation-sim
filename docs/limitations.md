@@ -557,6 +557,10 @@ and it scores zero with its control also at zero).
    which is what most of the grasping literature is about and which nothing here
    demonstrates.
 
-6. An Isaac port of the place task. The reward is written backend-agnostically
-   for it; the port has not been done, and until it is, "the second task" is a
-   MuJoCo-only result.
+6. An Isaac **place expert** worth recording demonstrations from. The place task
+   itself is now ported — same file, same shared reward, reward parity to
+   6.9e-08 on the GPU, all eight bring-up checks passing at `none` — but
+   `ScriptedPlaceExpert` was written for the MuJoCo hand and places only 2 of 8
+   on the Franka at `none` and 0 of 8 at `medium`. It lifts reliably (8/8) and
+   sets the box down badly. Until that is fixed there is no Isaac place training
+   number, and none is claimed.

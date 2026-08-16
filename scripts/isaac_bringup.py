@@ -33,6 +33,10 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--num-envs", type=int, default=4)
 parser.add_argument("--episodes", type=int, default=2)
 parser.add_argument("--randomisation", default="none")
+parser.add_argument("--task", default="lift", choices=("lift", "place"),
+                    help="which task to bring up. The place port shares this "
+                         "file and the shared reward, so the parity and expert "
+                         "checks below apply to it unchanged")
 parser.add_argument("--headless", action="store_true", default=True)
 parser.add_argument("--gui", dest="headless", action="store_false")
 args = parser.parse_args()
@@ -53,7 +57,9 @@ from envs.isaac.grasp_task import (  # noqa: E402
     GraspTaskCfg,
 )
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
+from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
 from src.rewards.grasp_reward import GraspRewardConfig, grasp_reward  # noqa: E402
+from src.rewards.place_reward import PlaceRewardConfig, place_reward  # noqa: E402
 
 PASS, FAIL = "PASS", "FAIL"
 results = []
@@ -69,6 +75,7 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 cfg = GraspTaskCfg()
 cfg.scene.num_envs = args.num_envs
 cfg.randomisation_level = args.randomisation
+cfg.task = args.task
 env = GraspTask(cfg)
 obs_dict, _ = env.reset()
 obs = obs_dict["policy"]
@@ -87,25 +94,40 @@ check("box stays on the table under zero actions",
 # ---------------------------------------------------------------- 3. layout
 obs = obs_dict["policy"]
 grip, obj, goal = obs[:, 0:3], obs[:, 8:11], obs[:, 26:29]
+# The two derived-offset clauses are the layout proper and hold for both tasks.
+# The third is about where the *goal* is, which is the one thing the second task
+# changes: lift puts it at the hold height above the object, place puts it on the
+# table at the object's resting height. Asserting the lift height for both would
+# fail a correct port, which is exactly what it did the first time this ran.
+if args.task == "place":
+    goal_ok = bool(torch.allclose(goal[:, 2], env.object_rest_z, atol=1e-3))
+    goal_detail = "goal on the table at the resting height"
+else:
+    goal_ok = bool((goal[:, 2] > TABLE_HEIGHT + HOLD_HEIGHT - 1e-3).all())
+    goal_detail = "goal at the hold height"
 layout_ok = (
     torch.allclose(obs[:, 11:14], obj - grip, atol=1e-4)
     and torch.allclose(obs[:, 29:32], goal - obj, atol=1e-4)
-    and bool((goal[:, 2] > TABLE_HEIGHT + HOLD_HEIGHT - 1e-3).all())
+    and goal_ok
 )
-check("observation layout matches the MuJoCo table", layout_ok)
+check("observation layout matches the MuJoCo table", layout_ok, goal_detail)
 
 # ---------------------------------------------------------------- 4. reward parity
 torch_reward = env._get_rewards()
-np_reward, _ = grasp_reward(
-    env._grip_pos().cpu().numpy().astype(np.float64),
-    env._object_pos().cpu().numpy().astype(np.float64),
-    env.goal_pos.cpu().numpy().astype(np.float64),
-    env.object_rest_z.cpu().numpy().astype(np.float64),
-    env._grasped().cpu().numpy().astype(np.float64),
-    np.zeros(args.num_envs),
-    env.last_action.cpu().numpy().astype(np.float64),
-    GraspRewardConfig(),
-)
+_f = lambda t: t.cpu().numpy().astype(np.float64)  # noqa: E731
+if args.task == "place":
+    np_reward, _ = place_reward(
+        _f(env._grip_pos()), _f(env._object_pos()), _f(env.goal_pos),
+        _f(env.object_start), _f(env.object_rest_z), _f(env._grasped()),
+        _f(env.lifted), np.zeros(args.num_envs), _f(env._object_speed()),
+        _f(env.last_action), PlaceRewardConfig(),
+    )
+else:
+    np_reward, _ = grasp_reward(
+        _f(env._grip_pos()), _f(env._object_pos()), _f(env.goal_pos),
+        _f(env.object_rest_z), _f(env._grasped()), np.zeros(args.num_envs),
+        _f(env.last_action), GraspRewardConfig(),
+    )
 max_diff = float(np.abs(torch_reward.cpu().numpy() - np_reward).max())
 check("reward matches the shared numpy implementation", max_diff < 1e-4,
       "max difference {:.2e}".format(max_diff))
@@ -114,7 +136,8 @@ check("reward matches the shared numpy implementation", max_diff < 1e-4,
 successes, lifted = 0, 0
 for episode in range(args.episodes):
     obs_dict, _ = env.reset()
-    experts = [ScriptedExpert() for _ in range(args.num_envs)]
+    expert_cls = ScriptedPlaceExpert if args.task == "place" else ScriptedExpert
+    experts = [expert_cls() for _ in range(args.num_envs)]
     peak = torch.zeros(args.num_envs, device=env.device)
     # Stop two steps short of the horizon. DirectRLEnv auto-resets the instant
     # the time-out fires, so reading the state after the last step reports the
@@ -140,8 +163,20 @@ for episode in range(args.episodes):
 total = args.episodes * args.num_envs
 check("scripted expert lifts the box", lifted > 0,
       "{}/{} lifted, {}/{} held at the hold point".format(lifted, total, successes, total))
-check("scripted expert holds it at the hold point", successes == total,
-      "{}/{} held".format(successes, total))
+if args.task == "place":
+    # The place expert has to let go, so "held" is the wrong word and the
+    # threshold is lower: the MuJoCo place expert manages 40/40 nominal but the
+    # Franka's pre-grasp and gripper differ, and a port is checked for being the
+    # same *task*, not for reproducing a success rate.
+    check("scripted expert places the box on the target", successes > 0,
+          "{}/{} placed".format(successes, total))
+    check("the lift latch fires, so nothing is being slid there",
+          float(env.lifted.sum()) > 0,
+          "{}/{} episodes picked the object up".format(
+              int(env.lifted.sum()), args.num_envs))
+else:
+    check("scripted expert holds it at the hold point", successes == total,
+          "{}/{} held".format(successes, total))
 
 # ------------------------------------------------- 6. randomisation is not inert
 # A randomisation config that silently does nothing is the failure this repo

@@ -24,10 +24,20 @@ steps may simply be short. ``budget`` runs the unchanged reward at 600 000.
                This is the lift task's missing-`hold`-term failure exactly, and
                it was walked into a second time.
 
-    ``ramp``   `carry` multiplied by clearance/4 cm, clipped at one. Sliding is
+    ``ramp_shallow``
+               `carry` multiplied by clearance/4 cm, clipped at one. Sliding is
                still worth nothing; every millimetre of lift buys a share of the
                transport gradient. Cliff into hill, which is the fix
-               docs/reward-design.md already records for the other task.
+               docs/reward-design.md already records for the other task -- and
+               five seeds still score 0.000 with a peak lift of 0.009 m,
+               because a hill you cannot see the bottom of is still not a
+               gradient you can follow. `clear` here is 3.0 x 0.06 = 0.18 a
+               step.
+
+    ``ramp``   the same, with `clear` at the lift task's own 4.0 x 0.12 = 0.48.
+               Getting the box off the table is the *identical* sub-problem in
+               both tasks and SAC solves it from scratch in the other one, so
+               the weight is taken from there rather than searched for.
 
 Every arm is at the **original 200 000 steps** except ``budget``. Matched budget
 on purpose: the mistake this repository has made before is reading a difference
@@ -55,19 +65,28 @@ from experiments.place_task import (  # noqa: E402
     run_batch,
 )
 
+# The gate settings, and the weak-`clear` variant the first three were run with.
+# `shallow` is the original 3.0 x 0.06 height term; the default is now the lift
+# task's own 4.0 x 0.12 for the identical sub-task, so reproducing the first
+# three arms needs it pinned.
+SHALLOW = {"w_clear": 3.0, "clear_target": 0.06}
 CONFIGS = {"none": os.path.join("src", "rewards", "configs", "place_ungated.json"),
            "latch": os.path.join("src", "rewards", "configs", "place_latch.json"),
+           "ramp_shallow": os.path.join("src", "rewards", "configs",
+                                        "place_ramp_shallow.json"),
            "ramp": None}
 
 # run-name prefix -> (gate, demonstration-seeded, steps multiplier)
 ARMS = {
     "budget": ("none", False, 3),
     "gated": ("latch", False, 1),
+    "ramp_shallow": ("ramp_shallow", False, 1),
     "ramp": ("ramp", False, 1),
     "bcrl_ramp": ("ramp", True, 1),
 }
 PREFIX = {"budget": "place_sacbudget", "gated": "place_sacgated",
-          "ramp": "place_sacramp", "bcrl_ramp": "place_bcrlramp"}
+          "ramp_shallow": "place_sacramp", "ramp": "place_saclift",
+          "bcrl_ramp": "place_bcrllift"}
 
 
 def job(arm: str, seed: int, steps: int) -> Dict:

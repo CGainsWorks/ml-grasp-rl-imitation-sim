@@ -302,7 +302,55 @@ to 0.006 on `shifted`, the same as the un-floored ones, so the poor transfer in
 this repository is not an artefact of an undertrained baseline — which is the
 first thing one would want to check before believing it.
 
-**One task.** Lift-and-hold, one hold point, one box shape.
+**Two tasks now, and the second one is where the reward-design method stopped
+working.** `task="place"` is pick-and-place: carry the box to a target patch
+elsewhere on the table and let go of it there. It was chosen to break the lift
+task's assumptions rather than to be easy -- the goal is somewhere else on the
+table so the object has to travel laterally, success requires the hand to have
+*let go* (the exact opposite of lift's "still holding at the final step"), and
+success requires the object to have been picked up rather than slid. The
+observation and action spaces are unchanged, which is a property of the original
+observation design and the only part of this that came free.
+
+Five seeds, 100 episodes each, at the same budget and settings the lift grid
+used:
+
+| | none | shifted |
+| --- | ---: | ---: |
+| scripted expert | 1.000 | 0.330 |
+| behaviour cloning | 0.978 [0.968, 0.988] | 0.010 |
+| BC + RL | 0.916 [0.845, 0.987] | 0.112 |
+| **SAC from scratch** | **0.002** [0.000, 0.008] | 0.000 |
+
+Imitation transfers to the second task without changes. **From-scratch RL does
+not**, and four reward designs and a tripled budget have not moved it off zero.
+What each attempt actually did, read from behaviour rather than from the return
+curve:
+
+| `carry` gated on | peak lift | success |
+| --- | ---: | ---: |
+| `grasped` only | 0.010 m | 0.002 |
+| the binary lift latch | 0.006-0.016 m | 0.000 |
+| clearance/4 cm, `clear` at 3.0 x 0.06 | 0.009 m | 0.000 |
+| clearance/4 cm, `clear` at the lift task's 4.0 x 0.12 | *running* | *running* |
+
+The first design paid the largest term in the reward to a policy that closed the
+pads on the box and *pushed*; the second closed that exploit and replaced it
+with a cliff. Both are the failures [reward-design.md](reward-design.md) already
+records for the lift task, met again on a task written after they were written
+down. The budget control excludes the boring explanation: the first design at
+600 000 steps -- more gradient updates than the entire lift grid was trained
+with -- is still at 0.000 with a peak lift of 0.010 m.
+
+The most likely structural reason, and it is a hypothesis rather than a result:
+in the lift task the shaped progress term and the height term point the same
+way, so climbing one climbs the other. In the place task they are orthogonal --
+the object must go *up*, which earns little, before going *sideways*, which
+earns most of the reward. Demonstrations supply exactly that missing sequence,
+which is consistent with cloning working on the first attempt.
+
+**One box shape by default**, and see the shape paragraph above for what happens
+with three.
 
 **`shifted` is a proxy, not a robot.** See [sim-to-real.md](sim-to-real.md). No
 hardware was involved at any point.
@@ -361,24 +409,43 @@ why the five-seed version replaced it.
 
 ## Things that would be next, in order of value
 
-1. **A reward term for yaw alignment.** The wrist degree of freedom now exists
-   and the scripted expert uses it, but a policy trained with it scores 0.000
-   against 0.122 without it: `w_align` penalises lateral offset and nothing
-   rewards turning the wrist, so the extra dimension is exploration cost with no
-   gradient. The joint was the easy half.
+This list has been rewritten twice as items came off it. Three of the original
+six are now done and are recorded above rather than here: the yaw-alignment
+reward term (built, in two placements, and it does not rescue the wrist), a
+perception stack (built, and it refuted one of the three claims this file made
+about sensing error), and a sparse-reward variant with hindsight replay (built,
+and it scores zero with its control also at zero).
+
+1. **Why the second task needs demonstrations and the first does not.** The
+   place task is solved by cloning at 0.978 and by demonstration-seeded RL, and
+   from-scratch RL has now been through four reward designs and a 3x budget
+   without clearing zero. The lift task's from-scratch runs work. Something
+   about the longer chain -- most likely that lifting and transporting are
+   orthogonal in the place task where they are collinear in the lift task -- is
+   the actual obstacle, and it is more interesting than anything else on this
+   list.
+
 2. Measured randomisation ranges from real hardware. The guessed ones have now
    been checked against published measurements rather than defended
    ([randomisation-sources.md](randomisation-sources.md)): they are optimistic
    on latency by 2-5x, optimistic on sensing, and omitted orientation error
    altogether. Real hardware would still be better than a literature survey.
-3. Perception: a wrist camera and a pose estimator in the loop, with its real
-   error model rather than additive Gaussian noise.
-4. More object shapes, and grasp-point selection.
-5. **Why cross-simulator transfer fails.** The evaluation exists and the answer
-   is not a control-gain constant — seven scalings of the action, in both
+
+3. **Why cross-simulator transfer fails.** The evaluation exists and the answer
+   is not a control-gain constant -- seven scalings of the action, in both
    directions, none of which clears its interval. Halving lateral commands alone
    raises peak lift to what a successful MuJoCo policy reaches while success
-   does not move, which points at contact rather than reaching, with one
-   supporting number.
-6. A sparse-reward variant with hindsight experience replay, to show the task
-   can be learned without hand-designed shaping.
+   does not move, which points at contact rather than reaching.
+
+4. A wrist camera rather than a fixed one, with clutter. The fixed camera's
+   error turned out to be *lower* under occlusion because the gripper is itself
+   a cue; a moving viewpoint would remove that and is the honest version of the
+   test.
+
+5. Grasp-point selection -- choosing *where* to grasp an unfamiliar shape --
+   which is what most of the grasping literature is about and which nothing here
+   demonstrates.
+
+6. An Isaac port of the place task. The reward is written backend-agnostically
+   for it; the port has not been done, and until it is, "the second task" is a
+   MuJoCo-only result.

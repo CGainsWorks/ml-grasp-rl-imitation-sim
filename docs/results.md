@@ -573,22 +573,75 @@ That would make the two simulators disagree about what a vertical command
 *achieves* while agreeing about what it means, and it predicts that matching
 the weld compliance would transfer better than matching anything else.
 
-## 7. What would change these numbers
+## 7. A second task, and the first place the method failed
+
+Everything above comes from one task. `src/rewards/place_reward.py` adds a
+second -- pick the box up, carry it somewhere else on the table, put it down --
+chosen to invert the first one's assumptions rather than to be easy: the goal
+moves laterally, success requires *releasing*, and success requires the object
+to have been picked up rather than slid across.
+
+Five seeds, 100 episodes each, same budget and settings as the lift grid:
+
+| | none | shifted |
+| --- | ---: | ---: |
+| scripted expert | 1.000 | 0.330 |
+| behaviour cloning | 0.978 [0.968, 0.988] | 0.010 |
+| BC + RL | 0.916 [0.845, 0.987] | 0.112 |
+| SAC from scratch | **0.002** [0.000, 0.008] | 0.000 |
+
+**Imitation transferred to a new task unchanged. From-scratch RL did not.** That
+is the most useful sentence in this document, because it is the one the first
+task could not have produced: on lift-and-hold, demonstrations bought sample
+efficiency and a floored from-scratch run got there too, so "what do
+demonstrations buy" had a comfortable answer. On the second task they buy
+feasibility.
+
+### The from-scratch failure is shaping, not budget, and it repeated a documented mistake
+
+Read from behaviour rather than from the return curve, which was climbing
+happily throughout:
+
+| `carry` gated on | grasp rate | peak lift | success |
+| --- | ---: | ---: | ---: |
+| `grasped` only | 0.63-0.83 | 0.010 m | 0.002 |
+| the binary lift latch | — | 0.006-0.016 m | 0.000 |
+| clearance / 4 cm, `clear` at 3.0 x 0.06 | 0.37-0.70 | 0.009 m | 0.000 |
+
+The first design made the largest dense term in the reward payable to a policy
+that closed the pads on the box and *pushed* — both pads are in contact with a
+box being shoved, so `grasped` was true and the lift latch never fired in 20
+episodes out of 20. The second closed that exploit with a binary gate and
+replaced it with a cliff the policy never crossed: the transport term was
+invisible until the box was 4 cm up, so the seeds grasped and sat on the table.
+
+Both failures are already written down in [reward-design.md](reward-design.md)
+as things that happened on the *lift* task — a term correct at the optimum and
+wrong on the path to it, and a cliff where a hill was needed. They were walked
+into again on a task designed after they were documented, which is worth more as
+evidence about how easy this is to get wrong than any of the successes above.
+
+The budget control excludes the boring explanation. The unchanged reward at
+600 000 steps, three seeds — more gradient updates than the entire lift grid was
+trained with — is still at 0.000, still grasping, still with a peak lift of
+0.010 m.
+
+## 8. What would change these numbers
 
 In rough order of expected effect:
 
+* **Understanding why the second task needs demonstrations.** Four reward
+  designs and a tripled budget have not got from-scratch RL off zero on
+  pick-and-place while the same code solves lift-and-hold. The likely reason is
+  structural rather than a weight: in the lift task the progress term and the
+  height term point the same way, so climbing one climbs the other, and in the
+  place task they are orthogonal. Testing that costs a curriculum, not a search.
 * **More steps.** Every randomised condition was still improving when training
   stopped.
-* **A wrist degree of freedom**, so the task involves alignment rather than
-  only reach-and-close.
-* **Measured randomisation ranges** instead of plausible ones — see
-  [sim-to-real](sim-to-real.md).
-* **Rebuilding the headline grid on top of the entropy floor.** The floor now
-  exists and, tuned per level, makes from-scratch SAC a fair baseline rather
-  than a demonstration of variance — 0.993 and 0.680 instead of 0.400 and 0.120.
-  Every from-scratch row in the tables above predates it. That rerun is about
-  three hours of CPU and is the single change that would move the most numbers
-  in this document.
-* **Sweeping the floor inside Isaac.** The one place the fix has been tried
-  without tuning is the one place it did not work (§6). Six hours of GPU per
-  value would say whether that is the value or the simulator.
+* **Measured randomisation ranges** instead of plausible ones — the guessed ones
+  have now been audited against published measurements
+  ([randomisation-sources.md](randomisation-sources.md)) and are optimistic on
+  latency by 2-5x, but a survey is not hardware.
+* **An Isaac port of the place task.** The reward is written
+  backend-agnostically for exactly that and the port has not been done, so the
+  second task is a MuJoCo-only result.

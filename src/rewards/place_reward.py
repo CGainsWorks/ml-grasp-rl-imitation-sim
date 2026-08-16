@@ -48,7 +48,7 @@ class PlaceRewardConfig:
     w_reach: float = 1.0          # pull the pads onto the object
     w_align: float = 0.3          # lateral offset costs more than vertical
     w_grasp: float = 0.5          # both pads in contact
-    w_clear: float = 3.0          # lift the object clear of the table before carrying
+    w_clear: float = 4.0          # lift the object clear of the table before carrying
     w_carry: float = 6.0          # progress across the table, once grasped
     w_settle: float = 3.0         # object down, near the target, hand off it
     # Events
@@ -58,7 +58,15 @@ class PlaceRewardConfig:
     w_action: float = 0.02
 
     # Thresholds
-    clear_target: float = 0.06    # metres of clearance that counts as carried
+    # Matched to the lift task's w_lift and lift_target exactly, and not by
+    # coincidence. Getting the object off the table is the same sub-problem
+    # here as it is there, and SAC solves it from scratch there at 4.0 x 0.12 =
+    # 0.48 a step. At the 3.0 x 0.06 = 0.18 this reward started with, five
+    # seeds grasped and sat on the table with a peak lift of 0.009 m -- the
+    # gradient existed and was too shallow to follow. Rather than search for a
+    # weight, take the one the other task already established for the identical
+    # sub-task.
+    clear_target: float = 0.12    # metres of clearance that counts as carried
     lift_threshold: float = 0.04  # clearance that latches "this was picked up"
     goal_tolerance: float = 0.05  # metres, radius of the target patch
     place_z_tolerance: float = 0.02   # how close to its resting height it must sit

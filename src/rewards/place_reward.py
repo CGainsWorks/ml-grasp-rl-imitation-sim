@@ -93,6 +93,34 @@ class PlaceRewardConfig:
     reach_scale: float = 0.10
     settle_scale: float = 0.05
     approach_scale: float = 0.06
+    # How `approach` measures "close to finishing". Both were run.
+    #
+    # "hover"  distance in the horizontal plane only, gated on the clearance
+    #          ramp. This was the first version and it half-works: the policies
+    #          started lifting -- peak lift went from 0.010 m to 0.10-0.19 m,
+    #          which is the whole carry -- and then hovered over the target
+    #          holding on, because that is where the term is maximised. Success
+    #          stayed at 0.000. It bought four fifths of the behaviour and paid
+    #          for stopping just before the end.
+    #
+    # "goal"   full three-dimensional distance to the target, gated on the lift
+    #          latch instead of on current clearance. The maximum is now exactly
+    #          where the object should be released -- on the target, in the hand
+    #          -- rather than ten centimetres above it, and the term survives the
+    #          descent because the latch does not reset. Hovering at carry height
+    #          pays 0.56 a step against 3.0 for bringing it down. From scratch
+    #          this scores 0.000 too -- and, unlike "hover", the policies stop
+    #          lifting again (peak 0.010-0.022 m). The two modes each buy a
+    #          different half of the behaviour and neither buys both.
+    #
+    # "both"   the sum: a half-weight hover bump gated on current clearance, so
+    #          it pays during the very first lift the way "hover" did, plus the
+    #          full goal bump gated on the latch, so it survives the descent the
+    #          way "goal" does. This is the last variant of this shaping family
+    #          that is worth trying; if a reward whose dense part rises
+    #          monotonically through lift, carry and descent still does not
+    #          produce the behaviour, the conclusion is about the family.
+    approach_mode: str = "both"
 
     # How `carry` -- progress across the table -- is gated on having picked the
     # object up. Three settings, and all three were run, because the first two
@@ -290,9 +318,27 @@ def place_reward(grip_pos, object_pos, goal_pos, object_start, object_rest_z,
     # Over the target, up, and still holding it. Gated on the same clearance
     # ramp as `carry`, so it cannot be collected by sliding the box onto the
     # target and sitting on it.
-    lift_ramp = xp.clip(clearance / cfg.lift_threshold, 0.0, 1.0)
-    approach = (cfg.w_approach * xp.exp(-goal_xy / cfg.approach_scale)
-                * grasped * lift_ramp)
+    if cfg.approach_mode == "hover":
+        lift_ramp = xp.clip(clearance / cfg.lift_threshold, 0.0, 1.0)
+        approach = (cfg.w_approach * xp.exp(-goal_xy / cfg.approach_scale)
+                    * grasped * lift_ramp)
+    elif cfg.approach_mode == "goal":
+        goal_3d = _norm(object_pos - goal_pos, xp)
+        approach = (cfg.w_approach * xp.exp(-goal_3d / cfg.approach_scale)
+                    * grasped * lifted)
+    elif cfg.approach_mode == "both":
+        # The hover half is gated on *current* clearance so it pays during the
+        # first lift, before any latch has been set; the goal half is gated on
+        # the latch so it survives the descent. Sliding earns neither: clearance
+        # is zero on the table and the latch has never fired.
+        lift_ramp = xp.clip(clearance / cfg.lift_threshold, 0.0, 1.0)
+        goal_3d = _norm(object_pos - goal_pos, xp)
+        approach = cfg.w_approach * grasped * (
+            0.5 * xp.exp(-goal_xy / cfg.approach_scale) * lift_ramp
+            + xp.exp(-goal_3d / cfg.approach_scale) * lifted)
+    else:
+        raise ValueError("approach_mode must be hover, goal or both, got "
+                         + repr(cfg.approach_mode))
 
     # On the table, near the target, not in the hand. The height gate is what
     # stops the policy collecting this by releasing from altitude: a box in

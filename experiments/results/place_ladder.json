@@ -1,0 +1,20 @@
+{
+  "level": "medium",
+  "steps": 200000,
+  "ladder": {
+    "none": [
+      0.0,
+      0.04
+    ],
+    "short": [
+      0.06,
+      0.1
+    ],
+    "full": [
+      0.12,
+      0.3
+    ]
+  },
+  "note": "each rung is evaluated on the travel range it trained on. Scoring the short rungs on the full range would measure generalisation, which is a different question and would hide the answer to this one",
+  "results": {}
+}

@@ -95,7 +95,10 @@ CONFIGS = {"none": os.path.join("src", "rewards", "configs", "place_ungated.json
                                         "place_ramp_shallow.json"),
            "ramp": os.path.join("src", "rewards", "configs",
                                 "place_noapproach.json"),
-           "approach": None}
+           "approach": os.path.join("src", "rewards", "configs",
+                                    "place_hover.json"),
+           "guide": os.path.join("src", "rewards", "configs", "place_goal.json"),
+           "both": None}
 
 # run-name prefix -> (gate, demonstration-seeded, steps multiplier)
 ARMS = {
@@ -104,11 +107,15 @@ ARMS = {
     "ramp_shallow": ("ramp_shallow", False, 1),
     "ramp": ("ramp", False, 1),
     "approach": ("approach", False, 1),
-    "bcrl_approach": ("approach", True, 1),
+    "guide": ("guide", False, 1),
+    "both": ("both", False, 1),
+    "bcrl_both": ("both", True, 1),
 }
 PREFIX = {"budget": "place_sacbudget", "gated": "place_sacgated",
           "ramp_shallow": "place_sacramp", "ramp": "place_saclift",
-          "approach": "place_sacapproach", "bcrl_approach": "place_bcrlapproach"}
+          "approach": "place_sacapproach", "guide": "place_sacguide",
+          "bcrl_guide": "place_bcrlguide", "both": "place_sacboth",
+          "bcrl_both": "place_bcrlboth"}
 
 
 def job(arm: str, seed: int, steps: int) -> Dict:

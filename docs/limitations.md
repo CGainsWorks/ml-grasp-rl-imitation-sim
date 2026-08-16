@@ -12,52 +12,66 @@ joint-limit clamp between it and any servo loop. (The Isaac port *does* have a
 real Franka, which is how its near-singular start pose was found — so this
 limitation is specific to MuJoCo, not to the repository.)
 
-**A six-jointed arm variant exists, is now structurally sound, and still
-cannot reach the box.** `envs/mujoco/assets/arm_chain.xml` carries a 6R arm
-whose proportions follow the published Denavit-Hartenberg parameters for the
-UR5 (Universal Robots, [DH parameters](https://www.universal-robots.com/developer/hardware-and-motion/robot-motion-dh-parameters/)):
-d1 = 0.089, a2 = 0.425, a3 = 0.392, d4 = 0.109, d5 = 0.095, d6 = 0.082. Those
-are published kinematic constants, not a traced CAD model — the geoms are plain
-capsules and there are no manufacturer meshes. `make_env(..., arm=True)` drives
-it through damped-least-squares IK so the policy keeps its Cartesian action
-space, because the wrist experiment below shows what adding degrees of freedom
-to the action space does.
+**A six-jointed arm variant now works.** `make_env(..., arm=True)` replaces the
+mocap weld with a 6R arm carrying the hand on its flange, driven by
+damped-least-squares IK so the policy keeps its Cartesian action space. Joint
+limits, self-collision, finite reach and arm inertia now sit between the command
+and the fingers, which is what "there is no arm" was complaining about.
 
-The first attempt was a naive stack of collinear capsules and it could not be
-fixed by tuning. What fixed it was structure:
+Proportions follow the published Denavit-Hartenberg parameters for the UR5
+(Universal Robots, [DH parameters](https://www.universal-robots.com/developer/hardware-and-motion/robot-motion-dh-parameters/)):
+d1 = 0.089, a2 = 0.425, a3 = 0.392, d4 = 0.109, d5 = 0.095, d6 = 0.082. Published
+kinematic constants, plain capsule geoms, no manufacturer meshes.
 
-| | naive chain | UR5-proportioned |
-| --- | ---: | ---: |
-| penetrating contacts / 20 resets | 105 | **0** |
-| worst penetration | −0.121 m | **0.000 m** |
-| clean start placements | 0 / 20 | **20 / 20** |
-| workspace corners unreachable | 2 of 27 | **0 of 27** |
+The scripted expert, 100 episodes each:
 
-Two things did the work. **Link offsets**: a real arm's shoulder and elbow
-extend sideways from their axes and its wrist sits out of the arm plane, and
-those offsets are what give the elbow somewhere to go that is not through the
-table. And **sampling start configurations instead of start poses**: solving IK
-to a sampled Cartesian pose is collision-blind and found clean solutions on
-barely a third of resets, whereas rejecting sampled *configurations* that
-collide makes validity constructive. The start pose is not part of the task, so
-choosing it to suit the arm costs nothing.
+| | success | grasp | peak lift |
+| --- | ---: | ---: | ---: |
+| weld hand (default) | 1.000 [0.963, 1.000] | 1.000 | 0.127 m |
+| **six-jointed arm** | **0.680** [0.583, 0.763] | 0.700 | 0.089 m |
 
-What remains: the arm cannot descend below about z = 0.565 before its forearm
-fouls the table, and the box sits at 0.423. So the scripted expert still scores
-0.000 — no longer by throwing the box across the room, simply by never reaching
-it. That is one more geometry pass on base height and offset, checked against
-the reachability map rather than guessed.
+A third of episodes now fail for reasons the weld version cannot produce:
+configurations the arm cannot reach cleanly, tracking lag under load, and the
+inertia of half a metre of steel between the setpoint and the pads. That gap is
+the point of the variant, not a defect in it.
 
-Recorded honestly because the structural fix is the transferable part and the
-remaining gap is bounded and specific. The flag stays off by default, no
-training script uses it, and no number in this repository comes from it.
+Getting there took four wrong diagnoses, and each is worth recording because
+each looked like the obvious answer:
 
-Three fixes that did **not** work are worth keeping, since each looked
-reasonable: restricting the elbow's joint range (no change), a nullspace posture
-bias (mathematically vacuous — six joints against a six-dimensional pose target
-leave no redundancy, so `I − J⁺J` is zero except at singularities), and IK
-restarts with a collision check (zero clean solutions in twenty resets, which is
-what pointed at the structure rather than the solver).
+1. **Tuning the solver.** Restricting the elbow range, a nullspace posture bias
+   and IK restarts with collision checks all failed. The nullspace attempt was
+   mathematically vacuous — six joints against a six-dimensional pose target
+   leave no redundancy, so `I − J⁺J` is zero except at singularities.
+2. **The chain's structure.** The first arm was a stack of collinear capsules.
+   Real arms offset the shoulder, elbow and wrist out of the arm plane, and
+   those offsets are what let the elbow go somewhere other than through the
+   table. Adopting UR5 proportions took penetrating contacts from 105 per twenty
+   resets to zero.
+3. **Sampling start poses instead of start configurations.** Solving IK to a
+   sampled Cartesian pose is collision-blind and produced clean starts on barely
+   a third of resets. Sampling *configurations* and rejecting the ones that
+   collide makes validity constructive; the start pose is not part of the task,
+   so choosing it to suit the arm is free.
+4. **The hand frame.** The last and most expensive: "pads facing the table" was
+   encoded as the grip frame pointing down, which turns the hand over — the palm
+   sits 22 mm along the hand's local +z and the pads hang 46 mm the other way.
+   IK then solved the grip site to exactly the right height with the palm 4 cm
+   inside the table. A base-placement search run against that inverted hand
+   reported the grasp height as unreachable from all 25 candidate placements;
+   with the frame corrected the same search reports 0.887–1.000 coverage almost
+   everywhere. **The search was measuring the bug, not the geometry.**
+
+Base placement was then chosen by that search rather than by hand
+(`experiments/arm_base_search.py`, method after the reachability-map literature,
+e.g. [B*: Efficient and Optimal Base Placement for Fixed-Base
+Manipulators](https://arxiv.org/pdf/2504.12719)): y = −0.72, z = 0.85, which
+reaches every cell of the grasp region with the pads down and nothing inside the
+table.
+
+Not yet done: no policy has been *trained* on the arm variant, so nothing is
+claimed about learned performance, and the randomisation parameters are applied
+to it unchanged apart from `hand_compliance`, which maps to arm joint stiffness
+the way the Isaac port maps it.
 
 **The hand cannot rotate — by default.** The pads close along world *x*, so a
 square box at 45° of yaw presents √2 times its side and above roughly 27 mm of

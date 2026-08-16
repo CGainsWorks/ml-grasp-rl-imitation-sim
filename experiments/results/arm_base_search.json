@@ -1,0 +1,161 @@
+{
+  "rows": [
+    {
+      "y": -0.72,
+      "z": 0.4,
+      "coverage": 0.8875,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.72,
+      "z": 0.55,
+      "coverage": 0.9625,
+      "low_layer": 0.9375
+    },
+    {
+      "y": -0.72,
+      "z": 0.7,
+      "coverage": 0.9375,
+      "low_layer": 0.9375
+    },
+    {
+      "y": -0.72,
+      "z": 0.85,
+      "coverage": 1.0,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.72,
+      "z": 1.0,
+      "coverage": 1.0,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.66,
+      "z": 0.4,
+      "coverage": 0.925,
+      "low_layer": 0.875
+    },
+    {
+      "y": -0.66,
+      "z": 0.55,
+      "coverage": 0.9125,
+      "low_layer": 0.9375
+    },
+    {
+      "y": -0.66,
+      "z": 0.7,
+      "coverage": 0.95,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.66,
+      "z": 0.85,
+      "coverage": 1.0,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.66,
+      "z": 1.0,
+      "coverage": 0.975,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.6,
+      "z": 0.4,
+      "coverage": 0.9375,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.6,
+      "z": 0.55,
+      "coverage": 0.9375,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.6,
+      "z": 0.7,
+      "coverage": 0.95,
+      "low_layer": 0.9375
+    },
+    {
+      "y": -0.6,
+      "z": 0.85,
+      "coverage": 0.975,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.6,
+      "z": 1.0,
+      "coverage": 0.975,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.54,
+      "z": 0.4,
+      "coverage": 0.975,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.54,
+      "z": 0.55,
+      "coverage": 0.8875,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.54,
+      "z": 0.7,
+      "coverage": 0.9625,
+      "low_layer": 0.9375
+    },
+    {
+      "y": -0.54,
+      "z": 0.85,
+      "coverage": 0.9625,
+      "low_layer": 0.875
+    },
+    {
+      "y": -0.54,
+      "z": 1.0,
+      "coverage": 0.95,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.48,
+      "z": 0.4,
+      "coverage": 0.95,
+      "low_layer": 1.0
+    },
+    {
+      "y": -0.48,
+      "z": 0.55,
+      "coverage": 0.925,
+      "low_layer": 0.9375
+    },
+    {
+      "y": -0.48,
+      "z": 0.7,
+      "coverage": 0.8875,
+      "low_layer": 0.8125
+    },
+    {
+      "y": -0.48,
+      "z": 0.85,
+      "coverage": 0.925,
+      "low_layer": 0.875
+    },
+    {
+      "y": -0.48,
+      "z": 1.0,
+      "coverage": 0.9,
+      "low_layer": 0.875
+    }
+  ],
+  "best": {
+    "y": -0.72,
+    "z": 0.85,
+    "coverage": 1.0,
+    "low_layer": 1.0
+  },
+  "note": "coverage is the fraction of grasp-region cells reached with the pads facing down and no link intersecting the table; low layer is the same at the grasp height alone, which is what decides whether the task is possible."
+}

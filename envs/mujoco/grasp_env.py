@@ -222,9 +222,13 @@ class GraspEnv(_BASE):
             # the arm to hold the pads facing the ceiling. This is the frame the
             # weld version holds by construction: grip z down the table normal.
             mujoco.mj_kinematics(self.model, self.data)
-            self._rest_frame = np.array([[1.0, 0.0, 0.0],
-                                         [0.0, -1.0, 0.0],
-                                         [0.0, 0.0, -1.0]])
+            # Identity, which is what the weld version holds by construction:
+            # the hand's local +z points *up*, the palm sits above it at +22 mm
+            # and the pads hang below at -46 mm, so the fingers face the table.
+            # Setting this to z-down instead -- the intuitive reading of "pads
+            # facing the table" -- turns the hand over, and IK then solves the
+            # grip site to the right height with the palm 4 cm inside the table.
+            self._rest_frame = np.eye(3)
             self._arm_home = self.data.qpos[self._arm_qpos].copy()
             # The posture the nullspace term pulls towards. Not hand-picked:
             # hand-picked ones were collision-free but sat a metre above the
@@ -686,9 +690,9 @@ class GraspEnv(_BASE):
             mujoco.mj_kinematics(self.model, self.data)
             grip = self.data.site_xpos[self._grip_sid]
             if not (abs(grip[0]) < 0.17 and abs(grip[1]) < 0.17
-                    and 0.56 < grip[2] < 0.70):
+                    and 0.55 < grip[2] < 0.68):
                 continue
-            if self.data.site_xmat[self._grip_sid].reshape(3, 3)[2, 2] > -0.80:
+            if self.data.site_xmat[self._grip_sid].reshape(3, 3)[2, 2] < 0.80:
                 continue
             mujoco.mj_forward(self.model, self.data)
             if any(self.data.contact[i].dist < -0.001 for i in range(self.data.ncon)):

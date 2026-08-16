@@ -174,6 +174,17 @@ PLACE_TARGET_X = 0.15
 PLACE_TARGET_Y = 0.18
 PLACE_MIN_TRAVEL = 0.12
 PLACE_MAX_TRAVEL = 0.30
+# Shorter ranges exist to *decompose* the place task rather than to make it
+# easier. From-scratch RL fails on it under four reward designs and a tripled
+# budget, and the failure has two candidate halves: transporting the object
+# across the table, and letting go of it at the end. Training at a travel of
+# almost zero removes the first half and leaves the second, so which one is
+# actually the obstacle becomes a measurement instead of a hypothesis.
+PLACE_TRAVEL_LADDER = {
+    "none": (0.0, 0.04),    # put it back roughly where it came from
+    "short": (0.06, 0.10),  # one hand-width
+    "full": (PLACE_MIN_TRAVEL, PLACE_MAX_TRAVEL),
+}
 TASKS = ("lift", "place")
 
 
@@ -199,11 +210,15 @@ class GraspEnv(_BASE):
         arm: bool = False,
         max_half_size: Optional[float] = None,
         task: str = "lift",
+        travel_range: Optional[Tuple[float, float]] = None,
     ) -> None:
         if task not in TASKS:
             raise ValueError("task must be one of {}, got {!r}".format(TASKS, task))
         self.task = task
         self.place = task == "place"
+        self.travel_range = tuple(
+            travel_range if travel_range is not None
+            else (PLACE_MIN_TRAVEL, PLACE_MAX_TRAVEL))
         self.arm = bool(arm)
         self.wrist = bool(wrist)
         # Overridable so the wrist can be ablated properly: the same box
@@ -506,15 +521,22 @@ class GraspEnv(_BASE):
         cylinder on its side and a cube do not rest at the same height, and a
         hard-coded table offset would quietly make one of them impossible.
         """
-        for _ in range(200):
+        lo, hi = self.travel_range
+        for _ in range(400):
             tx = self.np_random.uniform(-PLACE_TARGET_X, PLACE_TARGET_X)
             ty = self.np_random.uniform(-PLACE_TARGET_Y, PLACE_TARGET_Y)
             travel = float(np.hypot(tx - ox, ty - oy))
-            if PLACE_MIN_TRAVEL <= travel <= PLACE_MAX_TRAVEL:
+            if lo <= travel <= hi:
                 return np.array([tx, ty, self._object_rest_z])
-        # Unreachable with the current constants; if it ever fires, a fixed
-        # fallback beats a silently biased sample.
-        return np.array([ox, oy + PLACE_MIN_TRAVEL, self._object_rest_z])
+        # Reachable ranges never exhaust this; a short range near the workspace
+        # edge occasionally can, and a fixed fallback beats a biased sample.
+        bearing = self.np_random.uniform(-np.pi, np.pi)
+        radius = 0.5 * (lo + hi)
+        return np.array([np.clip(ox + radius * np.cos(bearing),
+                                 -PLACE_TARGET_X, PLACE_TARGET_X),
+                         np.clip(oy + radius * np.sin(bearing),
+                                 -PLACE_TARGET_Y, PLACE_TARGET_Y),
+                         self._object_rest_z])
 
     # ------------------------------------------------------------------
     # Step

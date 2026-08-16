@@ -78,9 +78,11 @@ def train(args: argparse.Namespace) -> Dict:
 
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
                    wrist=args.wrist, task=args.task, arm=args.arm,
+                   travel_range=args.place_travel,
                    reward_config=args.reward_config)
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
                         wrist=args.wrist, task=args.task, arm=args.arm,
+                        travel_range=args.place_travel,
                         reward_config=args.reward_config)
 
     obs_dim, act_dim = env.obs_dim, env.act_dim
@@ -128,6 +130,7 @@ def train(args: argparse.Namespace) -> Dict:
         "act_dim": act_dim,
         "wrist": args.wrist,
         "task": args.task,
+        "place_travel": args.place_travel,
         "arm": args.arm,
     }
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
@@ -247,6 +250,11 @@ def build_parser() -> argparse.ArgumentParser:
                              "policies and results are not comparable with the "
                              "4-D ones (docs/limitations.md)")
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--place-travel", type=float, nargs=2, default=None,
+                        metavar=("MIN", "MAX"),
+                        help="how far the place target sits from the object, in "
+                             "metres. Shorter ranges decompose the task rather "
+                             "than ease it: see PLACE_TRAVEL_LADDER")
     parser.add_argument("--arm", action="store_true",
                         help="drive the hand through the six-jointed arm rather "
                              "than a mocap weld. Same observation and action "

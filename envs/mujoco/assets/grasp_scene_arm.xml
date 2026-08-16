@@ -65,75 +65,57 @@
             friction="0.8 0.02 0.0002" condim="4"/>
     </body>
 
-    <!-- Six-jointed arm carrying the hand. The point of this variant is what
-         the weld version cannot have: joint limits, singular configurations,
-         finite reach and arm inertia between the command and the fingers.
-         docs/limitations.md led with "there is no arm" from the first commit.
+    <body name="base" pos="0 -0.62 0.40">
+      <geom name="base" type="cylinder" size="0.06 0.03" rgba="0.30 0.32 0.36 1" mass="4.0"/>
+      <body name="shoulder" pos="0 0 0.089">
+        <joint name="j1" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="20" armature="0.1"/>
+        <geom name="l1" type="capsule" fromto="0 0 -0.04 0 0 0.04" size="0.055"
+              rgba="0.42 0.45 0.50 1" mass="3.7"/>
+        <body name="upper" pos="0 0.136 0">
+          <joint name="j2" type="hinge" axis="1 0 0" range="-2.9 0.35" damping="20" armature="0.1"/>
+          <geom name="l2" type="capsule" fromto="0 0 0 0 0 0.425" size="0.048"
+                rgba="0.42 0.45 0.50 1" mass="8.4"/>
+          <body name="fore" pos="0 -0.120 0.425">
+            <joint name="j3" type="hinge" axis="1 0 0" range="-2.9 2.9" damping="15" armature="0.08"/>
+            <geom name="l3" type="capsule" fromto="0 0 0 0 0 0.392" size="0.040"
+                  rgba="0.42 0.45 0.50 1" mass="2.3"/>
+            <body name="wrist1" pos="0 0 0.392">
+              <joint name="j4" type="hinge" axis="1 0 0" range="-3.14 3.14" damping="6" armature="0.02"/>
+              <geom name="l4" type="capsule" fromto="0 0 0 0 0.093 0" size="0.032"
+                    rgba="0.50 0.53 0.58 1" mass="1.2"/>
+              <body name="wrist2" pos="0 0.093 0">
+                <joint name="j5" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="5" armature="0.02"/>
+                <geom name="l5" type="capsule" fromto="0 0 0 0 0 -0.095" size="0.030"
+                      rgba="0.50 0.53 0.58 1" mass="1.2"/>
+                <body name="wrist3" pos="0 0 -0.095">
+                  <joint name="j6" type="hinge" axis="1 0 0" range="-3.14 3.14" damping="4" armature="0.015"/>
+                  <geom name="l6" type="capsule" fromto="0 0 0 0 0 -0.045" size="0.028"
+                        rgba="0.50 0.53 0.58 1" mass="0.35"/>
+                  <site name="flange" pos="0 0 -0.045" size="0.004" rgba="0 1 1 0.0"/>
+                  <body name="hand" pos="0 0 -0.045">
+                        <inertial pos="0 0 0" mass="0.6" diaginertia="0.002 0.002 0.002"/>
+                        <!-- The palm sits 22 mm above the hand origin, which leaves 48 mm of
+                             clearance above the grip point. It used to sit lower, and the top
+                             face of a large box would foul it during the descent: the box was
+                             then squeezed downwards out of the pads instead of being held. -->
+                        <geom name="palm" type="box" size="0.056 0.020 0.018" pos="0 0 0.022"
+                              rgba="0.35 0.38 0.44 1" mass="0.3" contype="1" conaffinity="1"/>
+                        <site name="grip_site" pos="0 0 -0.046" size="0.005" rgba="1 0 0 0.0"/>
 
-         Link lengths are a generic 6R arm of roughly UR5 proportions, not a
-         model of any specific product -- this is a clean-room repository and a
-         traced manufacturer model would be exactly the thing it must not
-         contain. What matters for the limitation is the kinematic structure,
-         not the millimetres.
+                        <body name="left_finger" pos="-0.052 0 -0.033">
+                          <joint name="left_slide" type="slide" axis="1 0 0" range="0 0.040"
+                                 damping="8" armature="0.002"/>
+                          <geom name="left_finger" class="finger"/>
+                          <geom name="left_pad" class="pad" pos="0.011 0 -0.013"/>
+                        </body>
 
-         The policy still commands a Cartesian delta. The wrist experiment in
-         docs/limitations.md is why: adding one degree of freedom to the action
-         space made the task unlearnable, so handing the policy six more would
-         have a known and uninteresting answer. The joints are absorbed by a
-         damped-least-squares IK controller, which is also how the Isaac port
-         drives its Franka, so the two simulators stay comparable. -->
-    <body name="base" pos="0 -0.46 0.40">
-      <geom name="base" type="cylinder" size="0.06 0.04" rgba="0.30 0.32 0.36 1" mass="2.0"/>
-      <body name="shoulder" pos="0 0 0.05">
-        <joint name="j1" type="hinge" axis="0 0 1" range="-3.05 3.05" damping="12" armature="0.05"/>
-        <geom name="l1" type="capsule" fromto="0 0 0 0 0 0.09" size="0.045"
-              rgba="0.42 0.45 0.50 1" mass="1.2"/>
-        <body name="upper" pos="0 0 0.09">
-          <joint name="j2" type="hinge" axis="0 1 0" range="-2.8 0.6" damping="12" armature="0.05"/>
-          <geom name="l2" type="capsule" fromto="0 0 0 0 0 0.36" size="0.038"
-                rgba="0.42 0.45 0.50 1" mass="1.6"/>
-          <body name="fore" pos="0 0 0.36">
-            <joint name="j3" type="hinge" axis="0 1 0" range="-2.6 2.6" damping="10" armature="0.04"/>
-            <geom name="l3" type="capsule" fromto="0 0 0 0 0 0.32" size="0.032"
-                  rgba="0.42 0.45 0.50 1" mass="1.1"/>
-            <body name="wrist1" pos="0 0 0.32">
-              <joint name="j4" type="hinge" axis="0 1 0" range="-3.05 3.05" damping="6" armature="0.02"/>
-              <geom name="l4" type="capsule" fromto="0 0 0 0 0 0.07" size="0.026"
-                    rgba="0.50 0.53 0.58 1" mass="0.5"/>
-              <body name="wrist2" pos="0 0 0.07">
-                <joint name="j5" type="hinge" axis="0 0 1" range="-3.05 3.05" damping="5" armature="0.02"/>
-                <geom name="l5" type="capsule" fromto="0 0 0 0 0 0.06" size="0.024"
-                      rgba="0.50 0.53 0.58 1" mass="0.4"/>
-                <body name="wrist3" pos="0 0 0.06">
-                  <joint name="j6" type="hinge" axis="0 1 0" range="-3.05 3.05" damping="4" armature="0.015"/>
-                  <geom name="l6" type="capsule" fromto="0 0 0 0 0 0.04" size="0.022"
-                        rgba="0.50 0.53 0.58 1" mass="0.3"/>
-                  <site name="flange" pos="0 0 0.04" size="0.004" rgba="0 1 1 0.0"/>
-                  <!-- Hand, now rigidly attached to the flange. -->
-                  <body name="hand" pos="0 0 0.04" euler="3.14159 0 0">
-      <inertial pos="0 0 0" mass="0.6" diaginertia="0.002 0.002 0.002"/>
-      <!-- The palm sits 22 mm above the hand origin, which leaves 48 mm of
-           clearance above the grip point. It used to sit lower, and the top
-           face of a large box would foul it during the descent: the box was
-           then squeezed downwards out of the pads instead of being held. -->
-      <geom name="palm" type="box" size="0.056 0.020 0.018" pos="0 0 0.022"
-            rgba="0.35 0.38 0.44 1" mass="0.3" contype="1" conaffinity="1"/>
-      <site name="grip_site" pos="0 0 -0.046" size="0.005" rgba="1 0 0 0.0"/>
-
-      <body name="left_finger" pos="-0.052 0 -0.033">
-        <joint name="left_slide" type="slide" axis="1 0 0" range="0 0.040"
-               damping="8" armature="0.002"/>
-        <geom name="left_finger" class="finger"/>
-        <geom name="left_pad" class="pad" pos="0.011 0 -0.013"/>
-      </body>
-
-      <body name="right_finger" pos="0.052 0 -0.033">
-        <joint name="right_slide" type="slide" axis="-1 0 0" range="0 0.040"
-               damping="8" armature="0.002"/>
-        <geom name="right_finger" class="finger"/>
-        <geom name="right_pad" class="pad" pos="-0.011 0 -0.013"/>
-      </body>
-                  </body>
+                        <body name="right_finger" pos="0.052 0 -0.033">
+                          <joint name="right_slide" type="slide" axis="-1 0 0" range="0 0.040"
+                                 damping="8" armature="0.002"/>
+                          <geom name="right_finger" class="finger"/>
+                          <geom name="right_pad" class="pad" pos="-0.011 0 -0.013"/>
+                        </body>
+                      </body>
                 </body>
               </body>
             </body>
@@ -141,6 +123,7 @@
         </body>
       </body>
     </body>
+
 
     <!-- Object to grasp. Size, mass and friction are overwritten at reset by
          the domain randomiser; the values here are the nominal ones. -->
@@ -161,31 +144,28 @@
     <camera name="front_cam" pos="0 -0.70 0.60" xyaxes="1 0 0 0 0.158 0.988"/>
   </worldbody>
 
-  <contact>
-    <!-- MuJoCo excludes parent-child pairs automatically, not grandparent ones,
-         so l1 against the base and l3 against l5 register as self-collisions in
-         perfectly ordinary postures. Excluding them leaves the collisions that
-         matter -- links against the table, and the hand against the object. -->
-    <exclude body1="base" body2="shoulder"/>
-    <exclude body1="shoulder" body2="upper"/>
-    <exclude body1="fore" body2="wrist2"/>
-    <exclude body1="fore" body2="wrist1"/>
-    <exclude body1="upper" body2="wrist1"/>
-  </contact>
-
   <equality>
     <!-- Drags the hand to the commanded mocap pose. solref is soft enough that
          contact forces can visibly resist the command. -->
-
   </equality>
 
+  <contact>
+    <exclude body1="base" body2="shoulder"/>
+    <exclude body1="shoulder" body2="upper"/>
+    <exclude body1="upper" body2="fore"/>
+    <exclude body1="fore" body2="wrist1"/>
+    <exclude body1="wrist1" body2="wrist2"/>
+    <exclude body1="wrist2" body2="wrist3"/>
+    <exclude body1="wrist3" body2="hand"/>
+  </contact>
+
   <actuator>
-    <position name="a1" joint="j1" kp="900" ctrlrange="-3.05 3.05" forcerange="-150 150"/>
-    <position name="a2" joint="j2" kp="1400" ctrlrange="-2.8 0.6" forcerange="-250 250"/>
-    <position name="a3" joint="j3" kp="900" ctrlrange="-2.6 2.6" forcerange="-150 150"/>
-    <position name="a4" joint="j4" kp="300" ctrlrange="-3.05 3.05" forcerange="-60 60"/>
-    <position name="a5" joint="j5" kp="300" ctrlrange="-3.05 3.05" forcerange="-60 60"/>
-    <position name="a6" joint="j6" kp="200" ctrlrange="-3.05 3.05" forcerange="-40 40"/>
+    <position name="a1" joint="j1" kp="2000" ctrlrange="-3.14 3.14" forcerange="-330 330"/>
+    <position name="a2" joint="j2" kp="3000" ctrlrange="-2.9 0.35" forcerange="-330 330"/>
+    <position name="a3" joint="j3" kp="2000" ctrlrange="-2.9 2.9" forcerange="-150 150"/>
+    <position name="a4" joint="j4" kp="500" ctrlrange="-3.14 3.14" forcerange="-54 54"/>
+    <position name="a5" joint="j5" kp="500" ctrlrange="-3.14 3.14" forcerange="-54 54"/>
+    <position name="a6" joint="j6" kp="300" ctrlrange="-3.14 3.14" forcerange="-54 54"/>
     <position name="left_drive"  joint="left_slide"  kp="300" ctrlrange="0 0.040" forcerange="-60 60"/>
     <position name="right_drive" joint="right_slide" kp="300" ctrlrange="0 0.040" forcerange="-60 60"/>
   </actuator>

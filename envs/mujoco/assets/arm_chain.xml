@@ -1,0 +1,68 @@
+<!-- Six-jointed arm, UR5-proportioned.
+
+     The first attempt at this was a naive serial stack of collinear capsules,
+     and it could not reach across a table without folding a link through it:
+     forty random IK restarts per reset found zero contact-free solutions in
+     twenty resets. The reason is structural rather than a solver bug. A real
+     6R arm is not a straight chain. Its shoulder and elbow links extend
+     *sideways* from their joint axes, and its wrist is *offset* out of the
+     shoulder-elbow plane, and those two features are what let the elbow go
+     somewhere other than through whatever the hand is reaching over.
+
+     Proportions follow the published Denavit-Hartenberg parameters for the
+     UR5 (Universal Robots, "DH parameters for calculations of kinematics and
+     dynamics", https://www.universal-robots.com/developer/hardware-and-motion/robot-motion-dh-parameters/):
+
+         d1 = 0.089    a2 = 0.425    a3 = 0.392
+         d4 = 0.109    d5 = 0.095    d6 = 0.082
+
+     Those are published kinematic constants, not a traced CAD model: the geoms
+     below are plain capsules sized by hand, there are no manufacturer meshes,
+     and nothing here is derived from any employer or client material. What is
+     borrowed is the *structure* -- offsets and a spherical wrist -- which is
+     the part the naive version got wrong.
+
+     Reach is about 0.85 m, which covers the table comfortably from a base
+     beside it. -->
+<mujoco model="arm_chain">
+  <!-- MuJoCo defaults to degrees. Without this the joint ranges below are read
+       as degrees, every limit becomes about 0.05 rad, and the arm cannot move:
+       40 000 random configurations spanned 2 cm of flange travel. -->
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="base" pos="0 -0.62 0.40">
+      <geom name="base" type="cylinder" size="0.06 0.03" rgba="0.30 0.32 0.36 1" mass="4.0"/>
+      <body name="shoulder" pos="0 0 0.089">
+        <joint name="j1" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="20" armature="0.1"/>
+        <geom name="l1" type="capsule" fromto="0 0 -0.04 0 0 0.04" size="0.055"
+              rgba="0.42 0.45 0.50 1" mass="3.7"/>
+        <body name="upper" pos="0 0.136 0">
+          <joint name="j2" type="hinge" axis="1 0 0" range="-2.9 0.35" damping="20" armature="0.1"/>
+          <geom name="l2" type="capsule" fromto="0 0 0 0 0 0.425" size="0.048"
+                rgba="0.42 0.45 0.50 1" mass="8.4"/>
+          <body name="fore" pos="0 -0.120 0.425">
+            <joint name="j3" type="hinge" axis="1 0 0" range="-2.9 2.9" damping="15" armature="0.08"/>
+            <geom name="l3" type="capsule" fromto="0 0 0 0 0 0.392" size="0.040"
+                  rgba="0.42 0.45 0.50 1" mass="2.3"/>
+            <body name="wrist1" pos="0 0 0.392">
+              <joint name="j4" type="hinge" axis="1 0 0" range="-3.14 3.14" damping="6" armature="0.02"/>
+              <geom name="l4" type="capsule" fromto="0 0 0 0 0.093 0" size="0.032"
+                    rgba="0.50 0.53 0.58 1" mass="1.2"/>
+              <body name="wrist2" pos="0 0.093 0">
+                <joint name="j5" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="5" armature="0.02"/>
+                <geom name="l5" type="capsule" fromto="0 0 0 0 0 -0.095" size="0.030"
+                      rgba="0.50 0.53 0.58 1" mass="1.2"/>
+                <body name="wrist3" pos="0 0 -0.095">
+                  <joint name="j6" type="hinge" axis="1 0 0" range="-3.14 3.14" damping="4" armature="0.015"/>
+                  <geom name="l6" type="capsule" fromto="0 0 0 0 0 -0.045" size="0.028"
+                        rgba="0.50 0.53 0.58 1" mass="0.35"/>
+                  <site name="flange" pos="0 0 -0.045" size="0.004" rgba="0 1 1 0.0"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

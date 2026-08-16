@@ -12,61 +12,52 @@ joint-limit clamp between it and any servo loop. (The Isaac port *does* have a
 real Franka, which is how its near-singular start pose was found — so this
 limitation is specific to MuJoCo, not to the repository.)
 
-**A six-jointed arm variant exists and does not work yet.**
-`envs/mujoco/assets/grasp_scene_arm.xml` carries a generic 6R arm with joint
-limits and self-collision, and `make_env(..., arm=True)` drives it through
-damped-least-squares IK so the policy keeps its Cartesian action space — the
-wrist experiment above is why the joints are not exposed to the policy directly.
+**A six-jointed arm variant exists, is now structurally sound, and still
+cannot reach the box.** `envs/mujoco/assets/arm_chain.xml` carries a 6R arm
+whose proportions follow the published Denavit-Hartenberg parameters for the
+UR5 (Universal Robots, [DH parameters](https://www.universal-robots.com/developer/hardware-and-motion/robot-motion-dh-parameters/)):
+d1 = 0.089, a2 = 0.425, a3 = 0.392, d4 = 0.109, d5 = 0.095, d6 = 0.082. Those
+are published kinematic constants, not a traced CAD model — the geoms are plain
+capsules and there are no manufacturer meshes. `make_env(..., arm=True)` drives
+it through damped-least-squares IK so the policy keeps its Cartesian action
+space, because the wrist experiment below shows what adding degrees of freedom
+to the action space does.
 
-What works: the model loads, the IK converges, and 25 of 27 workspace corners
-are reachable to within 15 mm.
+The first attempt was a naive stack of collinear capsules and it could not be
+fixed by tuning. What fixed it was structure:
 
-What does not: the IK is collision-blind, as IK generally is, and it reaches the
-table by folding the arm *through* it. Twenty resets produce about a hundred
-penetrating contacts, up to 120 mm deep, and the first physics step of an
-episode resolves them explosively — the scripted expert scores 0.000 with a mean
-peak object height of 13.9 m, which is the box being thrown across the room.
-
-Four fixes were tried and measured. None worked, and the reason is a design
-problem rather than a bug:
-
-| attempt | penetrating contacts / 20 resets | workspace corners unreachable |
+| | naive chain | UR5-proportioned |
 | --- | ---: | ---: |
-| as built | 105 | 2 of 27 |
-| restrict the elbow's joint range | 105 | — |
-| nullspace posture bias | 90 | 9 of 27 |
-| IK restarts with a collision check (40 tries) | 113 | — |
-| mount the arm on a pedestal above the table | 41 | 24 of 27 |
+| penetrating contacts / 20 resets | 105 | **0** |
+| worst penetration | −0.121 m | **0.000 m** |
+| clean start placements | 0 / 20 | **20 / 20** |
+| workspace corners unreachable | 2 of 27 | **0 of 27** |
 
-The nullspace attempt deserves recording because it is *mathematically vacuous*
-here and looked reasonable: six joints against a six-dimensional pose target
-leave no redundancy, so `I − J⁺J` is zero except at singularities. A nullspace
-posture bias needs a seventh joint, or a task that does not constrain all six
-degrees of freedom.
+Two things did the work. **Link offsets**: a real arm's shoulder and elbow
+extend sideways from their axes and its wrist sits out of the arm plane, and
+those offsets are what give the elbow somewhere to go that is not through the
+table. And **sampling start configurations instead of start poses**: solving IK
+to a sampled Cartesian pose is collision-blind and found clean solutions on
+barely a third of resets, whereas rejecting sampled *configurations* that
+collide makes validity constructive. The start pose is not part of the task, so
+choosing it to suit the arm costs nothing.
 
-The restart attempt is the informative one. Forty random restarts per reset,
-keeping any solution that is contact-free, found **zero** in twenty resets — so
-contact-free solutions reaching the start pose are not merely hard for the
-solver to find, they are close to absent for this arm in this scene. A separate
-search over 400 000 random configurations did find contact-free postures near
-the workspace centre with the pads facing down, which means the set is not empty
-but is small and awkwardly placed.
+What remains: the arm cannot descend below about z = 0.565 before its forearm
+fouls the table, and the box sits at 0.423. So the scripted expert still scores
+0.000 — no longer by throwing the box across the room, simply by never reaching
+it. That is one more geometry pass on base height and offset, checked against
+the reachability map rather than guessed.
 
-And the last row is the trade laid bare: raising the base cuts penetration by
-more than half and costs almost all the reach.
+Recorded honestly because the structural fix is the transferable part and the
+remaining gap is bounded and specific. The flag stays off by default, no
+training script uses it, and no number in this repository comes from it.
 
-What this actually needs is kinematic *design*, not debugging: the links here
-are a naive serial stack of collinear capsules, where real arms use link offsets
-precisely so the elbow can clear the workspace it reaches over. Choosing link
-lengths, offsets and a base placement that give both reach and clearance is a
-half-day of geometry with a reachability map to check against — not something to
-converge on by adjusting one number at a time, which is what the table above is
-a record of.
-
-Until then the flag is off by default, no training script uses it, and no number
-in this repository comes from it. It is recorded here rather than deleted
-because a half-built arm that is honestly labelled is more useful than the
-absence of one.
+Three fixes that did **not** work are worth keeping, since each looked
+reasonable: restricting the elbow's joint range (no change), a nullspace posture
+bias (mathematically vacuous — six joints against a six-dimensional pose target
+leave no redundancy, so `I − J⁺J` is zero except at singularities), and IK
+restarts with a collision check (zero clean solutions in twenty resets, which is
+what pointed at the structure rather than the solver).
 
 **The hand cannot rotate — by default.** The pads close along world *x*, so a
 square box at 45° of yaw presents √2 times its side and above roughly 27 mm of

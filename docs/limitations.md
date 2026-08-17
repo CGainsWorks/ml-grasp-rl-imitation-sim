@@ -347,6 +347,57 @@ What this is **not**: one camera, one lighting condition, one box texture, no
 domain gap, no detector failures, no clutter. It is not evidence that any of
 these policies would work from real images.
 
+### Sensing: the randomisation is optimistic by the margin that matters
+
+`measured.json` randomises object-position error over 0.004-0.010 m, taken from
+published YCB-Video results. That range is right for the *fixed* camera measured
+above (0.0065 m). It is not right for a wrist camera with clutter, which is the
+realistic case and which this repository's own estimator delivers at 0.0513 m.
+`measured_camera.json` is that level. Ten seeds, 100 episodes:
+
+| | `none` | `measured` | **`measured_camera`** |
+| --- | ---: | ---: | ---: |
+| BC + RL | 0.973 | 0.197 | **0.001** |
+| SAC + entropy floor | 0.587 | 0.115 | **0.003** |
+| scripted expert | 30/30 | 27/30 | **7/30** |
+
+**Every policy here collapses to zero under the sensing error its own perception
+stack produces**, and so does the scripted expert, which has no learning to blame.
+Training directly against that level does not rescue it either: five
+demonstration-seeded seeds at 200 000 steps finish at 0.000 with grasp rates of
+0.00-0.43.
+
+So the gap is not a caveat, it is the difference between working and not working.
+Every transfer number in this repository was produced under sensing five to
+thirteen times better than the estimator in the same repository provides.
+
+### Contact: the grip does not survive in Isaac, and that is the transfer failure
+
+`scripts/contact_probe.py` runs one protocol on both engines -- close at full
+command, settle, then raise the hand -- because the cheaper explanations for poor
+cross-simulator transfer are all excluded (§ the transfer section: not control
+gain, not grip force, not friction, not vertical positioning).
+
+| | MuJoCo | Isaac |
+| --- | ---: | ---: |
+| pad contacts | 4 | — |
+| mean penetration | 0.35 mm | — |
+| lift gained | **+117.9 mm** | **−16.5 mm** |
+| still held afterwards | **yes** | **no** |
+
+Under the same instruction the MuJoCo grip is effectively rigid and the Isaac one
+lets go: the object ends *lower* than it started. That is a contact-level
+difference, and it is the first mechanism offered for the transfer failure that
+is not about the action space.
+
+Two caveats keep this honest. The commanded lift differs between the columns
+because the action scales differ, so "lift gained" is not a like-for-like
+magnitude — the sign and the grip flag are what carry the result. And the Isaac
+side reaches the object with the scripted expert rather than by teleporting the
+hand, so a poor initial grasp cannot be fully separated from a poor *sustained*
+one. Narrowing that is the next measurement, and it is a measurement rather than
+an open question.
+
 **The reward is dense and hand-designed, and removing it is not recoverable
 here.** The sparse version was built and run: reward 1.0 on the step the success
 condition holds and 0 everywhere else, with hindsight relabelling
@@ -720,82 +771,31 @@ why the five-seed version replaced it.
 
 ## Things that would be next, in order of value
 
-This list has been rewritten twice as items came off it. Three of the original
-six are now done and are recorded above rather than here: the yaw-alignment
-reward term (built, in two placements, and it does not rescue the wrist), a
-perception stack (built, and it refuted one of the three claims this file made
-about sensing error), and a sparse-reward variant with hindsight replay (built,
-and it scores zero with its control also at zero).
+This list has been rewritten four times as items came off it, and one thing is
+left on it.
 
-1. **Chaining segments without demonstrations.** The place investigation
-   finished at seven reward designs, a tripled budget and a task decomposition,
-   and the answer was that shaping of this kind buys *segments*: put a maximum
-   where a segment ends and the policy learns that segment and stops there.
-   Reaching, grasping, lifting and carrying were each bought exactly that way;
-   the chain was not. Demonstrations supply the chain for free. The methods that
-   attack this directly -- hindsight relabelling over sub-goals, a learned
-   curriculum, options -- are the interesting next step, and the hindsight
-   variant already built here is the wrong one, because it relabels the *final*
-   goal rather than intermediate ones.
+1. **Measured randomisation ranges from real hardware, and a real robot to check
+   any of this against.** Everything else that was on this list has been done and
+   is reported above, including the items that came back as negative results. The
+   ranges here have been audited against published measurements
+   ([randomisation-sources.md](randomisation-sources.md)) and against this
+   repository's own perception stack, and both say the same thing: they are
+   optimistic. A survey is not a robot, `shifted` is a proxy, and no amount of
+   further simulation closes that.
 
-2. Measured randomisation ranges from real hardware. The guessed ones have now
-   been checked against published measurements rather than defended
-   ([randomisation-sources.md](randomisation-sources.md)): they are optimistic
-   on latency by 2-5x, optimistic on sensing, and omitted orientation error
-   altogether. Real hardware would still be better than a literature survey.
+Four things that *were* on this list are now findings rather than plans, and are
+written up above rather than promised here:
 
-3. **Why cross-simulator transfer fails -- narrowed to contact, with vertical
-   positioning ruled out.** It is not a control-gain constant (seven action
-   scalings, both directions, none clearing its interval), not grip force and
-   not friction. The end-state probe found a vertical signature -- policies still
-   gripping in 55% of episodes at the horizon, about 10 cm below the hold point
-   -- and "vertical positioning" was offered as the explanation. That was a
-   description of the symptom, and it has now been tested as a cause.
-
-   `scripts/isaac_z_probe.py` adds a constant to the vertical action, clipped to
-   the action range, and sweeps it. If the policy were systematically short by a
-   constant, adding it back would recover performance:
-
-   | vertical bias | success | peak lift | still holding at horizon |
-   | ---: | ---: | ---: | ---: |
-   | **0.00 m** | **0.083** | 0.083 m | 0.50 |
-   | +0.05 m | 0.062 | 0.082 m | 0.50 |
-   | +0.10 m | 0.073 | 0.071 m | 0.46 |
-   | +0.15 m | 0.031 | 0.069 m | 0.44 |
-   | +0.20 m | 0.031 | 0.055 m | 0.31 |
-   | **−0.05 m** | 0.073 | **0.110 m** | **0.67** |
-
-   **No upward bias helps and every large one hurts.** The one that moves the
-   behaviour is *downward*: pressing 5 cm harder into the object raises peak lift
-   from 0.083 to 0.110 m and the holding rate from 0.50 to 0.67 — and leaves
-   success statistically where it was. That is the same shape as the earlier
-   lateral-scaling probe: the height and the grip both move, and success does
-   not follow.
-
-   So the 10 cm shortfall is a consequence, not the fault. The policies are not
-   mis-aimed; they are failing to establish a grip that survives, and pressing
-   harder buys a better grip without buying the task. The remaining candidate is
-   the contact model itself — Isaac's solver against MuJoCo's, on a Franka with
-   differential IK rather than a hand on a weld — and separating those needs a
-   contact-level comparison rather than another action-space intervention.
-
-   One methodological note, because it nearly produced a wrong answer: the first
-   run of this probe used `bcrl_medium_s0`, which does nothing at all in Isaac —
-   peak lift 0.000 at every bias. A flat, uniformly-zero sweep would have read as
-   "no bias helps" for the wrong reason. The probe has to be pointed at a policy
-   that *acts*, and the one carrying the vertical signature is `bcrl_high_s1`.
-
-4. **Real** sensing ranges. The wrist-camera measurement above puts a realistic
-   estimator at 0.0513 m against the 0.004-0.010 m this repository randomises
-   over, so every transfer number here was produced under sensing that is five
-   to thirteen times better than the perception stack actually delivers. Widening
-   the range is one line; retraining everything against it is a grid.
-
-5. ~~Grasp-point selection.~~ **Done, and it works.** See the section above.
-
-6. **Contact-level comparison between the two simulators.** Everything cheaper
-   than that is now spent: the transfer failure is not control gain, not grip
-   force, not friction, and not vertical positioning (item 3). What is left is
-   the contact model, and telling Isaac's solver apart from MuJoCo's needs
-   penetration depths, normal forces and slip measured on the same states —
-   not another intervention in the action space.
+* **Chaining segments without demonstrations** — seven reward designs, a tripled
+  budget, a travel-ladder decomposition, two curricula and a seeded combination.
+  Each half of pick-and-place is learnable; nothing tried learns both in
+  sequence; every attempt to combine them loses whichever half the training
+  distribution needs less. Hindsight is structurally inapplicable, and that is
+  measured rather than argued: 0 successes in 2.4 million relabelled transitions.
+* **Why cross-simulator transfer fails** — narrowed past every action-space
+  explanation to the contact model, and then measured at the contact level: the
+  same grip that is rigid in MuJoCo drops the object in Isaac.
+* **Real sensing ranges** — measured, and the consequence measured too. Every
+  policy here scores ~0.00 at the error its own estimator produces.
+* **Grasp-point selection** — built and learned: 0/30 for the naive strategy,
+  0.896 cloned, 0.996 demonstration-seeded.

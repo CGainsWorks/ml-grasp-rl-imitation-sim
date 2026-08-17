@@ -1,0 +1,27 @@
+{
+  "protocol": "close at full command, settle, measure pad penetration and normal force, then raise the hand at a fixed rate and record height and grip",
+  "note": "one object, one mass, one grip command: a fingerprint of the contact model, not a sweep",
+  "rows": [
+    {
+      "simulator": "isaac-sim-5.1.0",
+      "pad_contacts": null,
+      "mean_penetration_mm": null,
+      "total_normal_force_N": 88.43391418457031,
+      "object_mass_kg": null,
+      "lift_gained_mm": -16.46212488412857,
+      "commanded_lift_mm": 600.0,
+      "still_held": false,
+      "caveat": "Isaac reports joint forces rather than per-contact normals here, so the force column is a finger-joint magnitude and is NOT comparable in units to MuJoCo's contact normal. The lift and grip columns are comparable; the force column is not, and saying so is the point of writing it down."
+    },
+    {
+      "simulator": "mujoco-3.11",
+      "pad_contacts": 4,
+      "mean_penetration_mm": 0.34837300359419615,
+      "total_normal_force_N": 18.91301258770791,
+      "object_mass_kg": 0.08,
+      "lift_gained_mm": 117.8943494907862,
+      "commanded_lift_mm": 120.0,
+      "still_held": true
+    }
+  ]
+}

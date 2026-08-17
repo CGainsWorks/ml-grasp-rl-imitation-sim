@@ -446,8 +446,12 @@ limitation and a worse-sounding one.
   lift-and-hold. On pick-and-place, seven designs, a tripled budget and two
   curricula all fail while cloning succeeds immediately. Shaping here buys
   segments and does not chain them.
-* **No hardware** — `shifted` is a proxy for a real robot, and a lower bound on
-  a real gap. This one is unchanged and unfixable here.
+* **No hardware, and the sensing gap says how much that matters** — `shifted` is
+  a proxy for a real robot. Worse, every policy here scores **~0.00** at the
+  pose error this repository's own camera estimator produces (0.0513 m against
+  the 0.004-0.010 m it randomises over), and so does the scripted expert. The
+  numbers in this README were produced under sensing five to thirteen times
+  better than the perception stack in the same repository delivers.
 * **Isaac Lab runs both tasks and still supplies no headline number** — the
   bring-up checks pass at `none` and `medium`, place-reward parity is 6.9e-08 on
   the GPU, and at a budget matched on *gradient updates* the second task's

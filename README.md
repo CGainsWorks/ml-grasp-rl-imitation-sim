@@ -476,13 +476,15 @@ limitation and a worse-sounding one.
   cloning anchor reach **0.536** [0.416, 0.656]. That gap is the cost of the
   abstraction; holding the anchor rather than decaying it is worth 0.176 → 0.536
   on its own.
-* **The wrist is learnable and still does not help** — from-scratch RL with the
-  yaw joint scores **0.000** against 0.122 without it. That much is an
-  exploration failure rather than a broken joint: given 200 demonstrations the
-  same variant reaches **0.478** [0.447, 0.509]. But the control settles it —
-  the identical pipeline *without* the wrist reaches **0.838** [0.811, 0.865]
-  and grasps on every episode. The fifth degree of freedom costs more than the
-  alignment it buys at every budget measured here.
+* **The wrist changes almost nothing once the comparison is matched** — and
+  getting that comparison right took three attempts. `GraspEnv` sets the object
+  size cap *from the wrist flag* (0.034 m with, 0.024 m without), so every
+  wrist-vs-no-wrist number in this repository's history compared two different
+  object distributions. Matched on the cap, five seeds, 100 episodes: cloning is
+  **-0.034** and **-0.046** with the wrist, held-anchor RL is **+0.014** and
+  **+0.074**. Four small deltas straddling zero, where the unmatched version
+  showed a two-to-one rout. The wrist is learnable (0.000 from scratch → 0.478
+  with demonstrations); what it is not is decisive.
 * **Perception is a check, not a pipeline** — a CNN pose estimator from 64x64
   renders exists and costs 18 points when substituted for ground truth. It was
   built to *test* the sensing noise model, and it refuted one of the three

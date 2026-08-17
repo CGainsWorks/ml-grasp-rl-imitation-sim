@@ -86,11 +86,13 @@ def evaluate_run(
     # decide, take them from what the run recorded training with.
     wrist = handled or bool(config.get("wrist", False))
     history = int(config.get("history", 1) or 1)
+    max_half_size = config.get("max_half_size")
 
     out: Dict[str, Dict] = {}
     for level in eval_levels:
         env = make_env(level, seed=1234, max_steps=max_steps, task=task, arm=arm,
                        travel_range=place_travel, history=history,
+                       max_half_size=max_half_size,
                        handled=handled, wrist=wrist)
         result = evaluate_policy(
             env, torch_policy(actor, deterministic=True),

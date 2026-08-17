@@ -1,0 +1,166 @@
+{
+  "label": "nowristbighold",
+  "checkpoint": "policy.pt",
+  "episodes_per_seed": 100,
+  "eval_levels": [
+    "wrist_bench"
+  ],
+  "n_seeds": 5,
+  "single_seed_warning": null,
+  "runs": [
+    {
+      "run": "experiments/runs\\nowristbighold_s0",
+      "train_randomisation": "wrist_bench",
+      "seed": 0,
+      "levels": {
+        "wrist_bench": {
+          "successes": 48,
+          "episodes": 100,
+          "success_rate": 0.48,
+          "grasp_rate": 0.65,
+          "mean_return": 270.1167134296678,
+          "mean_max_lift": 0.10290688930975636
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\nowristbighold_s1",
+      "train_randomisation": "wrist_bench",
+      "seed": 1,
+      "levels": {
+        "wrist_bench": {
+          "successes": 46,
+          "episodes": 100,
+          "success_rate": 0.46,
+          "grasp_rate": 0.72,
+          "mean_return": 301.39046022801915,
+          "mean_max_lift": 0.1013476582926915
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\nowristbighold_s2",
+      "train_randomisation": "wrist_bench",
+      "seed": 2,
+      "levels": {
+        "wrist_bench": {
+          "successes": 49,
+          "episodes": 100,
+          "success_rate": 0.49,
+          "grasp_rate": 0.62,
+          "mean_return": 270.0619937647787,
+          "mean_max_lift": 0.09918863437052564
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\nowristbighold_s3",
+      "train_randomisation": "wrist_bench",
+      "seed": 3,
+      "levels": {
+        "wrist_bench": {
+          "successes": 48,
+          "episodes": 100,
+          "success_rate": 0.48,
+          "grasp_rate": 0.66,
+          "mean_return": 277.0786948585563,
+          "mean_max_lift": 0.1032475722630659
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\nowristbighold_s4",
+      "train_randomisation": "wrist_bench",
+      "seed": 4,
+      "levels": {
+        "wrist_bench": {
+          "successes": 41,
+          "episodes": 100,
+          "success_rate": 0.41,
+          "grasp_rate": 0.64,
+          "mean_return": 254.11581338212625,
+          "mean_max_lift": 0.09963996155504383
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "wrist_bench": {
+      "across_seeds": {
+        "point": 0.46399999999999997,
+        "low": 0.4241569045379252,
+        "high": 0.5038430954620747,
+        "n": 5,
+        "method": "t"
+      },
+      "across_seeds_bootstrap": {
+        "point": 0.46399999999999997,
+        "low": 0.43599999999999994,
+        "high": 0.484,
+        "n": 5,
+        "method": "bootstrap"
+      },
+      "pooled_wilson": {
+        "point": 0.464,
+        "low": 0.42072818700752684,
+        "high": 0.5078207655057051,
+        "n": 500,
+        "method": "wilson"
+      },
+      "per_seed": [
+        {
+          "point": 0.48,
+          "low": 0.384645517580519,
+          "high": 0.5768342223477603,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.46,
+          "low": 0.36560808309024106,
+          "high": 0.5573513967663177,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.49,
+          "low": 0.3942199893044113,
+          "high": 0.5865198806597283,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.48,
+          "low": 0.384645517580519,
+          "high": 0.5768342223477603,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.41,
+          "low": 0.3186731302113651,
+          "high": 0.5079856994658921,
+          "n": 100,
+          "method": "wilson"
+        }
+      ],
+      "per_seed_rates": [
+        0.48,
+        0.46,
+        0.49,
+        0.48,
+        0.41
+      ],
+      "n_seeds": 5,
+      "episodes_per_seed": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "mean_grasp_rate": 0.6580000000000001
+    }
+  },
+  "wall_seconds": 131.9
+}

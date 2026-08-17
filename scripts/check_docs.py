@@ -54,8 +54,17 @@ CLAIMS = [
      "a four-frame observation window at camera-grade sensing"),
     # The two controls. These are the rows whose absence let a wrong
     # conclusion ship, so they are the rows most worth pinning.
-    ("nowristbc", "wrist_bench", ["README.md", "docs/limitations.md"],
-     "the no-wrist control on the wrist benchmark"),
+    # Matched-cap cells. nowristbc is NOT a control for the wrist rows -- it
+    # runs at a different object size cap, which is the confound that produced
+    # two wrong conclusions -- so each cap is pinned as its own pair.
+    ("nowristbig", "wrist_bench", ["docs/limitations.md"],
+     "no wrist at cap 0.034, matched against the wrist rows"),
+    ("wristsmall", "wrist_bench", ["docs/limitations.md"],
+     "wrist at cap 0.024, matched against the no-wrist rows"),
+    ("wristsmallhold", "wrist_bench", ["docs/limitations.md"],
+     "held-anchor RL with the wrist at cap 0.024"),
+    ("nowristbc", "wrist_bench", ["docs/limitations.md"],
+     "no wrist at cap 0.024"),
     ("camord", "measured_camera", ["README.md", "docs/limitations.md"],
      "the ordinary-demonstrator control at camera-grade sensing"),
 ]
@@ -72,8 +81,11 @@ RETIRED = [
     # of retired claims can itself go stale, and this is what that looks like.
     (r"wrist is learnable but not discoverable",
      ["README.md", "docs/limitations.md"],
-     "the no-wrist control reaches 0.838 [0.811, 0.865]; learnable is not "
-     "the same as useful and that framing implied it was"),
+     "superseded by the matched-cap grid"),
+    (r"identical pipeline \*?without\*? the wrist reaches \*\*0\.838",
+     ["README.md"],
+     "0.838 vs 0.478 compared two different object size caps; matched, the "
+     "deltas are -0.034, -0.046, +0.014, +0.074"),
     (r"cloning reaches 0\.448\b",
      ["README.md"],
      "the arm reaches 0.536 with a held anchor"),

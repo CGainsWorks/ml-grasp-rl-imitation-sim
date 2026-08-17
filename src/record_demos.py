@@ -45,10 +45,11 @@ def record(
     wrist: bool = False,
     privileged: bool = False,
     history: int = 1,
+    max_half_size=None,
 ) -> dict:
     env = make_env(randomisation, seed=seed, max_steps=max_steps, task=task,
                    arm=arm, handled=handled, wrist=handled or wrist,
-                   history=history)
+                   history=history, max_half_size=max_half_size)
     rng = np.random.default_rng(seed)
     expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
     if handled:
@@ -142,6 +143,7 @@ def record(
                 "wrist": wrist,
                 "privileged": privileged,
                 "history": history,
+                "max_half_size": max_half_size,
                 "wall_seconds": round(time.time() - t0, 1),
                 "source": ("src/policies/scripted_place_expert.py" if task == "place"
                            else "src/policies/scripted_expert.py"),
@@ -162,6 +164,12 @@ def main() -> None:
     parser.add_argument("--keep-failures", action="store_true")
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
+    parser.add_argument("--max-half-size", type=float, default=None,
+                        help="cap on object half-size in metres. The "
+                             "default (0.024) sits below the band where "
+                             "yaw binds against the 0.078 m pad gap; "
+                             "0.028-0.039 is where a square box fits "
+                             "aligned and does not fit rotated")
     parser.add_argument("--history", type=int, default=1,
                         help="stack this many observation frames, matching "
                              "the policy the demonstrations will train")
@@ -186,6 +194,7 @@ def main() -> None:
         args.episodes, args.randomisation, args.seed,
         args.expert_noise, args.keep_failures, args.max_steps, args.task,
         args.arm, args.handled, args.wrist, args.privileged, args.history,
+        args.max_half_size,
     )
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     np.savez_compressed(args.output, **data)

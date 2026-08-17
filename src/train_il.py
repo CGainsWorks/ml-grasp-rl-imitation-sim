@@ -44,6 +44,8 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from envs.mujoco.perception_env import (  # noqa: E402
+    DEFAULT_CHECKPOINT as PERCEPTION_DEFAULT, make_perception_env)
 from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.behaviour_cloning import fit  # noqa: E402
 from src.policies.networks import SquashedGaussianActor  # noqa: E402
@@ -116,16 +118,19 @@ def train(args: argparse.Namespace) -> Dict:
         keep = int(np.sum(lengths[: args.max_demo_episodes]))
         obs, act = obs[:keep], act[:keep]
 
-    env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   task=args.task, arm=args.arm,
-                   handled=args.handled, history=args.history,
-                   max_half_size=args.max_half_size,
-                   wrist=args.handled or args.wrist)
-    eval_env = make_env(args.randomisation, seed=args.seed + 999,
-                        max_steps=args.max_steps, task=args.task,
-                        arm=args.arm, handled=args.handled, history=args.history,
-                        max_half_size=args.max_half_size,
-                        wrist=args.handled or args.wrist)
+    factory = make_perception_env if args.perception else make_env
+    pextra = {"checkpoint": args.perception} if args.perception else {}
+    env = factory(args.randomisation, seed=args.seed, max_steps=args.max_steps,
+                  task=args.task, arm=args.arm,
+                  handled=args.handled, history=args.history,
+                  max_half_size=args.max_half_size,
+                  wrist=args.handled or args.wrist, **pextra)
+    eval_env = factory(args.randomisation, seed=args.seed + 999,
+                       max_steps=args.max_steps, task=args.task,
+                       arm=args.arm, handled=args.handled,
+                       history=args.history,
+                       max_half_size=args.max_half_size,
+                       wrist=args.handled or args.wrist, **pextra)
     # Sized from the environment, not from the module constants: the wrist and
     # handled variants are 34-dimensional, and a 32-dimensional actor fails deep
     # inside the normaliser rather than at construction.
@@ -210,6 +215,7 @@ def train(args: argparse.Namespace) -> Dict:
                    "wrist": args.handled or args.wrist,
                    "history": args.history, "hidden": args.hidden,
                    "max_half_size": args.max_half_size,
+                   "perception": args.perception,
                    "demos": args.demos}, fh, indent=2)
     with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
@@ -246,6 +252,12 @@ def build_parser() -> argparse.ArgumentParser:
                              "yaw binds against the 0.078 m pad gap; "
                              "0.028-0.039 is where a square box fits "
                              "aligned and does not fit rotated")
+    parser.add_argument("--perception", nargs="?", const=PERCEPTION_DEFAULT,
+                        default=None,
+                        help="put the pose CNN in the loop: the object's "
+                             "position in every observation comes from a "
+                             "64x64 render instead of the simulator. "
+                             "About 250x slower per step")
     parser.add_argument("--history", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=256)

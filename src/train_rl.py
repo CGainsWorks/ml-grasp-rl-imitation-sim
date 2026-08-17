@@ -77,13 +77,15 @@ def train(args: argparse.Namespace) -> Dict:
     )
 
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   wrist=args.wrist, task=args.task, arm=args.arm,
+                   wrist=args.wrist or args.handled, task=args.task,
+                   arm=args.arm, handled=args.handled,
                    travel_range=args.place_travel,
                    start_progress=args.place_start_progress,
                    start_progress_range=args.place_start_range,
                    reward_config=args.reward_config)
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
-                        wrist=args.wrist, task=args.task, arm=args.arm,
+                        wrist=args.wrist or args.handled, task=args.task,
+                        arm=args.arm, handled=args.handled,
                         travel_range=args.place_travel,
                         start_progress=args.place_start_progress,
                         start_progress_range=args.place_start_range,
@@ -283,6 +285,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="how far the place target sits from the object, in "
                              "metres. Shorter ranges decompose the task rather "
                              "than ease it: see PLACE_TRAVEL_LADDER")
+    parser.add_argument("--handled", action="store_true",
+                        help="the grasp-point-selection shape; implies --wrist")
     parser.add_argument("--arm", action="store_true",
                         help="drive the hand through the six-jointed arm rather "
                              "than a mocap weld. Same observation and action "

@@ -44,7 +44,7 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from envs.mujoco.grasp_env import ACT_DIM, OBS_DIM, make_env  # noqa: E402
+from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.behaviour_cloning import fit  # noqa: E402
 from src.policies.networks import SquashedGaussianActor  # noqa: E402
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
@@ -116,11 +116,18 @@ def train(args: argparse.Namespace) -> Dict:
         keep = int(np.sum(lengths[: args.max_demo_episodes]))
         obs, act = obs[:keep], act[:keep]
 
-    actor = SquashedGaussianActor(OBS_DIM, ACT_DIM, (args.hidden, args.hidden))
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   task=args.task, arm=args.arm)
+                   task=args.task, arm=args.arm,
+                   handled=args.handled, wrist=args.handled)
     eval_env = make_env(args.randomisation, seed=args.seed + 999,
-                        max_steps=args.max_steps, task=args.task, arm=args.arm)
+                        max_steps=args.max_steps, task=args.task,
+                        arm=args.arm, handled=args.handled,
+                        wrist=args.handled)
+    # Sized from the environment, not from the module constants: the wrist and
+    # handled variants are 34-dimensional, and a 32-dimensional actor fails deep
+    # inside the normaliser rather than at construction.
+    actor = SquashedGaussianActor(env.obs_dim, env.act_dim,
+                                  (args.hidden, args.hidden))
     expert = ScriptedExpert(noise=0.0, rng=rng)
 
     t0 = time.time()
@@ -169,7 +176,8 @@ def train(args: argparse.Namespace) -> Dict:
                 print("dagger {:d}  transitions {:>6d}  val mse {:.5f}  success {:.3f}".format(
                     rnd, len(obs), val_curve[-1], result["success_rate"]), flush=True)
 
-    torch.save({"actor": actor.state_dict(), "obs_dim": OBS_DIM, "act_dim": ACT_DIM,
+    torch.save({"actor": actor.state_dict(), "obs_dim": env.obs_dim,
+                "act_dim": env.act_dim,
                 "hidden": args.hidden}, os.path.join(args.output, "policy.pt"))
 
     summary = {
@@ -215,6 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
     parser.add_argument("--arm", action="store_true")
+    parser.add_argument("--handled", action="store_true")
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)

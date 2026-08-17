@@ -155,6 +155,7 @@ HANDLE_BODY_HALF = 0.048      # half-width of the wide body, against a 0.078 gap
 HANDLE_HALF_LENGTH = 0.070    # spans 0.048 to 0.188, so it meets the body
 HANDLE_THICKNESS = 0.010      # half-thickness, so 20 mm across the pads
 HANDLE_CENTRE = 0.118         # matches pos= in the scene XML; clears the palm
+HANDLE_HEIGHT = 0.034         # matches pos= in the scene XML; clears the floor
 TABLE_HEIGHT = 0.40           # top face of the table, metres
 GRIPPER_OPEN_WIDTH = 0.078    # pad-to-pad gap with both slide joints at zero
 GRASP_DEBOUNCE_STEPS = 3      # environment steps the grasp flag stays latched
@@ -629,13 +630,17 @@ class GraspEnv(_BASE):
         mujoco.mj_forward(self.model, self.data)
 
         self._place_clutter(ox, oy, hs)
-        self._object_rest_z = float(self.data.xpos[self._object_bid][2])
-        self._object_start = self._object_pos().copy()
+        self._object_rest_z = float(self._target_pos()[2])
+        self._object_start = self._target_pos().copy()
         self._lifted = 0.0
         if self.place:
             self._goal = self._sample_target(ox, oy)
         else:
-            self._goal = np.array([ox, oy, TABLE_HEIGHT + self.hold_height])
+            # Above the graspable feature, which for every shape but the
+            # handled one is the object itself.
+            t = self._target_pos()
+            self._goal = np.array(
+                [t[0], t[1], TABLE_HEIGHT + self.hold_height])
         self.model.site_pos[self._goal_sid] = self._goal
         # The latency queue starts full of zero actions: for the first few
         # steps of a laggy episode the hand holds still and the gripper sits
@@ -695,6 +700,27 @@ class GraspEnv(_BASE):
             self.data.qpos[qadr : qadr + 3] = [cx, cy, TABLE_HEIGHT + 0.021]
             self.data.qpos[qadr + 3 : qadr + 7] = [
                 np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)]
+
+    def _target_pos(self) -> np.ndarray:
+        """The point the task is scored on: the graspable feature.
+
+        For every shape whose reported pose *is* graspable this is the object's
+        own position and nothing changes. For the handled shape it is the handle,
+        and the distinction is the whole task.
+
+        Scoring the body frame there is not merely strict, it is impossible:
+        grasping the handle necessarily leaves the body centre 118 mm away, so a
+        goal placed above where the object started can never be satisfied by any
+        correct grasp. Measured, not assumed -- the scripted expert delivers the
+        handle to within a millimetre of the goal and is scored 0.123 m away.
+
+        The *observation* still reports the body frame. That is deliberate: the
+        policy has to work out where the graspable point is, which is what makes
+        this a test of grasp-point selection rather than of reaching.
+        """
+        if self.handled:
+            return self.data.geom_xpos[self._handle_gid].copy()
+        return self._object_pos()
 
     def _sample_target(self, ox: float, oy: float) -> np.ndarray:
         """Where the object has to end up, for the place task.
@@ -863,8 +889,8 @@ class GraspEnv(_BASE):
 
         obs = self._observation()
         grasped = float(self._grasped())
-        object_pos = self._object_pos()
-        dropped = bool(dropped_condition(object_pos, TABLE_HEIGHT))
+        object_pos = self._target_pos()
+        dropped = bool(dropped_condition(self._object_pos(), TABLE_HEIGHT))
 
         if self.place:
             # The pick latch. Set once, never cleared: it records that the
@@ -1221,7 +1247,7 @@ class GraspEnv(_BASE):
             "is_success": bool(success),
             "dropped": bool(dropped),
             "grasped": float(grasped),
-            "object_height": float(self._object_pos()[2] - self._object_rest_z),
+            "object_height": float(self._target_pos()[2] - self._object_rest_z),
             "lifted": float(self._lifted),
             "object_speed": float(np.linalg.norm(
                 self.data.cvel[self._object_bid][3:6])),

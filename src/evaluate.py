@@ -67,6 +67,7 @@ def evaluate_run(
     task: str = "lift",
     arm: bool = False,
     place_travel=None,
+    handled: bool = False,
 ) -> Dict:
     path = os.path.join(run_dir, checkpoint)
     if not os.path.exists(path):
@@ -82,7 +83,8 @@ def evaluate_run(
     out: Dict[str, Dict] = {}
     for level in eval_levels:
         env = make_env(level, seed=1234, max_steps=max_steps, task=task, arm=arm,
-                       travel_range=place_travel)
+                       travel_range=place_travel,
+                       handled=handled, wrist=handled)
         result = evaluate_policy(
             env, torch_policy(actor, deterministic=True),
             n_episodes=episodes, seed=FINAL_SEED_BLOCK,
@@ -151,6 +153,8 @@ def main() -> None:
                              "generalisation instead of learning")
     parser.add_argument("--arm", action="store_true",
                         help="evaluate through the six-jointed arm")
+    parser.add_argument("--handled", action="store_true",
+                        help="the grasp-point-selection shape; implies --wrist")
     parser.add_argument("--label", default=None, help="name for this group of seeds")
     parser.add_argument("--expert", action="store_true", help="also evaluate the scripted expert")
     parser.add_argument("--threads", type=int, default=1)
@@ -168,7 +172,8 @@ def main() -> None:
     t0 = time.time()
     per_run = [
         evaluate_run(d, args.eval_levels, args.episodes, args.checkpoint,
-                     args.max_steps, args.task, args.arm, args.place_travel)
+                     args.max_steps, args.task, args.arm, args.place_travel,
+                     args.handled)
         for d in run_dirs
     ]
     if args.expert:

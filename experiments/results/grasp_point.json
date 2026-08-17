@@ -1,0 +1,10 @@
+{
+  "level": "medium",
+  "steps": 200000,
+  "expert_reference": {
+    "aiming at the reported pose": 0.0,
+    "aiming at the handle": 1.0
+  },
+  "note": "the observation reports the body frame; the handle direction is recoverable from the reported orientation, so the information is present and the question is whether the network extracts it",
+  "results": {}
+}

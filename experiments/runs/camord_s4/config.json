@@ -1,0 +1,11 @@
+{
+  "algorithm": "bc",
+  "seed": 4,
+  "randomisation": "measured_camera",
+  "arm": false,
+  "handled": false,
+  "wrist": false,
+  "history": 4,
+  "hidden": 128,
+  "demos": "demonstrations/expert_cam_ordinary.npz"
+}

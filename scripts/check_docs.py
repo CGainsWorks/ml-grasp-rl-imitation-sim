@@ -52,6 +52,12 @@ CLAIMS = [
      "privileged distillation at camera-grade sensing"),
     ("camhist", "measured_camera", ["docs/limitations.md"],
      "a four-frame observation window at camera-grade sensing"),
+    # The two controls. These are the rows whose absence let a wrong
+    # conclusion ship, so they are the rows most worth pinning.
+    ("nowristbc", "wrist_bench", ["README.md", "docs/limitations.md"],
+     "the no-wrist control on the wrist benchmark"),
+    ("camord", "measured_camera", ["README.md", "docs/limitations.md"],
+     "the ordinary-demonstrator control at camera-grade sensing"),
 ]
 
 # Phrasings that were true once. Each is a regex, the files it must not appear
@@ -60,10 +66,14 @@ RETIRED = [
     (r"[Ee]very policy here scores ~0\.00",
      ["README.md", "docs/limitations.md"],
      "privileged distillation reaches 0.406 at measured_camera"),
-    (r"[Tt]he wrist is optional and does not help",
+    # NOTE: an earlier version of this file retired "the wrist does not help".
+    # The control reinstated it -- 0.838 without the wrist against 0.478 with
+    # it -- so the entry was removed rather than kept and inverted. A registry
+    # of retired claims can itself go stale, and this is what that looks like.
+    (r"wrist is learnable but not discoverable",
      ["README.md", "docs/limitations.md"],
-     "the wrist reaches 0.478 with demonstrations; it is an exploration "
-     "failure, not a useless joint"),
+     "the no-wrist control reaches 0.838 [0.811, 0.865]; learnable is not "
+     "the same as useful and that framing implied it was"),
     (r"cloning reaches 0\.448\b",
      ["README.md"],
      "the arm reaches 0.536 with a held anchor"),

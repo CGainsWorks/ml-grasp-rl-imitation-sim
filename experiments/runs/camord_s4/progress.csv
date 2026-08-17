@@ -1,0 +1,2 @@
+round,transitions,train_mse,val_mse,success_rate,grasp_rate
+0,20000,0.019964,0.066074,0.1400,0.4600

@@ -53,6 +53,7 @@
     <material name="grid" texture="grid" texrepeat="6 6" reflectance="0.05"/>
     <material name="table" rgba="0.55 0.52 0.48 1" reflectance="0.02"/>
     <material name="object" rgba="0.20 0.55 0.85 1"/>
+    <material name="clutter" rgba="0.26 0.48 0.72 1"/>
   </asset>
 
   <worldbody>
@@ -73,6 +74,12 @@
            clearance above the grip point. It used to sit lower, and the top
            face of a large box would foul it during the descent: the box was
            then squeezed downwards out of the pads instead of being held. -->
+      <!-- Wrist camera. Mounted on the palm looking down the approach axis,
+           which is what a real cell does and what the fixed camera cannot be:
+           the fixed view's error turned out *lower* under occlusion because the
+           gripper is itself a cue for where the box is, and a camera that moves
+           with the gripper removes that cue by construction. -->
+      <camera name="wrist_cam" pos="0 -0.055 0.030" xyaxes="1 0 0 0 0.5 -0.866"/>
       <geom name="palm" type="box" size="0.056 0.020 0.018" pos="0 0 0.022"
             rgba="0.35 0.38 0.44 1" mass="0.3" contype="1" conaffinity="1"/>
       <site name="grip_site" pos="0 0 -0.046" size="0.005" rgba="1 0 0 0.0"/>
@@ -100,6 +107,28 @@
 
     <!-- Object to grasp. Size, mass and friction are overwritten at reset by
          the domain randomiser; the values here are the nominal ones. -->
+    <!-- Distractors. Free bodies, so the hand can knock them and they behave
+         like objects rather than scenery, and deliberately similar in size and
+         colour to the target: a clutter test where the distractors are obviously
+         different is a test of colour, not of clutter. They are parked off the
+         table by default and only placed when clutter is switched on, so every
+         existing number is untouched. -->
+    <body name="clutter0" pos="1.5 0 0.425">
+      <freejoint name="clutter0_free"/>
+      <geom name="clutter0" type="box" size="0.020 0.020 0.020" material="clutter"
+            friction="1.0 0.005 0.0001" mass="0.05"/>
+    </body>
+    <body name="clutter1" pos="1.6 0 0.425">
+      <freejoint name="clutter1_free"/>
+      <geom name="clutter1" type="cylinder" size="0.021 0.021" material="clutter"
+            friction="1.0 0.005 0.0001" mass="0.05"/>
+    </body>
+    <body name="clutter2" pos="1.7 0 0.425">
+      <freejoint name="clutter2_free"/>
+      <geom name="clutter2" type="box" size="0.024 0.018 0.020" material="clutter"
+            friction="1.0 0.005 0.0001" mass="0.05"/>
+    </body>
+
     <body name="object" pos="0 0 0.425">
       <freejoint name="object_free"/>
       <geom name="object" type="box" size="0.022 0.022 0.022" material="object"

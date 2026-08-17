@@ -122,6 +122,28 @@ class PlaceRewardConfig:
     #          produce the behaviour, the conclusion is about the family.
     approach_mode: str = "both"
 
+    # Whether success requires the object to have been picked up.
+    #
+    # True is the task definition and it stays the default: "pick and place"
+    # without the pick is a different task, and without this a policy scores by
+    # shoving the box along the table.
+    #
+    # It also makes hindsight experience replay inapplicable, which is worth
+    # stating precisely because it is a real tension rather than an oversight.
+    # Hindsight works by relabelling a failed episode as a success for the goal
+    # it *did* achieve, which requires success to be a function of the achieved
+    # state. The lift latch is a function of the episode's *history*: it records
+    # that the object was once 4 cm off the table. Relabelling can move the
+    # target to wherever the box ended up; it cannot retroactively pick the box
+    # up. Measured rather than argued -- with the latch, 16 000 relabelled
+    # transitions across a run yield exactly zero successes, so the hindsight arm
+    # trains on a buffer of uniformly-zero reward and looks identical to a method
+    # that simply did not help.
+    #
+    # False exists so that claim can be tested rather than asserted, and it is
+    # not a task anyone should report numbers on.
+    success_requires_lift: bool = True
+
     # How `carry` -- progress across the table -- is gated on having picked the
     # object up. Three settings, and all three were run, because the first two
     # are wrong in instructive ways.
@@ -228,11 +250,13 @@ def place_success_condition(object_pos, goal_pos, grasped, lifted, object_speed,
     xp = _xp(object_pos)
     xy = _norm((object_pos - goal_pos)[..., :2], xp)
     dz = xp.abs(object_pos[..., 2] - goal_pos[..., 2])
-    return ((xy < cfg.goal_tolerance)
-            & (dz < cfg.place_z_tolerance)
-            & (grasped < 0.5)
-            & (lifted > 0.5)
-            & (object_speed < cfg.speed_tolerance))
+    ok = ((xy < cfg.goal_tolerance)
+          & (dz < cfg.place_z_tolerance)
+          & (grasped < 0.5)
+          & (object_speed < cfg.speed_tolerance))
+    if cfg.success_requires_lift:
+        ok = ok & (lifted > 0.5)
+    return ok
 
 
 # --------------------------------------------------------------------------

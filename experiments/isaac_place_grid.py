@@ -48,12 +48,28 @@ DEMOS = os.path.join("demonstrations", "isaac_place_none.npz")
 # findings rather than an oversight.
 ISAAC_FLOOR = "0.30"
 
+# Budget matching, done on the axis that was actually short.
+#
+# The first Isaac grid ran 4 000 steps x 64 envs: 256 000 transitions against
+# MuJoCo's 200 000, so it looked matched -- and 4 000 gradient updates against
+# MuJoCo's 100 000, which it was not. scripts/isaac_profile.py shows why that
+# went unnoticed: simulation is 93% of the cost and one update is 6 ms, so the
+# expensive axis and the short axis are different axes.
+#
+# 512 environments (4 946 transitions/s against 654 at 64, on 2.3 GB of an 8 GB
+# card, because simulation time per step is flat in the environment count) with
+# 25 updates per step gives 2.05M transitions and 100 000 updates in about
+# seventeen minutes a run.
+UPDATES_PER_STEP = "25.0"
+NUM_ENVS = 512
+
 
 def job(arm: str, seed: int, steps: int, num_envs: int, level: str) -> Dict:
     name = "isaac_place_{}_s{}".format(arm, seed)
     out = os.path.join(RUNS, name)
     cmd = [sys.executable, "scripts/isaac_train.py", "--task", "place",
            "--num-envs", str(num_envs), "--steps", str(steps),
+           "--updates-per-step", UPDATES_PER_STEP,
            "--eval-every", str(max(1, steps // 4)), "--eval-episodes", "2",
            "--randomisation", level, "--seed", str(seed), "--output", out]
     if arm == "sac":
@@ -68,7 +84,7 @@ def main() -> None:
     parser.add_argument("--arms", nargs="+", default=["bcrl", "sac"])
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--steps", type=int, default=4000)
-    parser.add_argument("--num-envs", type=int, default=64)
+    parser.add_argument("--num-envs", type=int, default=NUM_ENVS)
     parser.add_argument("--randomisation", default="none")
     args = parser.parse_args()
     os.chdir(REPO)

@@ -45,6 +45,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--val-fraction", type=float, default=0.2)
     parser.add_argument("--output", default="experiments/perception/pose_cnn.pt")
+    parser.add_argument("--label", default="fixed camera, no clutter")
     parser.add_argument("--report",
                         default="experiments/results/perception_error.json")
     args = parser.parse_args()
@@ -124,6 +125,7 @@ def main() -> None:
         "error_occluded_m": float(dist[occ].mean()),
         "occluded_fraction": float(occ.mean()),
         "lag1_autocorrelation_xy": lag1,
+        "label": args.label,
         "modelled": {
             "obs_noise_pos_m": [0.004, 0.010],
             "obs_noise_corr": 0.9,

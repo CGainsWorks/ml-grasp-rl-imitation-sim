@@ -27,7 +27,7 @@
     "demo_sample_fraction": 0.25
   },
   "steps": 4000,
-  "num_envs": 64,
+  "num_envs": 512,
   "seed": 1,
   "randomisation": "none",
   "device": "cpu"

@@ -131,6 +131,7 @@ IK_ITERS = 20
 # the next person does not repeat it.
 IK_RESET_ATTEMPTS = 120
 
+MAX_CLUTTER = 3               # distractor bodies defined in the weld scene
 TABLE_HEIGHT = 0.40           # top face of the table, metres
 GRIPPER_OPEN_WIDTH = 0.078    # pad-to-pad gap with both slide joints at zero
 GRASP_DEBOUNCE_STEPS = 3      # environment steps the grasp flag stays latched
@@ -220,6 +221,7 @@ class GraspEnv(_BASE):
         travel_range: Optional[Tuple[float, float]] = None,
         start_progress: float = 0.0,
         start_progress_range: Optional[Tuple[float, float]] = None,
+        clutter: int = 0,
     ) -> None:
         if task not in TASKS:
             raise ValueError("task must be one of {}, got {!r}".format(TASKS, task))
@@ -245,6 +247,14 @@ class GraspEnv(_BASE):
         # and it uses task knowledge to construct that state. It does not use any
         # expert action, so it is a different resource from the demonstrations --
         # but it is emphatically not "no supervision".
+        # How many distractor objects sit on the table.
+        #
+        # Zero by default, and the distractors are parked 1.5 m away when unused,
+        # so every existing number is produced by the same scene it always was.
+        # They are deliberately similar in size and colour to the target: a
+        # clutter test whose distractors are obviously different measures colour
+        # discrimination rather than clutter.
+        self.clutter = int(np.clip(clutter, 0, MAX_CLUTTER))
         self.start_progress = float(np.clip(start_progress, 0.0, 1.0))
         # Sample the starting point per episode instead of fixing it.
         #
@@ -365,6 +375,14 @@ class GraspEnv(_BASE):
             self.model.site_rgba[self._goal_sid] = np.array([0.95, 0.62, 0.15, 0.65])
         self._pad_gids = (self.model.geom("left_pad").id, self.model.geom("right_pad").id)
         self._object_qadr = self.model.jnt_qposadr[self.model.joint("object_free").id]
+        self._clutter_qadr = []
+        for i in range(MAX_CLUTTER):
+            name = "clutter{}_free".format(i)
+            try:
+                self._clutter_qadr.append(
+                    self.model.jnt_qposadr[self.model.joint(name).id])
+            except Exception:  # the arm scene has no distractors
+                pass
         # The arm variant's hand has no free joint: it is a link in a chain.
         self._hand_qadr = (
             None if self.arm
@@ -524,6 +542,7 @@ class GraspEnv(_BASE):
 
         mujoco.mj_forward(self.model, self.data)
 
+        self._place_clutter(ox, oy, hs)
         self._object_rest_z = float(self.data.xpos[self._object_bid][2])
         self._object_start = self._object_pos().copy()
         self._lifted = 0.0
@@ -557,6 +576,39 @@ class GraspEnv(_BASE):
         mujoco.mj_forward(self.model, self.data)
         self._prev_grip = self._grip_pos().copy()
         return self._observation(), self._info(False, False, 0.0)
+
+    def _place_clutter(self, ox: float, oy: float, half_size: float) -> None:
+        """Scatter the distractors on the table, clear of the target.
+
+        Rejected rather than clipped, and with a clearance the gripper can fit
+        through: a distractor touching the target turns "grasp the box among
+        others" into "extract the box from a pile", which is a different task
+        and not one this hand can do. The clearance is the open pad gap plus a
+        margin, so the failure mode being tested is *visual* confusion rather
+        than a mechanical block.
+        """
+        for i, qadr in enumerate(self._clutter_qadr):
+            if i >= self.clutter:
+                # Parked well off the table, where it cannot be seen or hit.
+                self.data.qpos[qadr : qadr + 3] = [1.5 + 0.1 * i, 0.0, 0.425]
+                self.data.qpos[qadr + 3 : qadr + 7] = [1.0, 0.0, 0.0, 0.0]
+                continue
+            clearance = GRIPPER_OPEN_WIDTH + half_size + 0.02
+            for _ in range(100):
+                cx = self.np_random.uniform(-0.20, 0.20)
+                cy = self.np_random.uniform(-0.26, 0.26)
+                if np.hypot(cx - ox, cy - oy) < clearance:
+                    continue
+                if all(np.hypot(cx - self.data.qpos[q], cy - self.data.qpos[q + 1])
+                       >= clearance
+                       for q in self._clutter_qadr[:i]):
+                    break
+            else:
+                cx, cy = 0.24, -0.30 + 0.08 * i
+            yaw = self.np_random.uniform(-np.pi, np.pi)
+            self.data.qpos[qadr : qadr + 3] = [cx, cy, TABLE_HEIGHT + 0.021]
+            self.data.qpos[qadr + 3 : qadr + 7] = [
+                np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)]
 
     def _sample_target(self, ox: float, oy: float) -> np.ndarray:
         """Where the object has to end up, for the place task.
@@ -1085,6 +1137,8 @@ class GraspEnv(_BASE):
             "grasped": float(grasped),
             "object_height": float(self._object_pos()[2] - self._object_rest_z),
             "lifted": float(self._lifted),
+            "object_speed": float(np.linalg.norm(
+                self.data.cvel[self._object_bid][3:6])),
             "goal_distance": float(np.linalg.norm(
                 (self._object_pos() - self._goal)[:2] if self.place
                 else self._object_pos() - self._goal)),

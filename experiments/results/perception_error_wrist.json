@@ -1,0 +1,21 @@
+{
+  "frames_validation": 4000,
+  "mean_position_error_m": 0.0512755885720253,
+  "median_position_error_m": 0.04150298982858658,
+  "error_visible_m": 0.0486847423017025,
+  "error_occluded_m": 0.07779541611671448,
+  "occluded_fraction": 0.089,
+  "lag1_autocorrelation_xy": [
+    0.9495270153052192,
+    0.9272918119138894
+  ],
+  "label": "wrist camera, 3 distractors",
+  "modelled": {
+    "obs_noise_pos_m": [
+      0.004,
+      0.01
+    ],
+    "obs_noise_corr": 0.9,
+    "occlusion_dependence": "not modelled"
+  }
+}

@@ -49,10 +49,21 @@ parser.add_argument("--bc-coef", type=float, default=50.0)
 parser.add_argument("--bc-decay-steps", type=int, default=0,
                     help="defaults to half the run")
 parser.add_argument("--device", default="cpu",
-                    help="where the agent lives. 'cuda' keeps the networks on the "
-                         "same card as the simulator, which is worth roughly 1.5x "
-                         "here; 'cpu' is the default so runs stay comparable with "
-                         "the MuJoCo ones. See docs/architecture.md")
+                    help="where the agent lives. 'cpu' is the default and is also "
+                         "the faster choice, which was not what anyone expected: "
+                         "scripts/isaac_profile.py measures the learner at 6.4 ms "
+                         "an update on the CPU against 12.4 ms on the GPU, because "
+                         "128x128 networks are small enough that kernel-launch "
+                         "overhead beats the arithmetic. An earlier version of "
+                         "this help text claimed cuda was worth 1.5x; it is not.")
+parser.add_argument("--updates-per-step", type=float, default=1.0,
+                    help="gradient updates per environment step. The default of "
+                         "1.0 is what made an Isaac run 25x short of a MuJoCo one "
+                         "in OPTIMISER steps while matching it in transitions: at "
+                         "4 000 steps x 64 envs that is 256k transitions (MuJoCo: "
+                         "200k) but only 4k updates (MuJoCo: 100k). Simulation is "
+                         "93% of the cost here and updates are 6 ms, so raising "
+                         "this is the cheap axis.")
 parser.add_argument("--alpha-floor", type=float, default=0.0,
                     help="lower clamp on the entropy coefficient; the fix for the "
                          "grasp-and-hold local optimum, measured in docs/exploration.md")
@@ -202,7 +213,8 @@ for step in range(1, args.steps + 1):
 
     if step % sac_cfg.update_every == 0 and agent.buffer.size >= sac_cfg.batch_size:
         agent.observe_normalisation(obs)
-        for _ in range(sac_cfg.update_every):
+        n_updates = int(round(sac_cfg.update_every * args.updates_per_step))
+        for _ in range(n_updates):
             last_metrics = agent.update(step)
 
     if step % args.eval_every == 0 or step == args.steps:
@@ -241,6 +253,8 @@ with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh
         "seed": args.seed,
         "randomisation": args.randomisation,
         "simulator": "isaac-sim-5.1.0",
+        "updates_per_step": args.updates_per_step,
+        "gradient_updates": int(round(args.steps * args.updates_per_step)),
         "wall_seconds": round(time.time() - t0, 1),
     }, fh, indent=2)
 print("final success {:.3f}, best {:.3f}".format(final["success_rate"], best_success))

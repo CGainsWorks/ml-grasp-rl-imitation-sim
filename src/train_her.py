@@ -31,6 +31,22 @@ them wrong produces a buffer that trains happily on nonsense:
 
 Two arms, and the control is the point: sparse without hindsight should fail,
 and if it does not then the hindsight arm proves nothing.
+
+``--task place`` runs the same thing on pick-and-place, and there it is aimed at
+a specific finding rather than at the general question. Seven reward designs and
+two curricula established that shaping on that task buys *segments* and does not
+chain them: from-scratch policies grasp and never lift, curriculum policies lift,
+carry and release and never grasp. Hindsight is the one method left that attacks
+the chain directly, because relabelling turns "picked the box up and put it down
+somewhere" into a success for wherever it was put down -- and that is the whole
+sequence, rewarded, without a demonstration or a shaping term for any part of it.
+
+The place relabelling needs one thing the lift version does not. Its success
+condition also reads the lift latch and the object's speed, so both are stored
+per transition and recomputed, for the same reason the object position is: the
+observation's copies carry sensing noise, and a buffer trained on noisy labels
+looks exactly like a buffer trained on real ones until the numbers come out
+wrong.
 """
 
 from __future__ import annotations
@@ -50,6 +66,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.sac import SAC, SACConfig  # noqa: E402
 from src.rewards.grasp_reward import load_reward_config, success_condition  # noqa: E402
+from src.rewards.place_reward import (  # noqa: E402
+    load_place_config,
+    place_success_condition,
+)
 from src.utils.rollout import evaluate_policy  # noqa: E402
 
 GOAL = slice(26, 29)
@@ -71,6 +91,12 @@ def main() -> None:
     parser.add_argument("--randomisation", default="none")
     parser.add_argument("--hidden", type=int, default=128)
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--task", default="lift", choices=("lift", "place"))
+    parser.add_argument("--no-lift-latch", action="store_true",
+                        help="drop the pick requirement from the place success "
+                             "condition. Not a task to report numbers on -- it "
+                             "exists to test whether the latch is what makes "
+                             "hindsight relabelling inapplicable")
     parser.add_argument("--her", action="store_true",
                         help="relabel with hindsight goals; off is the control arm")
     parser.add_argument("--her-k", type=int, default=4,
@@ -95,13 +121,21 @@ def main() -> None:
     os.makedirs(args.output, exist_ok=True)
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
+    # How often relabelling actually manufactures a success. If this is zero the
+    # hindsight arm is doing nothing and its result means nothing, which is a
+    # failure mode that looks identical to "the method did not help".
+    relabelled_hits = relabelled_total = 0
 
-    reward_cfg = load_reward_config("src/rewards/configs/sparse.json")
+    place = args.task == "place"
+    sparse_cfg = (("src/rewards/configs/place_sparse_nolatch.json"
+                   if args.no_lift_latch else "src/rewards/configs/place_sparse.json")
+                  if place else "src/rewards/configs/sparse.json")
+    reward_cfg = (load_place_config if place else load_reward_config)(sparse_cfg)
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   reward_config="src/rewards/configs/sparse.json")
+                   task=args.task, reward_config=sparse_cfg)
     eval_env = make_env(args.randomisation, seed=args.seed + 999,
-                        max_steps=args.max_steps,
-                        reward_config="src/rewards/configs/sparse.json")
+                        max_steps=args.max_steps, task=args.task,
+                        reward_config=sparse_cfg)
 
     cfg = SACConfig(hidden=(args.hidden, args.hidden), alpha_floor=args.alpha_floor)
     agent = SAC(env.obs_dim, env.act_dim, cfg, seed=args.seed)
@@ -142,7 +176,10 @@ def main() -> None:
             # entries are wrong, and relabelling against a wrong achieved goal
             # teaches the critic a reward that never happened.
             "object": env._object_pos().copy(),
+            "rest_z": float(env._object_rest_z),
             "grasped": float(info.get("grasped", 0.0)),
+            "lifted": float(info.get("lifted", 0.0)),
+            "speed": float(info.get("object_speed", 0.0)),
         })
         obs = next_obs
 
@@ -156,14 +193,32 @@ def main() -> None:
                 for _ in range(args.her_k):
                     j = int(rng.integers(i, len(episode)))
                     goal = episode[j]["object"].copy()
+                    if place:
+                        # A relabelled target has to sit at the height the object
+                        # rests at. Relabelling to an achieved *airborne*
+                        # position would manufacture a goal that the task's own
+                        # success condition can never satisfy, and the hindsight
+                        # arm would then be training on impossible goals while
+                        # looking exactly like one that was working.
+                        goal[2] = tr["rest_z"]
                     o, n = tr["obs"].copy(), tr["next_obs"].copy()
                     relabel(o, n, goal)
-                    achieved = success_condition(
-                        tr["object"][None, :], goal[None, :],
-                        np.array([tr["grasped"]]), reward_cfg)
+                    if place:
+                        # The place condition also reads the lift latch and the
+                        # object's speed, both stored rather than re-derived.
+                        achieved = place_success_condition(
+                            tr["object"][None, :], goal[None, :],
+                            np.array([tr["grasped"]]), np.array([tr["lifted"]]),
+                            np.array([tr["speed"]]), reward_cfg)
+                    else:
+                        achieved = success_condition(
+                            tr["object"][None, :], goal[None, :],
+                            np.array([tr["grasped"]]), reward_cfg)
                     agent.buffer.add(o, tr["action"],
                                      float(reward_cfg.w_success * float(achieved[0])),
                                      n, tr["done"])
+                    relabelled_hits += int(bool(achieved[0]))
+                    relabelled_total += 1
             episode = []
             obs, _ = env.reset()
 
@@ -198,6 +253,10 @@ def main() -> None:
                    "best_success_rate": best, "steps": args.steps,
                    "seed": args.seed, "her": args.her,
                    "reward": "sparse",
+                   "relabelled_success_fraction": (
+                       relabelled_hits / relabelled_total
+                       if relabelled_total else None),
+                   "relabelled_transitions": relabelled_total,
                    "wall_seconds": round(time.time() - t0, 1)}, fh, indent=2)
     print("final success {:.3f}, best {:.3f}".format(final["success_rate"], best))
 

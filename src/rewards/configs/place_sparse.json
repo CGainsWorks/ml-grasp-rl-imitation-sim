@@ -1,0 +1,12 @@
+{
+  "w_reach": 0.0,
+  "w_align": 0.0,
+  "w_grasp": 0.0,
+  "w_clear": 0.0,
+  "w_carry": 0.0,
+  "w_approach": 0.0,
+  "w_settle": 0.0,
+  "w_success": 1.0,
+  "w_drop": 0.0,
+  "w_action": 0.0
+}

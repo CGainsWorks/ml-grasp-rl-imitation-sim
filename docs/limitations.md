@@ -895,7 +895,11 @@ written up above rather than promised here:
 * **Why cross-simulator transfer fails** — narrowed past every action-space
   explanation to the contact model, and then measured at the contact level: the
   same grip that is rigid in MuJoCo drops the object in Isaac.
-* **Real sensing ranges** — measured, and the consequence measured too. Every
-  policy here scores ~0.00 at the error its own estimator produces.
+* **Real sensing ranges** — measured, the consequence measured, and then
+  partly recovered. Every policy trained the ordinary way scores ~0.00 at the
+  error this repository's own estimator produces, and so does the scripted
+  expert. Privileged distillation clears it: **0.406** [0.345, 0.467] for a
+  policy that only ever sees the noisy view. Stacking observation frames does
+  not, and the autocorrelation says why before the runs do.
 * **Grasp-point selection** — built and learned: 0/30 for the naive strategy,
   0.896 cloned, 0.996 demonstration-seeded.

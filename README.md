@@ -9,11 +9,13 @@
 
 Learned grasping in simulation: two MuJoCo tasks, a documented reward design,
 SAC from scratch, behaviour cloning and DAgger from recorded demonstrations, the
-two combined, a perception stack that replaces the ground-truth object pose with
-an estimate from a camera, and a domain-randomisation ablation measured against a
-held-out distribution that stands in for a real robot. Every success rate is
-reported over five seeds with confidence intervals, because a
-reinforcement-learning number from one seed is noise.
+two combined, an optional six-jointed arm in place of the mocap weld, a
+perception stack that replaces the ground-truth object pose with an estimate from
+a camera, and a domain-randomisation ablation measured against a held-out
+distribution that stands in for a real robot. The headline grid is **ten seeds
+per cell** with confidence intervals — five elsewhere, and the seed count is in
+every table — because a reinforcement-learning number from one seed is noise and
+a bimodal one from five is worse.
 
 The second task is the interesting one. Pick-and-place was added specifically to
 test whether the reward design *method* generalises, and it does not. Imitation
@@ -24,11 +26,15 @@ put a maximum where a segment ends and the policy learns that segment and stops
 there. Reaching, grasping, lifting and carrying were each bought that way;
 chaining them was not.
 
-**The Isaac port reproduces it on a different robot**: 0.419 demonstration-seeded
-against 0.000 from scratch, with the prediction recorded before the runs. A
-second simulator agreeing is worth more than an eighth reward design on the
-first, because it could have disagreed. Written up rather than buried, in
-[docs/results.md](docs/results.md) §7.
+Six controlled experiments stand behind that — seven reward designs, a tripled
+budget, a task decomposition, a staged reverse curriculum, a mixed-start
+curriculum, and a seeded combination of the two halves — and **the Isaac port
+reproduces it on a different robot** (0.419 demonstration-seeded against 0.000
+from scratch, with the prediction recorded before the runs). A second simulator
+agreeing is worth more than an eighth reward design on the first, because it
+could have disagreed. Written up rather than buried, in
+[docs/results.md](docs/results.md) §7 and
+[docs/limitations.md](docs/limitations.md).
 
 ![expert rollout](videos/expert_nominal.gif)
 
@@ -272,8 +278,9 @@ point" definition, scores 100%.
 
 The hand is a free body dragged by a mocap weld, so contact is resolved by the
 solver rather than imposed kinematically — a misaligned finger pair pushes the
-box away instead of passing through it. There is no arm, which is the largest
-simplification here and is listed first in
+box away instead of passing through it. By default there is no arm behind the
+hand, which is the largest simplification here; `make_env(..., arm=True)` puts a
+six-jointed one there, and what that costs is measured in
 [docs/limitations.md](docs/limitations.md).
 
 ---
@@ -417,20 +424,35 @@ tests/               environment contract, reward parity, learning machinery
 Stated in full in [docs/limitations.md](docs/limitations.md). The ones that
 change how the numbers should be read:
 
-* **No arm** — the hand floats; no joint limits, self-collision or reachability.
-* **No wrist rotation** — the pads always close along world *x*, which caps how
-  large a box can be grasped and removes the alignment problem that makes real
-  grasping hard.
-* **No perception** — the object pose is handed to the policy; sensing
-  randomisation is additive Gaussian noise, a weak model of a real estimator.
-* **Dense hand-designed reward** — this shows RL solving a shaped task, not
-  discovering grasping from a sparse signal.
+Several of these used to be "the repository does not do X". Most are now "the
+repository does X and here is what it cost", which is a more useful kind of
+limitation and a worse-sounding one.
+
+* **The default hand has no arm** — it floats on a mocap weld, and every
+  headline number was produced that way. A six-jointed arm variant exists and
+  was measured: from-scratch RL through it never closes the fingers at all
+  (grasp rate 0.000 against 0.593 for the weld), and cloning reaches 0.448. That
+  gap is the cost of the abstraction.
+* **The wrist is optional and does not help** — the yaw joint exists, the
+  scripted expert uses it, and a policy trained with it scores 0.000 against
+  0.122 without, in two placements of the alignment reward. The joint was the
+  easy half.
+* **Perception is a check, not a pipeline** — a CNN pose estimator from 64x64
+  renders exists and costs 18 points when substituted for ground truth. It was
+  built to *test* the sensing noise model, and it refuted one of the three
+  claims that model made.
+* **Dense hand-designed reward, and it does not generalise** — it solves
+  lift-and-hold. On pick-and-place, seven designs, a tripled budget and two
+  curricula all fail while cloning succeeds immediately. Shaping here buys
+  segments and does not chain them.
 * **No hardware** — `shifted` is a proxy for a real robot, and a lower bound on
-  a real gap.
-* **Isaac Lab port works, but no headline number comes from it** — all seven
-  bring-up checks pass and cross-simulator transfer is measured, but every
-  quoted success rate in this README was produced in MuJoCo. Four of the
-  eleven randomisation parameters have no Isaac equivalent yet.
+  a real gap. This one is unchanged and unfixable here.
+* **Isaac Lab runs both tasks and still supplies no headline number** — the
+  bring-up checks pass at `none` and `medium`, place-reward parity is 6.9e-08 on
+  the GPU, and the second task's finding reproduces there (0.419 against 0.000).
+  Every success rate quoted in *this* README was still produced in MuJoCo, and
+  two of the mapped randomisation parameters are analogues rather than
+  translations.
 
 ---
 

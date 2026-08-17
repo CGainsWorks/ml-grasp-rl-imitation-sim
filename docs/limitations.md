@@ -4,13 +4,18 @@ Written to be read before the results, not after them.
 
 ## The environment is a simplification, in specific ways
 
-**There is no arm in the MuJoCo half.** The hand is a free body dragged by a
-mocap weld: no joint limits, no self-collision, no arm inertia, no
+**The MuJoCo default is a hand with no arm behind it.** It is a free body
+dragged by a mocap weld: no joint limits, no self-collision, no arm inertia, no
 singularities, no reachability constraint. Every one of those is a real failure
-mode in a real cell. A policy trained here needs a reachability check and a
+mode in a real cell, and every headline number in this repository was produced
+that way. A policy trained on the default needs a reachability check and a
 joint-limit clamp between it and any servo loop. (The Isaac port *does* have a
-real Franka, which is how its near-singular start pose was found — so this
-limitation is specific to MuJoCo, not to the repository.)
+real Franka, which is how its near-singular start pose was found.)
+
+There is now a six-jointed arm variant as well, and **it is measured rather than
+offered** — the next section is what happens when policies are trained through
+it, and the short version is that from-scratch RL never closes the fingers at
+all. That is the honest cost of the abstraction the defaults use.
 
 **A six-jointed arm variant now works.** `make_env(..., arm=True)` replaces the
 mocap weld with a 6R arm carrying the hand on its flange, driven by
@@ -578,11 +583,18 @@ with three.
 **`shifted` is a proxy, not a robot.** See [sim-to-real.md](sim-to-real.md). No
 hardware was involved at any point.
 
-## The Isaac Lab port works, but produces no headline number
+## The Isaac Lab port runs both tasks, and now produces numbers of its own
 
-It was brought up against Isaac Sim 5.1.0 and Isaac Lab 2.3.2 on an RTX 4060,
-and all seven of its bring-up checks now pass at both `none` and `medium`
-randomisation. That includes the one the port exists for: the reward computed
+It was brought up against Isaac Sim 5.1.0 and Isaac Lab 2.3.2 on an RTX 4060.
+Both tasks run there: the bring-up checks pass at `none` and `medium` for
+lift-and-hold, and all eight pass at both levels for pick-and-place, whose
+reward agrees with the shared numpy implementation to 6.9e-08 on the GPU.
+
+**It reproduces the second task's finding on a different robot** — 0.419
+demonstration-seeded against 0.000 from scratch, three seeds each, with the
+prediction recorded in `experiments/isaac_place_grid.py` before the runs. What it
+still does not do is contribute to the README's headline tables, which remain
+MuJoCo throughout. That includes the one the port exists for: the reward computed
 inside Isaac on the GPU agrees with the shared numpy implementation to about
 5e-08 on the same states, so "it is the same task" is measured rather than
 asserted. Randomisation is driven through Isaac's event manager from the same

@@ -103,14 +103,15 @@ CLIPS = [
     {
         "name": "arm_expert",
         "args": ["--expert", "--arm", "--randomisation", "none",
-                 "--episodes", "2"],
+                 "--episodes", "3", "--seed", "90000"],
         "why": "the same task through a six-jointed UR5-proportioned arm with "
                "joint limits, self-collision and IK, instead of a floating hand",
     },
     {
         "name": "arm_clone",
         "policy": "experiments/runs/arm_bcnom_s0/policy.pt",
-        "args": ["--arm", "--randomisation", "none", "--episodes", "3"],
+        "args": ["--arm", "--randomisation", "none", "--episodes", "3",
+                 "--seed", "90000"],
         "why": "a clone of that expert, 0.448 across five seeds. From-scratch RL "
                "through the arm never closes the fingers at all",
     },

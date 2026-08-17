@@ -481,6 +481,60 @@ finishing. A reward that is 81% terminal is a sparse reward with decorations,
 and this repository already has a section showing that the sparse version of the
 *first* task scores zero as well.
 
+### A reverse curriculum, and the sharpest version of the result
+
+The literature's answer to "shaping does not chain segments" is to learn the task
+backwards (Florensa et al., [Reverse Curriculum Generation](https://arxiv.org/abs/1707.05300),
+2017). `GraspEnv(start_progress=p)` sets the world into a partly-finished
+episode: at 1.0 the object is in the closed gripper over the target and only the
+release remains, at 0.0 it is the ordinary task. Eight stages, 25 000 steps each,
+**200 000 in total, matched to every from-scratch arm**, each stage inheriting the
+previous stage's actor *and critic*.
+
+| start | what the policy must still do | success |
+| ---: | --- | ---: |
+| 1.00 | lower, release | **0.888** |
+| 0.85 | + a little carry | 0.614 |
+| 0.70 | | 0.408 |
+| 0.55 | | 0.368 |
+| 0.42 | + the lift | 0.274 |
+| 0.30 | grasped, on the table | 0.140 |
+| **0.15** | **fingers open: + the grasp** | **0.000** |
+| 0.00 | + the reach | 0.000 |
+
+Graceful all the way down, then exactly zero the instant the fingers start open.
+The obvious reading is stagewise forgetting — 150 000 steps seeing nothing but
+states with the object already held — so the next experiment removes staging
+entirely: sample the start point **per episode** across the whole range, so every
+batch spans the task and no stage can overwrite the last. Five seeds, same
+budget, same reward.
+
+It scores **0.580** on the distribution it trains on, and **0.000 on the actual
+task**. Both numbers are real and only the second one is the task:
+
+| the same mixed-start policy, evaluated at | success | grasp at end | peak lift |
+| --- | ---: | ---: | ---: |
+| start 0.00 — the real task | **0.000** | 0.00 | 0.002 m |
+| start 0.15 — fingers open | **0.000** | 0.02 | 0.002 m |
+| start 0.30 — grasped, on the table | 0.367 | 0.13 | 0.061 m |
+| start 0.55 — lifted, carrying | 0.750 | 0.17 | 0.106 m |
+| start 1.00 — over the target | 0.750 | 0.15 | 0.096 m |
+
+So it is not forgetting. One policy, trained on all start points at once, does
+everything from "already holding the box" onwards at 0.37 to 0.75 — and scores
+zero whenever it has to close the fingers itself.
+
+**The two failures are different and that is the point.** From-scratch RL under
+the shaped reward grasps on 63-90% of steps and never lifts. The curriculum
+policy lifts, carries, lowers and releases and never grasps. Each half of the
+task is demonstrably learnable by this algorithm on this robot; **no method tried
+here learns both halves in sequence, and demonstrations are the only thing that
+supplied the sequence.**
+
+That is a much sharper claim than "pick-and-place is hard", and it took a second
+task, seven reward designs, a travel ladder and two curricula to be able to make
+it.
+
 **The honest conclusion is about the family of designs, not the next weight.**
 Hand-shaped dense rewards of this form solved lift-and-hold and did not solve
 pick-and-place, and seven attempts is enough to stop reporting the eighth as

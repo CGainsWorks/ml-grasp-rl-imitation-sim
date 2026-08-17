@@ -172,6 +172,13 @@ WRIST_MAX_HALF_SIZE = 0.034
 # bound keeps the pair inside the workspace with room for the hand.
 PLACE_TARGET_X = 0.15
 PLACE_TARGET_Y = 0.18
+# The height the reverse curriculum carries the object at, matching the
+# scripted expert's CARRY_HEIGHT so the two describe the same trajectory.
+PLACE_CARRY_HEIGHT = 0.10
+# Where the grasp and the lift sit on the reverse curriculum's progress axis.
+PLACE_GRASP_P = 0.25   # below this the fingers are still open
+PLACE_LIFT_P = 0.40    # below this the object is still on the table
+APPROACH_START_HEIGHT = 0.16
 PLACE_MIN_TRAVEL = 0.12
 PLACE_MAX_TRAVEL = 0.30
 # Shorter ranges exist to *decompose* the place task rather than to make it
@@ -211,6 +218,8 @@ class GraspEnv(_BASE):
         max_half_size: Optional[float] = None,
         task: str = "lift",
         travel_range: Optional[Tuple[float, float]] = None,
+        start_progress: float = 0.0,
+        start_progress_range: Optional[Tuple[float, float]] = None,
     ) -> None:
         if task not in TASKS:
             raise ValueError("task must be one of {}, got {!r}".format(TASKS, task))
@@ -219,6 +228,42 @@ class GraspEnv(_BASE):
         self.travel_range = tuple(
             travel_range if travel_range is not None
             else (PLACE_MIN_TRAVEL, PLACE_MAX_TRAVEL))
+        # Reverse curriculum: how far along the task the episode begins.
+        #
+        # 0.0 is the ordinary start. 1.0 puts the object in the closed gripper at
+        # carry height directly over the target, so the only thing left is to
+        # lower it and let go. Values in between interpolate along the carry.
+        #
+        # This exists because seven reward designs established that shaping here
+        # buys *segments* and does not chain them, and a reverse curriculum
+        # (Florensa et al., Reverse Curriculum Generation for Reinforcement
+        # Learning, 2017) attacks exactly that: learn the last segment first from
+        # states near the end, then move the start backwards as it succeeds.
+        #
+        # What it costs is worth stating plainly. It uses the simulator's ability
+        # to be *set* into a mid-task state, which a real robot does not have,
+        # and it uses task knowledge to construct that state. It does not use any
+        # expert action, so it is a different resource from the demonstrations --
+        # but it is emphatically not "no supervision".
+        self.start_progress = float(np.clip(start_progress, 0.0, 1.0))
+        # Sample the starting point per episode instead of fixing it.
+        #
+        # The staged version of the reverse curriculum degrades gracefully from
+        # 0.888 down to 0.140 and then scores exactly 0.000 the moment the
+        # fingers start open -- the moment the policy has to perform the grasp
+        # itself. From-scratch RL learns to grasp perfectly well on the *lift*
+        # task, so the grasp is not intrinsically hard here. What is hard is
+        # that by then the actor and critic have spent 150 000 steps seeing
+        # nothing but states with the object already in the gripper, and the
+        # behaviour they have specialised into has no use for opening it.
+        #
+        # That is stagewise forgetting rather than a fact about the task, and
+        # the remedy is to stop training on one start distribution at a time.
+        # With a range, every batch contains episodes from across the whole
+        # task, so no stage can overwrite the last.
+        self.start_progress_range = (
+            None if start_progress_range is None
+            else (float(start_progress_range[0]), float(start_progress_range[1])))
         self.arm = bool(arm)
         self.wrist = bool(wrist)
         # Overridable so the wrist can be ablated properly: the same box
@@ -501,9 +546,16 @@ class GraspEnv(_BASE):
         self._prev_grip = self._grip_pos().copy()
         self._last_terms = {}
 
+        if self.place and self.start_progress_range is not None:
+            lo, hi = self.start_progress_range
+            self.start_progress = float(self.np_random.uniform(lo, hi))
+        if self.place and self.start_progress > 0.0:
+            self._advance_to_progress(hs)
+
         # Second forward pass: the goal site moved after the first one, and
         # the observation reads site positions.
         mujoco.mj_forward(self.model, self.data)
+        self._prev_grip = self._grip_pos().copy()
         return self._observation(), self._info(False, False, 0.0)
 
     def _sample_target(self, ox: float, oy: float) -> np.ndarray:
@@ -537,6 +589,85 @@ class GraspEnv(_BASE):
                          np.clip(oy + radius * np.sin(bearing),
                                  -PLACE_TARGET_Y, PLACE_TARGET_Y),
                          self._object_rest_z])
+
+    def _advance_to_progress(self, half_size: float) -> None:
+        """Set the world into a partly-completed episode. Place task only.
+
+        The object is lifted to carry height and moved a fraction of the way to
+        the target, with the hand around it and the fingers closed. The lift
+        latch is set, because the object genuinely has been picked up -- pretending
+        otherwise would make success unreachable from these states and quietly
+        turn the curriculum into a harder task rather than an easier one.
+
+        The weld variant only. The arm reaches its poses through IK and dropping
+        it into an arbitrary Cartesian state is a different problem; ``arm=True``
+        with a non-zero progress is refused rather than silently ignored.
+        """
+        if self.arm:
+            raise NotImplementedError(
+                "start_progress is not supported with arm=True: the arm reaches "
+                "poses through IK, so setting one directly is not the same "
+                "operation as it is for the welded hand")
+        p = self.start_progress
+        start_xy = self._object_start[:2]
+        goal_xy = self._goal[:2]
+
+        # The progress axis runs over the *whole* task, not just the carry.
+        #
+        # The first version of this ran from "object in the closed gripper at
+        # carry height" down to the ordinary start, and it worked all the way to
+        # 0.25 and then scored exactly 0.000 at 0.0. The reason is that every
+        # stage above 0.25 begins with the object already grasped and airborne,
+        # so the last step of the curriculum asked the policy to learn reaching,
+        # grasping *and* lifting in one go, from a critic that had never seen a
+        # state with the object on the table. That is not a curriculum, it is a
+        # cliff with four easy stages in front of it.
+        #
+        #   p < GRASP_P    object on the table, fingers open, hand descending
+        #   p < LIFT_P     object on the table, fingers closed around it
+        #   p >= LIFT_P    lifted to carry height and carried a fraction along
+        grasped_start = p >= PLACE_GRASP_P
+        if p < PLACE_GRASP_P:
+            obj_xy = start_xy
+            height = 0.0
+            # Hand above the object, coming down as p rises.
+            hand_above = APPROACH_START_HEIGHT * (1.0 - p / PLACE_GRASP_P)
+        elif p < PLACE_LIFT_P:
+            obj_xy = start_xy
+            height = 0.0
+            hand_above = 0.0
+        else:
+            q = (p - PLACE_LIFT_P) / (1.0 - PLACE_LIFT_P)
+            obj_xy = start_xy + q * (goal_xy - start_xy)
+            height = PLACE_CARRY_HEIGHT * min(1.0, q / 0.2 + 0.2)
+            hand_above = 0.0
+
+        obj_pos = np.array([obj_xy[0], obj_xy[1], self._object_rest_z + height])
+
+        qadr = self._object_qadr
+        self.data.qpos[qadr : qadr + 3] = obj_pos
+        self.data.qvel[
+            self.model.jnt_dofadr[self.model.joint("object_free").id]:][:6] = 0.0
+
+        hadr = self._hand_qadr
+        # The grip site sits below the hand body by the pad offset; place the
+        # hand so the site lands on the object rather than the body.
+        mujoco.mj_forward(self.model, self.data)
+        site_offset = self._grip_pos() - self.data.qpos[hadr : hadr + 3]
+        hand_pos = obj_pos + np.array([0.0, 0.0, hand_above]) - site_offset
+        self.data.qpos[hadr : hadr + 3] = hand_pos
+        self.data.mocap_pos[self._mocap_id] = hand_pos
+
+        # Each slide closes the gap by its own travel, so half the closure each.
+        travel = (0.5 * max(0.0, GRIPPER_OPEN_WIDTH - 2.0 * half_size)
+                  if grasped_start else 0.0)
+        self.data.qpos[self._finger_qadr[0]] = travel
+        self.data.qpos[self._finger_qadr[1]] = travel
+        self.data.ctrl[self._grip_ctrl] = (
+            self._grip_range[1] if grasped_start else self._grip_range[0])
+
+        mujoco.mj_forward(self.model, self.data)
+        self._lifted = 1.0 if height >= self.reward_cfg.lift_threshold else 0.0
 
     # ------------------------------------------------------------------
     # Step

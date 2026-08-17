@@ -28,6 +28,8 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from envs.mujoco.grasp_env import make_env  # noqa: E402
+from envs.mujoco.perception_env import (  # noqa: E402
+    DEFAULT_CHECKPOINT as PERCEPTION_DEFAULT, make_perception_env)
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
 from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
 
@@ -46,10 +48,13 @@ def record(
     privileged: bool = False,
     history: int = 1,
     max_half_size=None,
+    perception=None,
 ) -> dict:
-    env = make_env(randomisation, seed=seed, max_steps=max_steps, task=task,
-                   arm=arm, handled=handled, wrist=handled or wrist,
-                   history=history, max_half_size=max_half_size)
+    factory = make_perception_env if perception else make_env
+    extra = {"checkpoint": perception} if perception else {}
+    env = factory(randomisation, seed=seed, max_steps=max_steps, task=task,
+                  arm=arm, handled=handled, wrist=handled or wrist,
+                  history=history, max_half_size=max_half_size, **extra)
     rng = np.random.default_rng(seed)
     expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
     if handled:
@@ -144,6 +149,7 @@ def record(
                 "privileged": privileged,
                 "history": history,
                 "max_half_size": max_half_size,
+                "perception": perception,
                 "wall_seconds": round(time.time() - t0, 1),
                 "source": ("src/policies/scripted_place_expert.py" if task == "place"
                            else "src/policies/scripted_expert.py"),
@@ -170,6 +176,12 @@ def main() -> None:
                              "yaw binds against the 0.078 m pad gap; "
                              "0.028-0.039 is where a square box fits "
                              "aligned and does not fit rotated")
+    parser.add_argument("--perception", nargs="?", const=PERCEPTION_DEFAULT,
+                        default=None,
+                        help="put the pose CNN in the loop: the object's "
+                             "position in every observation comes from a "
+                             "64x64 render instead of the simulator. "
+                             "About 250x slower per step")
     parser.add_argument("--history", type=int, default=1,
                         help="stack this many observation frames, matching "
                              "the policy the demonstrations will train")
@@ -194,7 +206,7 @@ def main() -> None:
         args.episodes, args.randomisation, args.seed,
         args.expert_noise, args.keep_failures, args.max_steps, args.task,
         args.arm, args.handled, args.wrist, args.privileged, args.history,
-        args.max_half_size,
+        args.max_half_size, args.perception,
     )
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     np.savez_compressed(args.output, **data)

@@ -80,6 +80,15 @@ Two honest caveats, neither hidden:
   number exists and none is claimed**: demonstrations cannot be recorded from an
   expert this weak, and from-scratch RL does not solve this task in MuJoCo
   either.
+
+  The horizon was the obvious suspect and it is not the cause. Doubling the
+  place episode to 6 s, on the theory that the Franka's IK tracking is slower
+  than the mocap weld and the expert was running out of time while lowering,
+  gives 2 of 8 — exactly the same. That change was reverted rather than left in,
+  because a divergence between the two ports that buys nothing weakens "the same
+  task in both simulators" for free. What the state actually shows at the end of
+  a failed episode is the box still *in the hand*, above the target: the expert
+  reaches the lowering phase and does not finish it.
 * **Target sampling differs in method.** MuJoCo rejection-samples the target
   until the travel distance falls in the allowed band, which keeps the marginal
   distribution uniform over the usable region. Doing that per-environment on the

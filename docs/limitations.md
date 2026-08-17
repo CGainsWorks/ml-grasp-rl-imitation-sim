@@ -302,6 +302,39 @@ eight cores. It is not enough for SAC from scratch under randomisation, and the
 results say so rather than quietly extending the budget for the conditions that
 needed it.
 
+That was the right call and it left the claim itself unmeasured, so
+`experiments/budget_ladder.py` measures it: **600 000 steps, the same three
+seeds, everything else held** — same entropy floor, same width, same
+update-to-data ratio.
+
+| | seed 0 | seed 1 | seed 2 | mean |
+| --- | ---: | ---: | ---: | ---: |
+| `medium`, 200k | 0.133 | 0.667 | 0.600 | 0.467 |
+| **`medium`, 600k** | **0.833** | **0.833** | **0.767** | **0.811** |
+| `high`, 200k | 0.000 | 0.133 | 0.300 | 0.144 |
+| **`high`, 600k** | **0.600** | **0.600** | **0.600** | **0.600** |
+
+Paired by seed, which is stronger than comparing across seeds: every one of the
+six improves, and the two seeds that were at 0.000 and 0.133 finish at 0.600 and
+0.833. On a clean evaluation the 600k runs reach 0.987 [0.972, 1.000] at
+`medium` and 0.867 [0.705, 1.000] at `high`.
+
+So "not enough" was correct and understated. These runs had not converged to
+something poor — they were still climbing steeply at 200 000 steps, and the
+collapsed seeds are collapsed *early* rather than permanently. It also sharpens
+what the entropy floor does: it rescues seeds that would otherwise never start
+learning, and more budget then rescues most of the rest.
+
+**The headline grid stays at a matched 200 000 steps everywhere**, and these six
+runs do not enter it. A table where each cell got as much compute as it needed
+to look good is not a table, and the whole point of measuring this separately
+was to avoid extending the budget only for the conditions that were losing.
+
+What it does *not* transfer to is `shifted`: 0.030 [0.000, 0.105] and 0.030
+[0.000, 0.073]. Tripling the budget triples the own-distribution score and
+leaves transfer where it was, which is the same conclusion the entropy floor
+produced.
+
 About 90% of that time is gradient updates and 8% is physics — 0.54 ms per
 environment step against roughly 10 ms per update — so the budget is set by the
 optimiser, not the simulator. `experiments/compute_ablation.py` tests the

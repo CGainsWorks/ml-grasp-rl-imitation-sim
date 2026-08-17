@@ -218,6 +218,39 @@ a statement about exploration. 200 demonstrations were recorded with the wrist
 The wrist is learnable. What it is not is *discoverable* -- SAC never finds the
 alignment on its own, and no shaping term tried here made it find one.
 
+**And learnable is not the same as useful.** The table above has no control in
+it: every row has the wrist, so it establishes that demonstrations rescue the
+wrist from zero and nothing else. The missing row is the same pipeline, the same
+200-episode budget, the same benchmark, *without* the extra degree of freedom:
+
+| at `wrist_bench`, 5 seeds, 100 episodes | mean | 95% CI | grasp |
+| --- | ---: | :---: | ---: |
+| wrist, cloning | 0.398 | [0.376, 0.420] | 0.648 |
+| wrist, cloning + held anchor | 0.478 | [0.447, 0.509] | 0.716 |
+| **no wrist, cloning** | **0.838** | [0.811, 0.865] | **1.000** |
+
+The control wins by a factor of about two and the intervals are nowhere near
+each other. The no-wrist clone grasps on **every single episode**; the best
+wrist policy manages 0.716. The scripted demonstrator shows the same ordering
+before any learning happens -- 0.855 without the wrist against 0.548 with it, on
+the same level.
+
+So the original claim in this section was right and the correction was wrong.
+"The wrist does not help" survives contact with demonstrations; what changes is
+only the *reason*. It is not that the wrist makes the task unlearnable -- 0.478
+is a working policy -- it is that the fifth degree of freedom costs more in
+exploration and in demonstration coverage than the alignment it buys back, at
+every budget measured here. A yaw joint is worth having when the gripper cannot
+otherwise reach the object's short axis. At a 24 mm half-size cap against a
+78 mm pad gap, it cannot, which is the condition this repository set for itself
+further up this section.
+
+This is recorded at length because the error was mine and it was the ordinary
+kind: three arms were run, all three had the wrist, the best one beat the
+from-scratch baseline, and the conclusion went in before anyone asked what the
+same pipeline does without the joint. The number that mattered was the one not
+run.
+
 The middle row is the interesting one. Decaying the cloning anchor is **worse
 than not doing the RL at all**, and the failure has a visible timestamp: those
 runs peak at 0.533-0.633 and fall to 0.367-0.500 at exactly the step where
@@ -451,6 +484,23 @@ evaluation episodes each, all at `measured_camera`:
 | privileged cloning + held-anchor RL | 0.35, 0.31, 0.30, 0.41, 0.26 | 0.326 | [0.255, 0.397] |
 | privileged demonstrator (reference) | -- | 0.877 | -- |
 | ordinary demonstrator (reference) | -- | 7/30 | -- |
+
+A control matters here too, and this one survives it. "Privileged" has to be
+doing the work, rather than merely "demonstrations at this level", so the same
+200 episodes were recorded with an *ordinary* demonstrator -- one that reads the
+same noisy observation the policy will get -- and cloned identically:
+
+| at `measured_camera`, 5 seeds, 100 episodes | mean | 95% CI | grasp |
+| --- | ---: | :---: | ---: |
+| ordinary demonstrations | 0.204 | [0.136, 0.272] | 0.570 |
+| **privileged demonstrations** | **0.406** | [0.345, 0.467] | 0.698 |
+
+Privileged access roughly doubles it and the intervals are disjoint, so the
+mechanism is the demonstrator's sight rather than the presence of
+demonstrations. Note the control is also not zero: an ordinary clone reaches
+0.204 where this repository previously recorded ~0.00 for everything at this
+level, so part of that old zero was the *training method* rather than the
+sensing.
 
 Three things are worth separating here. The task is **doable** at this sensing
 level -- 0.877 for a demonstrator that can see, against 7/30 for one that cannot,

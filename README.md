@@ -476,11 +476,13 @@ limitation and a worse-sounding one.
   cloning anchor reach **0.536** [0.416, 0.656]. That gap is the cost of the
   abstraction; holding the anchor rather than decaying it is worth 0.176 → 0.536
   on its own.
-* **The wrist is learnable but not discoverable** — from-scratch RL with the
-  yaw joint scores **0.000** against 0.122 without it, in two placements of an
-  alignment reward. That is an exploration failure, not a joint that does not
-  work: given 200 demonstrations the same variant reaches **0.478**
-  [0.447, 0.509] over five seeds. SAC never finds the alignment on its own.
+* **The wrist is learnable and still does not help** — from-scratch RL with the
+  yaw joint scores **0.000** against 0.122 without it. That much is an
+  exploration failure rather than a broken joint: given 200 demonstrations the
+  same variant reaches **0.478** [0.447, 0.509]. But the control settles it —
+  the identical pipeline *without* the wrist reaches **0.838** [0.811, 0.865]
+  and grasps on every episode. The fifth degree of freedom costs more than the
+  alignment it buys at every budget measured here.
 * **Perception is a check, not a pipeline** — a CNN pose estimator from 64x64
   renders exists and costs 18 points when substituted for ground truth. It was
   built to *test* the sensing noise model, and it refuted one of the three
@@ -494,9 +496,11 @@ limitation and a worse-sounding one.
   produces (0.0513 m against the 0.004-0.010 m it randomises over), every
   policy trained the ordinary way scores **~0.00**, and so does the scripted
   expert. One method clears it: a demonstrator that reads true state teaching a
-  policy that only ever sees the noisy view reaches **0.406** [0.345, 0.467].
-  Stacking four observation frames instead scores **0.000** — the error is
-  autocorrelated at 0.947, so a window has nothing independent to average. The
+  policy that only ever sees the noisy view reaches **0.406** [0.345, 0.467]
+  against **0.204** [0.136, 0.272] for the same pipeline with an ordinary
+  demonstrator, so the demonstrator's sight is doing the work. Stacking four
+  observation frames instead scores **0.000** — the error is autocorrelated at
+  0.947, so a window has nothing independent to average. The
   headline numbers here were still produced under sensing five to thirteen
   times better than the perception stack in the same repository delivers.
 * **Isaac Lab runs both tasks and still supplies no headline number** — the

@@ -80,11 +80,18 @@ def evaluate_run(
         with open(config_path, "r", encoding="utf-8") as fh:
             config = json.load(fh)
 
+    # The wrist and the observation window change the observation *width*, so
+    # a mismatch here does not misreport a score -- it fails inside the
+    # normaliser. Rather than ask for them on the command line and let a typo
+    # decide, take them from what the run recorded training with.
+    wrist = handled or bool(config.get("wrist", False))
+    history = int(config.get("history", 1) or 1)
+
     out: Dict[str, Dict] = {}
     for level in eval_levels:
         env = make_env(level, seed=1234, max_steps=max_steps, task=task, arm=arm,
-                       travel_range=place_travel,
-                       handled=handled, wrist=handled)
+                       travel_range=place_travel, history=history,
+                       handled=handled, wrist=wrist)
         result = evaluate_policy(
             env, torch_policy(actor, deterministic=True),
             n_episodes=episodes, seed=FINAL_SEED_BLOCK,

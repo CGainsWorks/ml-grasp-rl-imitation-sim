@@ -156,7 +156,9 @@ sizes are therefore capped at 24 mm half-size, and at that cap yaw cannot bind.
 
 `make_env(..., wrist=True)` adds the yaw degree of freedom (34-D observation,
 5-D action), and the honest summary is that it helps the *scripted* policy and
-defeats the *learned* one. On boxes spanning 15–35 mm, the expert with a wrist
+defeats *from-scratch* RL -- a narrower claim than the one this section used to
+make, and the difference is the whole of the subsection below. On boxes spanning
+15–35 mm, the expert with a wrist
 roughly doubles success in the bands where alignment matters (0.167 → 0.333 at
 27–31 mm). Trained from scratch on the same distribution, 200 000 steps, three
 seeds:
@@ -196,6 +198,46 @@ that is easier to satisfy than the objective it was meant to support.
 What is left untested is the weight. `w_yaw = 1.5` was chosen to be comparable
 with the other terms and never swept, so "the alignment reward does not rescue
 the wrist" is established at one weight, in two placements, and no further.
+
+#### Demonstrations do rescue the wrist, and the anchor has to be held
+
+Everything above tests *from-scratch* RL. Nobody had put demonstrations through
+the wrist, and the zero was being read as a statement about the joint when it was
+a statement about exploration. 200 demonstrations were recorded with the wrist
+(`demonstrations/expert_wrist.npz`, expert 0.548 while recording); five seeds,
+200 000 steps, 100 evaluation episodes each at `wrist_bench`:
+
+| | per-seed | mean | 95% CI |
+| --- | --- | ---: | :---: |
+| from-scratch SAC, no wrist | 0.333, 0.033, 0.000 | 0.122 | -- |
+| from-scratch SAC, with wrist | 0.000, 0.000, 0.000 | 0.000 | -- |
+| behaviour cloning | 0.42, 0.40, 0.40, 0.37, 0.40 | 0.398 | [0.376, 0.420] |
+| BC + RL, anchor decayed | 0.35, 0.28, 0.36, 0.39, 0.33 | 0.342 | [0.291, 0.393] |
+| **BC + RL, anchor held** | 0.46, 0.50, 0.46, 0.51, 0.46 | **0.478** | [0.447, 0.509] |
+
+The wrist is learnable. What it is not is *discoverable* -- SAC never finds the
+alignment on its own, and no shaping term tried here made it find one.
+
+The middle row is the interesting one. Decaying the cloning anchor is **worse
+than not doing the RL at all**, and the failure has a visible timestamp: those
+runs peak at 0.533-0.633 and fall to 0.367-0.500 at exactly the step where
+`--bc-decay-steps` retires the anchor. Holding it (`--bc-decay-steps 0`) removes
+the drop and is the only arm that beats cloning.
+
+This is the same effect the Isaac grid and the arm fine-tuning both hit, and it
+is now recorded once as a cross-cutting result rather than three times as a
+local quirk:
+
+| held vs decayed anchor, 5 seeds | decayed | held |
+| --- | ---: | ---: |
+| six-jointed arm, level `none` | 0.176 | **0.536** |
+| wrist, `wrist_bench` | 0.342 | **0.478** |
+
+Neither pair's intervals overlap. The mechanism is not mysterious -- the anchor
+is the only thing keeping the policy in the part of the space the demonstrations
+cover, and the entropy term walks it out as soon as the anchor stops paying --
+but it does mean the decaying schedule, which is the more common default, is the
+wrong one on every variant measured here.
 
 **Objects are boxes by default, and cylinders and spheres optionally.**
 `src/randomisation/configs/shapes.json` draws the geom type per episode with the
@@ -373,11 +415,57 @@ realistic case and which this repository's own estimator delivers at 0.0513 m.
 | SAC + entropy floor | 0.587 | 0.115 | **0.003** |
 | scripted expert | 30/30 | 27/30 | **7/30** |
 
-**Every policy here collapses to zero under the sensing error its own perception
-stack produces**, and so does the scripted expert, which has no learning to blame.
-Training directly against that level does not rescue it either: five
-demonstration-seeded seeds at 200 000 steps finish at 0.000 with grasp rates of
-0.00-0.43.
+**Every policy in that table collapses to zero under the sensing error its own
+perception stack produces**, and so does the scripted expert, which has no
+learning to blame. Training directly against that level does not rescue it
+either: five demonstration-seeded seeds at 200 000 steps finish at 0.000 with
+grasp rates of 0.00-0.43.
+
+#### What does work: a demonstrator that can see, teaching a policy that cannot
+
+Two fixes were tried. The first was the obvious one and it failed:
+
+**An observation window does not help.** `make_env(..., history=4)` stacks four
+frames so the network can filter. Three seeds, 200 000 steps, evaluated at
+`measured_camera`: **0.000, 0.000, 0.000**, grasp rate 0.023. The reason it
+cannot work is in the noise model rather than the network. The error is
+correlated in time at **0.947** -- measured from this repository's own
+estimator (§ the perception table above), implemented in
+`GraspEnv._sensor_noise` -- so four
+consecutive frames are four copies of nearly the same wrong number, and
+averaging them removes almost none of it. A window filters *independent* noise;
+this noise is not independent, and that was measurable before the runs rather
+than after.
+
+**Privileged distillation does work.** The demonstrator reads the true state,
+the transition stores the noisy observation the policy will actually get
+(`GraspEnv.clean_observation()`, `record_demos.py --privileged`). The policy
+never sees privileged input at training or evaluation time -- only the
+demonstrator does, and only while recording. 200 episodes, five seeds, 100
+evaluation episodes each, all at `measured_camera`:
+
+| | per-seed | mean | 95% CI |
+| --- | --- | ---: | :---: |
+| SAC + 4-frame window, from scratch | 0.00, 0.00, 0.00 | 0.000 | [0.000, 0.000] |
+| **privileged cloning** | 0.43, 0.38, 0.34, 0.47, 0.41 | **0.406** | [0.345, 0.467] |
+| privileged cloning + held-anchor RL | 0.35, 0.31, 0.30, 0.41, 0.26 | 0.326 | [0.255, 0.397] |
+| privileged demonstrator (reference) | -- | 0.877 | -- |
+| ordinary demonstrator (reference) | -- | 7/30 | -- |
+
+Three things are worth separating here. The task is **doable** at this sensing
+level -- 0.877 for a demonstrator that can see, against 7/30 for one that cannot,
+so what the noise destroys is the *servoing*, not the physics. A policy given
+only the noisy view reaches **0.406**, which is the first non-zero number this
+repository has at `measured_camera` and moves the claim from "nothing works" to
+"open-loop reaching does not work". And RL on top does **not** improve on the
+clone: 0.326 against 0.406, intervals overlapping, so the honest reading is no
+gain rather than a loss.
+
+What this does not do is close the gap. 0.406 is well short of the 0.973 the
+same pipeline reaches at `none`, and the remaining distance is the part of the
+task that genuinely needs sensing this camera does not deliver. The claim that
+changes is the absolute one: realistic sensing is not an extinction event, it is
+roughly a 60% cut.
 
 So the gap is not a caveat, it is the difference between working and not working.
 Every transfer number in this repository was produced under sensing five to

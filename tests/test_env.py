@@ -148,3 +148,39 @@ def test_dropping_the_object_terminates():
     # legitimate, but a termination must be accompanied by the drop flag.
     if terminated:
         assert info["dropped"]
+
+
+def test_clean_observation_is_noise_free_and_does_not_leak():
+    """The privileged path must be privileged only where it is asked for.
+
+    `clean_observation` exists so a demonstrator can act on true state while the
+    stored transition keeps the noisy view. Two things have to hold or every
+    number at `measured_camera` is wrong: the clean view must actually differ
+    from the noisy one under heavy sensing error, and calling it must leave the
+    environment's noise switched back on afterwards.
+    """
+    env = make_env("measured_camera", seed=0)
+    env.reset(seed=3)
+
+    clean_a = env.clean_observation()
+    clean_b = env.clean_observation()
+    # Deterministic: no noise draw happens inside it.
+    assert np.allclose(clean_a, clean_b)
+
+    noisy = np.stack([env._observation() for _ in range(8)])
+    # The noise is still live after the clean read -- this is the leak that
+    # would quietly turn a hard benchmark into an easy one.
+    assert noisy.std(axis=0).max() > 0.0
+    assert np.abs(noisy.mean(axis=0) - clean_a).max() > 1e-4
+    env.close()
+
+
+def test_observation_history_stacks_and_reports_its_width():
+    env = make_env("none", seed=0, history=4)
+    obs, _ = env.reset(seed=1)
+    assert obs.shape == (env.obs_dim,)
+    assert env.obs_dim == 4 * env._single_obs_dim
+    # Primed with copies of the first frame, so the window is never ragged.
+    single = env._single_obs_dim
+    assert np.allclose(obs[:single], obs[-single:])
+    env.close()

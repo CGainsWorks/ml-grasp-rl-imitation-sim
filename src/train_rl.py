@@ -78,14 +78,14 @@ def train(args: argparse.Namespace) -> Dict:
 
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
                    wrist=args.wrist or args.handled, task=args.task,
-                   arm=args.arm, handled=args.handled,
+                   arm=args.arm, handled=args.handled, history=args.history,
                    travel_range=args.place_travel,
                    start_progress=args.place_start_progress,
                    start_progress_range=args.place_start_range,
                    reward_config=args.reward_config)
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
                         wrist=args.wrist or args.handled, task=args.task,
-                        arm=args.arm, handled=args.handled,
+                        arm=args.arm, handled=args.handled, history=args.history,
                         travel_range=args.place_travel,
                         start_progress=args.place_start_progress,
                         start_progress_range=args.place_start_range,
@@ -147,6 +147,7 @@ def train(args: argparse.Namespace) -> Dict:
         "obs_dim": obs_dim,
         "act_dim": act_dim,
         "wrist": args.wrist,
+        "history": args.history,
         "task": args.task,
         "place_travel": args.place_travel,
         "place_start_progress": args.place_start_progress,
@@ -285,6 +286,11 @@ def build_parser() -> argparse.ArgumentParser:
                         help="how far the place target sits from the object, in "
                              "metres. Shorter ranges decompose the task rather "
                              "than ease it: see PLACE_TRAVEL_LADDER")
+    parser.add_argument("--history", type=int, default=1,
+                        help="how many past observations the policy sees. 1 is "
+                             "the memoryless default. The sensing error here is "
+                             "correlated in time, so a window is what lets a "
+                             "policy filter it -- see docs/limitations.md")
     parser.add_argument("--handled", action="store_true",
                         help="the grasp-point-selection shape; implies --wrist")
     parser.add_argument("--arm", action="store_true",

@@ -343,6 +343,88 @@ finish at exactly 0.000 against two of ten for boxes.
 This is a budget statement, not a claim that shape variety is harmful. Every
 widening of the distribution in this repository costs at 200 000 steps.
 
+### The arm has its own grid now, and it does not survive randomisation
+
+Every headline number in this repository was produced on the welded hand. The
+arm existed and had been measured at one level, which is not a grid. This is the
+grid: demonstrations recorded through the arm at each level, cloning, then
+demonstration-seeded SAC with the anchor held, five seeds, 100 episodes.
+
+| trained and evaluated at | cloning | + held anchor | grasp | `shifted` |
+| --- | ---: | ---: | ---: | ---: |
+| `none` | 0.448 [0.246, 0.650] | **0.522** [0.449, 0.595] | 0.62 | 0.000 |
+| `low` | 0.168 [0.158, 0.178] | 0.158 [0.131, 0.185] | 0.20 | 0.000 |
+| `medium` | 0.066 [0.039, 0.093] | 0.052 [0.042, 0.062] | 0.12 | 0.000 |
+
+Three things this says, and one it does not.
+
+**The arm collapses under randomisation far faster than the weld.** The welded
+hand goes 0.973 at `none` to 0.582 at `medium`; the arm goes 0.522 to 0.052.
+That is not a small penalty for realism, it is most of the performance.
+
+**The held anchor only helps where there is something to hold on to.** It is
+worth +0.074 at `none` and nothing at `low` or `medium` -- the intervals overlap
+and the point estimates are slightly *lower*. Everywhere else in this repository
+holding the anchor was the fix; here it stops working exactly where the
+demonstrations stop being good, which is the more informative version of the
+result.
+
+**The demonstrator is the ceiling.** The scripted expert through six joints
+scores 0.093 at `medium` while the same expert on the weld scores near 1.0.
+Cloning reaches 0.066 from that. No amount of training fixes a demonstrator that
+does not work: the arm's grid is limited by inverse kinematics under randomised
+dynamics, not by the learning algorithm.
+
+What it does not say is that six joints are unlearnable. It says that *this*
+demonstrator, at *this* budget, through *this* IK controller, degrades sharply
+with randomisation, and that every headline number produced on the weld should
+be read as an upper bound on what the same recipe does on an arm.
+
+Every arm row is 0.000 on `shifted`. That is the same held-out distribution the
+weld reaches 0.000 on too, so it is not an arm-specific failure -- but it does
+mean the arm has no margin anywhere.
+
+### Perception in the loop: the estimator is a pipeline now
+
+The section above measures what perception *costs* a policy trained on ground
+truth: 18 points, by substituting the CNN's estimate at evaluation. A robot has
+never had ground truth, so the question it actually asks is different -- what
+does a policy trained *through* the camera reach?
+
+`envs/mujoco/perception_env.py` wraps the environment so the object's position
+comes from a 64x64 render at training and evaluation alike, sharing substitution
+indices with `experiments/perception_eval.py` so the two stay comparable.
+`--perception` runs through `record_demos`, `train_il`, and `evaluate`, and
+`evaluate` reads it from the run's own config so a policy trained through the
+camera cannot accidentally be scored on true state.
+
+200 demonstrations, five seeds, 100 episodes, camera in the loop throughout:
+
+| | success |
+| --- | ---: |
+| scripted expert, through the camera | 0.971 |
+| **cloning, trained and evaluated through the camera** | **0.934** [0.900, 0.968] |
+| cloning on ground truth, for reference | ~0.973 |
+
+So the pipeline works, and it costs about four points rather than eighteen.
+Training through the estimator is not the same problem as inheriting it.
+
+Three caveats, all of which matter more than the number. The estimator is
+**frozen** -- fine-tuning it on the policy's own state distribution is the
+obvious next step and is not done, so this is a floor. The camera is **fixed and
+unoccluded**, which is the easy case; the wrist camera with clutter produces
+0.0513 m error and nothing here survives that (see the sensing section). And the
+error is small enough to servo on: at 0.0066 m the scripted expert works
+unchanged, which is why this needed ordinary demonstrations where
+`measured_camera` needed privileged ones.
+
+The cost is speed. A step through the wrapper takes **75.9 ms** against roughly
+0.3 ms for the state environment, and it is the render rather than the 200k
+parameter network. That is why these are cloning runs: 20 000 demonstration
+transitions is 25 minutes, and 200 000 steps of RL through a renderer would be
+over four hours. From-scratch RL through the camera is left undone rather than
+claimed.
+
 ### Grasp-point selection
 
 `make_env(..., handled=True)` puts out a shape whose reported pose is not a

@@ -219,6 +219,48 @@ finish at exactly 0.000 against two of ten for boxes.
 This is a budget statement, not a claim that shape variety is harmful. Every
 widening of the distribution in this repository costs at 200 000 steps.
 
+### Grasp-point selection
+
+`make_env(..., handled=True)` puts out a shape whose reported pose is not a
+graspable point: a 96 mm cube, ungraspable along every axis against a 78 mm pad
+gap, with a 20 mm handle offset 118 mm out and 34 mm up. The observation reports
+the **body frame**, which sits on the cube. The handle's direction is recoverable
+from the reported orientation, so the information is present and has to be used.
+
+The environment is measured rather than asserted, and the separation is total:
+
+| scripted expert | success |
+| --- | ---: |
+| aiming at the reported pose | **0/30** |
+| aiming at the handle | **30/30** |
+
+Same hand, same episodes, same everything else. Five seeds, 100 episodes, the
+settings the rest of the repository uses:
+
+| | `none` | `shifted` |
+| --- | ---: | ---: |
+| behaviour cloning | 0.896 [0.804, 0.988] | 0.146 [0.080, 0.212] |
+| **BC + RL** | **0.996** [0.989, 1.000] | 0.010 |
+| SAC from scratch | 0.128 [0.094, 0.162] | 0.008 |
+
+**Selection is learnable, and demonstrations are not required for the selection
+itself.** The from-scratch arm was predicted, in writing in
+`experiments/grasp_point.py` before it ran, to score zero — the reward's reach
+term pulls towards the reported pose, which is exactly the wrong place. It does
+not score zero. It grasps on 80-100% of steps, which on this shape means it finds
+the handle *against* a reward gradient pointing elsewhere. Success stays at 0.128
+because holding a 100 g cube by a thin offset handle is a poor grasp, not because
+the selection was not learned. That is a better result than the prediction and
+the prediction is left on the record.
+
+Cloning reaches 0.896 and demonstration-seeded RL 0.996 — the highest number on
+any task in this repository, which is worth reading carefully: the handled shape
+has one graspable point, so once found there is nothing left to choose. It is a
+test of *finding* the grasp, not of choosing among several.
+
+Transfer is poor as everywhere else, and the clone transfers best (0.146 against
+0.010) — the same ordering the lift task shows.
+
 No bottles, no bags and no bin. Clutter now exists — three free distractors of
 similar size and colour, `make_env(..., clutter=3)` — and so does an environment
 that *requires* grasp selection: `make_env(..., handled=True)` puts out a 96 mm
@@ -749,39 +791,7 @@ and it scores zero with its control also at zero).
    to thirteen times better than the perception stack actually delivers. Widening
    the range is one line; retraining everything against it is a grid.
 
-5. **A working expert for the handled shape.** The shape exists, is correct, and
-   defeats the naive strategy: a 96 mm cube against a 78 mm pad gap, ungraspable
-   along *every* axis, with a 20 mm handle offset 118 mm out and 34 mm up. The
-   observation reports the body frame, which sits on the cube, so "go to the
-   reported position and close" scores **0/30**. That is the property that makes
-   it a test of grasp-point *selection* rather than of luck.
-
-   No expert solves it yet, so there are no demonstrations and nothing is
-   claimed about learned selection. It lives in its own scene
-   (`grasp_scene_handled.xml`) and is selected with `make_env(..., handled=True)`.
-
-   Getting the environment to this point took five corrections, and they are
-   worth recording because four of them produced numbers that looked like
-   results:
-
-   * **Ungraspable in two axes is not ungraspable.** At 96 x 96 x 44 the object
-     tips onto its side, presents the 44 mm dimension and is grasped normally —
-     three episodes out of three. It has to be a cube.
-   * **`model.geom_pos` changes are ignored at runtime.** `geom_xpos` comes back
-     equal to the body position. Verified on a bare model.
-   * **`geom_rbound` is not recomputed when `geom_size` changes.** A geom
-     compiled at 1 mm keeps a 1.7 mm broad-phase collision radius however large
-     it is made, so it never collides. This is why the existing
-     box/cylinder/sphere switching works — those sizes are near the compiled one
-     — and why growing a placeholder does not.
-   * **A dedicated scene is worthless if the randomiser still rewrites it.**
-     `_apply_world` was resetting the handled body to a 22 mm box at every
-     reset, so several measurements were taken on an ordinary box while
-     appearing to be about the handled shape.
-   * **The palm sets the clearance, not the pads.** Pads sit 39 mm either side
-     of the grip centre, but the palm is 56 mm half-width, so a graspable
-     feature must stand more than 104 mm clear of an ungraspable body or the
-     hand cannot descend at all.
+5. ~~Grasp-point selection.~~ **Done, and it works.** See the section above.
 
 6. **Contact-level comparison between the two simulators.** Everything cheaper
    than that is now spent: the transfer failure is not control gain, not grip

@@ -41,12 +41,23 @@ def record(
     max_steps: int,
     task: str = "lift",
     arm: bool = False,
+    handled: bool = False,
 ) -> dict:
     env = make_env(randomisation, seed=seed, max_steps=max_steps, task=task,
-                   arm=arm)
+                   arm=arm, handled=handled, wrist=handled)
     rng = np.random.default_rng(seed)
     expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
-    expert = expert_cls(noise=expert_noise, rng=rng)
+    if handled:
+        # The handled shape's graspable point is not its reported pose, so the
+        # expert is told where it is. That is the supervision a demonstration
+        # carries; the policy cloning it gets the observation only.
+        from envs.mujoco.grasp_env import HANDLE_CENTRE, HANDLE_HEIGHT
+        expert = expert_cls(noise=expert_noise, rng=rng, wrist=True,
+                            grasp_offset=HANDLE_CENTRE,
+                            grasp_yaw_offset=np.pi / 2.0,
+                            grasp_height=HANDLE_HEIGHT)
+    else:
+        expert = expert_cls(noise=expert_noise, rng=rng)
 
     obs_list, act_list, rew_list, next_list, done_list = [], [], [], [], []
     episode_starts, episode_lengths, episode_success = [], [], []
@@ -110,6 +121,7 @@ def record(
                 "max_steps": max_steps,
                 "task": task,
                 "arm": arm,
+                "handled": handled,
                 "wall_seconds": round(time.time() - t0, 1),
                 "source": ("src/policies/scripted_place_expert.py" if task == "place"
                            else "src/policies/scripted_expert.py"),
@@ -130,6 +142,10 @@ def main() -> None:
     parser.add_argument("--keep-failures", action="store_true")
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
+    parser.add_argument("--handled", action="store_true",
+                        help="the grasp-point-selection shape: a cube that "
+                             "cannot be grasped anywhere, with an offset handle "
+                             "that can. Implies --wrist")
     parser.add_argument("--arm", action="store_true",
                         help="record through the six-jointed arm rather than "
                              "the mocap weld")
@@ -139,7 +155,7 @@ def main() -> None:
     data = record(
         args.episodes, args.randomisation, args.seed,
         args.expert_noise, args.keep_failures, args.max_steps, args.task,
-        args.arm,
+        args.arm, args.handled,
     )
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     np.savez_compressed(args.output, **data)

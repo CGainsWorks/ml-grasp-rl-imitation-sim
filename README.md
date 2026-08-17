@@ -53,6 +53,7 @@ condition is being met. Blue bar: lift height.*
 | **Observation / action** | 32-D state / 4-D Cartesian delta plus gripper (34-D / 5-D with the optional wrist) |
 | **Algorithms** | SAC (written out, not imported), behaviour cloning, DAgger, and BC+SAC with pinned demonstrations and a scale-normalised cloning term |
 | **Randomisation** | 13 parameters across dynamics, actuation and sensing; four training levels, a held-out shifted distribution, and a `measured` one built from published values |
+| **Grasp-point selection** | A shape whose reported pose is *not* graspable: a 96 mm cube with a 20 mm handle offset 118 mm away. Aiming at the reported pose scores 0/30; cloning reaches 0.896 and BC+RL 0.996 |
 | **Perception** | A CNN pose estimator from 64x64 renders, used to check the sensing noise model rather than replace it — two of its three claims held, one was refuted |
 | **Arm** | An optional six-jointed UR5-proportioned arm with joint limits, self-collision and damped-least-squares IK, in place of the mocap weld |
 | **Reporting** | 10 seeds x 100 episodes for the headline grid and the shape comparison, 5 elsewhere; mean with a 95% t interval across seeds |

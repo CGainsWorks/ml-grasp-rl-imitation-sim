@@ -43,6 +43,18 @@ the point of the variant, not a defect in it.
 Getting there took four wrong diagnoses, and each is worth recording because
 each looked like the obvious answer:
 
+0. **A sentinel used as an index, found months later by a video.** Not one of the
+   four below, and the worst of them. When the handled shape was added the arm
+   scene had no handle geom, so its id was set to `-1` as a sentinel — and then
+   used to write `geom_contype[-1] = 0`, which numpy reads as the *last* geom in
+   the model. In the arm scene that was the table. The object fell straight
+   through it, four steps to a "dropped" episode, with nothing in the arm's own
+   code touched. It surfaced because a README clip came out six frames long
+   instead of a hundred and two. Every arm number in this section predates the
+   bug and was re-verified after the fix: the expert scores 0.690 [0.594, 0.772]
+   against the 0.680 [0.583, 0.763] recorded here.
+
+
 1. **Tuning the solver.** Restricting the elbow range, a nullspace posture bias
    and IK restarts with collision checks all failed. The nullspace attempt was
    mathematically vacuous — six joints against a six-dimensional pose target

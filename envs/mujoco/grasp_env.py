@@ -348,7 +348,13 @@ class GraspEnv(_BASE):
         self._object_gid = self.model.geom("object").id
         try:
             self._handle_gid = self.model.geom("object_handle").id
-        except Exception:            # the arm scene has no handle
+        except Exception:
+            # The arm scene has no handle. -1 is a sentinel and must never be
+            # used as an index: numpy reads it as the *last* geom, so writing
+            # contype there silently disabled collisions on whatever that geom
+            # happened to be. In the arm scene it was the table, and the object
+            # fell straight through it -- four steps to a "dropped" episode,
+            # with nothing in the arm's own code touched.
             self._handle_gid = -1
         # The handle is part of the object, so a pad touching it is a grasp.
         # Without this the handled shape can be held perfectly and reported as
@@ -526,7 +532,7 @@ class GraspEnv(_BASE):
         else:
             self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_BOX)
             self.model.geom_size[self._object_gid] = np.array([hs, hs, hs])
-        if shape != 3 and not self.handled:
+        if shape != 3 and not self.handled and self._handle_gid >= 0:
             # Shrunk to a millimetre and taken out of collision entirely, so
             # every other shape is exactly what it was before the handle existed.
             # Its *position* cannot be moved at runtime -- see the note in the

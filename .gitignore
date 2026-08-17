@@ -21,3 +21,16 @@ videos/*.mp4
 .DS_Store
 .idea/
 .vscode/
+
+# Datasets. Demonstrations and the perception frames were 50 MB of tracked
+# binary -- three quarters of everything a clone pulled -- for files that
+# `src/record_demos.py` and `scripts/collect_pose_data.py` rebuild in minutes.
+# The exported policies in experiments/policies stay: they are 2 MB, the
+# cross-simulator scripts load them directly, and re-exporting them exactly
+# needs the original checkpoints.
+#
+# This stops the growth; it does not shrink the history, which still contains
+# them. Shrinking that means rewriting published commits and is deliberately
+# not done here.
+demonstrations/*.npz
+experiments/perception/*.npz

@@ -74,6 +74,63 @@ CLIPS = [
         "why": "the same method trained without randomisation, on the same "
                "worlds, for contrast",
     },
+    # --- the second task
+    {
+        "name": "place_expert",
+        "args": ["--expert", "--task", "place", "--randomisation", "none",
+                 "--episodes", "2"],
+        "why": "pick-and-place: carry the box to the marked patch and let go. "
+               "The orange disc is the success tolerance, so a viewer can see "
+               "whether the box finished inside it",
+    },
+    {
+        "name": "place_bcrl",
+        "policy": "experiments/runs/place_bcrl_s0/policy.pt",
+        "args": ["--task", "place", "--randomisation", "medium",
+                 "--episodes", "3"],
+        "why": "imitation plus RL on the second task, 0.916 across five seeds",
+    },
+    {
+        "name": "place_sac_sliding",
+        "policy": "experiments/runs/place_sac_s0/policy.pt",
+        "args": ["--task", "place", "--randomisation", "medium",
+                 "--episodes", "2"],
+        "why": "the failure seven reward designs kept producing: it closes the "
+               "pads on the box and SHOVES it, never lifting. Peak lift 0.010 m "
+               "against a 0.04 m latch",
+    },
+    # --- the arm
+    {
+        "name": "arm_expert",
+        "args": ["--expert", "--arm", "--randomisation", "none",
+                 "--episodes", "2"],
+        "why": "the same task through a six-jointed UR5-proportioned arm with "
+               "joint limits, self-collision and IK, instead of a floating hand",
+    },
+    {
+        "name": "arm_clone",
+        "policy": "experiments/runs/arm_bcnom_s0/policy.pt",
+        "args": ["--arm", "--randomisation", "none", "--episodes", "3"],
+        "why": "a clone of that expert, 0.448 across five seeds. From-scratch RL "
+               "through the arm never closes the fingers at all",
+    },
+    # --- grasp-point selection
+    {
+        "name": "handled_expert",
+        "args": ["--expert", "--handled", "--randomisation", "none",
+                 "--episodes", "2"],
+        "why": "grasp-point selection: the cube is wider than the pads can open, "
+               "so the only grasp is the handle -- and the observation reports "
+               "the cube's centre, not the handle",
+    },
+    {
+        "name": "handled_clone",
+        "policy": "experiments/runs/handled_bc_s0/policy.pt",
+        "args": ["--handled", "--randomisation", "none", "--episodes", "3"],
+        "why": "a cloned policy finding the handle from an observation that "
+               "never states where it is. Aiming at the reported pose scores "
+               "0/30; this scores 0.896",
+    },
 ]
 
 

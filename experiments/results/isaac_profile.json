@@ -1,0 +1,71 @@
+{
+  "note": "wall-clock of a run is steps x total_ms_per_step; transitions_per_second is what decides how long a budget-matched grid takes",
+  "rows": [
+    {
+      "num_envs": 64,
+      "device": "cpu",
+      "task": "place",
+      "sim_ms_per_step": 91.4,
+      "learner_ms_per_update": 6.42,
+      "total_ms_per_step": 97.82,
+      "transitions_per_second": 654.3,
+      "sim_share": 0.934,
+      "torch_peak_gb": 0.01
+    },
+    {
+      "num_envs": 256,
+      "device": "cpu",
+      "task": "place",
+      "sim_ms_per_step": 90.28,
+      "learner_ms_per_update": 6.23,
+      "total_ms_per_step": 96.51,
+      "transitions_per_second": 2652.6,
+      "sim_share": 0.935,
+      "torch_peak_gb": 0.01
+    },
+    {
+      "num_envs": 512,
+      "device": "cpu",
+      "task": "place",
+      "sim_ms_per_step": 96.87,
+      "learner_ms_per_update": 6.66,
+      "total_ms_per_step": 103.53,
+      "transitions_per_second": 4945.6,
+      "sim_share": 0.936,
+      "torch_peak_gb": 0.01
+    },
+    {
+      "num_envs": 1024,
+      "device": "cpu",
+      "task": "place",
+      "sim_ms_per_step": 95.48,
+      "learner_ms_per_update": 6.85,
+      "total_ms_per_step": 102.33,
+      "transitions_per_second": 10006.9,
+      "sim_share": 0.933,
+      "torch_peak_gb": 0.02
+    },
+    {
+      "num_envs": 2048,
+      "device": "cpu",
+      "task": "place",
+      "sim_ms_per_step": 96.17,
+      "learner_ms_per_update": 6.52,
+      "total_ms_per_step": 102.68,
+      "transitions_per_second": 19944.7,
+      "sim_share": 0.937,
+      "torch_peak_gb": 0.02
+    },
+    {
+      "num_envs": 64,
+      "device": "cuda",
+      "task": "place",
+      "sim_ms_per_step": 89.86,
+      "learner_ms_per_update": 12.41,
+      "total_ms_per_step": 102.28,
+      "transitions_per_second": 625.7,
+      "sim_share": 0.879,
+      "torch_peak_gb": 0.02
+    }
+  ]
+}

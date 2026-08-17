@@ -252,8 +252,34 @@ guessed for `obs_noise_corr` turns out to be slightly conservative rather than
 invented. The occlusion claim does not survive: error under occlusion is if
 anything *lower*. The likely reason is specific and worth stating — when the
 hand is over the box, the hand is large, unoccluded and directly above it, so
-the estimator can read the box's position off the gripper. A real system with a
-wrist camera, clutter, or a moving viewpoint would not get that for free.
+the estimator can read the box's position off the gripper.
+
+**That explanation has since been tested rather than left as a story.** A camera
+mounted on the palm cannot be occluded by the hand it is bolted to, so it removes
+that cue by construction; three distractor objects of similar size and colour
+were added at the same time. Same network, same training, same episode-level
+split:
+
+| | fixed camera | wrist camera, 3 distractors |
+| --- | ---: | ---: |
+| mean position error | 0.0065 m | **0.0513 m** |
+| on easy frames | 0.0068 m | 0.0487 m |
+| on hard frames | **0.0060 m** | **0.0778 m** |
+| relationship | hard frames *better* | hard frames **60% worse** |
+| lag-1 autocorrelation | 0.947 | 0.950 |
+
+The relationship reverses, which is what the explanation predicted. Take away the
+gripper-as-a-cue and the intuitive result appears: the hard frames really are
+harder. "Hard" is not the same flag for both cameras and cannot be — a wrist
+camera is never occluded by its own hand, so there it means the object has left
+the frustum. Calling both "occlusion" would compare two quantities and report
+them as one.
+
+The second number in that table matters more than the reversal. **A realistic
+viewpoint with clutter is eight times worse than the fixed camera and five to
+thirteen times outside the range `measured.json` models** (0.004-0.010 m, from
+published YCB-Video results). The sensing randomisation in this repository is
+optimistic, and now measurably so rather than suspectedly.
 
 Closing the loop, five demonstration-seeded policies, 40 episodes each:
 
@@ -674,10 +700,11 @@ and it scores zero with its control also at zero).
    raises peak lift to what a successful MuJoCo policy reaches while success
    does not move, which points at contact rather than reaching.
 
-4. A wrist camera rather than a fixed one, with clutter. The fixed camera's
-   error turned out to be *lower* under occlusion because the gripper is itself
-   a cue; a moving viewpoint would remove that and is the honest version of the
-   test.
+4. **Real** sensing ranges. The wrist-camera measurement above puts a realistic
+   estimator at 0.0513 m against the 0.004-0.010 m this repository randomises
+   over, so every transfer number here was produced under sensing that is five
+   to thirteen times better than the perception stack actually delivers. Widening
+   the range is one line; retraining everything against it is a grid.
 
 5. Grasp-point selection -- choosing *where* to grasp an unfamiliar shape --
    which is what most of the grasping literature is about and which nothing here

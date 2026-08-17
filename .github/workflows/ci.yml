@@ -44,6 +44,9 @@ jobs:
       - name: Tests
         run: python -m pytest tests/ -q
 
+      - name: Documents agree with results
+        run: python scripts/check_docs.py
+
       - name: Scripted expert smoke test
         run: python scripts/offline_demo.py --episodes 20
 

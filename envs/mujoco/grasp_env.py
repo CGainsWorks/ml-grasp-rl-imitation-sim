@@ -132,6 +132,27 @@ IK_ITERS = 20
 IK_RESET_ATTEMPTS = 120
 
 MAX_CLUTTER = 3               # distractor bodies defined in the weld scene
+# The handled shape. The body is wider than the pads can open, so the graspable
+# point is the handle and nowhere else; the observation reports the body frame,
+# which sits on the ungraspable part.
+# The handle's offset is fixed in the scene XML at 0.070 m along the body's x
+# axis, because MuJoCo 3.11 ignores a runtime change to geom_pos. The body's
+# half-width is chosen to match it: the wide part ends at 0.048 and the handle
+# spans 0.048 to 0.092, so the two touch and the shape is one connected object.
+HANDLE_BODY_HALF = 0.048      # half-width of the wide body, against a 0.078 gap
+# How far the handle has to stick out is set by the *palm*, not by the pads,
+# and that took two wrong answers to establish. The pads sit 0.039 m either side
+# of the grip centre, so clearing the body edge at 0.048 looks like it needs a
+# grasp point past 0.087. It does not: the palm is 0.056 m half-width, wider
+# than the pad spacing, so the grip centre has to sit past 0.048 + 0.056 =
+# 0.104 or the palm lands on the body and the hand simply cannot descend.
+#
+# Traced rather than guessed -- at a 0.098 grasp point the expert reaches 22 mm
+# above the handle, stalls, times out of its descent and closes on air, which
+# reads exactly like a targeting bug.
+HANDLE_HALF_LENGTH = 0.070    # spans 0.048 to 0.188, so it meets the body
+HANDLE_THICKNESS = 0.010      # half-thickness, so 20 mm across the pads
+HANDLE_CENTRE = 0.118         # matches pos= in the scene XML; clears the palm
 TABLE_HEIGHT = 0.40           # top face of the table, metres
 GRIPPER_OPEN_WIDTH = 0.078    # pad-to-pad gap with both slide joints at zero
 GRASP_DEBOUNCE_STEPS = 3      # environment steps the grasp flag stays latched
@@ -316,6 +337,11 @@ class GraspEnv(_BASE):
             None if self.arm else self.model.body("mocap").mocapid[0])
         self._object_bid = self.model.body("object").id
         self._object_gid = self.model.geom("object").id
+        self._handle_gid = self.model.geom("object_handle").id
+        # The handle is part of the object, so a pad touching it is a grasp.
+        # Without this the handled shape can be held perfectly and reported as
+        # ungrasped, which is indistinguishable from a targeting failure.
+        self._object_geoms = {self._object_gid, self._handle_gid}
         self._table_gid = self.model.geom("table_top").id
         self._grip_sid = self.model.site("grip_site").id
         if self.arm:
@@ -450,9 +476,43 @@ class GraspEnv(_BASE):
         elif shape == 2:
             self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_SPHERE)
             self.model.geom_size[self._object_gid] = np.array([hs, 0.0, 0.0])
+        elif shape == 3:
+            # The handled shape, and the only one here that requires choosing
+            # *where* to grasp rather than only where the object is.
+            #
+            # The body is deliberately wider than the pads can open: 2 x 0.048 m
+            # across against a 0.078 m gap, so closing on it is impossible rather
+            # than merely awkward. The graspable handle sits off to one side, and
+            # the body frame -- which is what the observation reports as "object
+            # position" -- stays on the wide part. So the strategy every policy
+            # in this repository has learned, go to the reported position and
+            # close, cannot work here. The handle's direction in the world
+            # depends on the object's yaw, which the observation also carries, so
+            # the information needed is present and has to be used.
+            self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_BOX)
+            # Wide in *both* horizontal axes. The first version was wide in one
+            # only, and a naive expert aiming at the reported pose scored 22/30
+            # on it: with random yaw the narrow face is presented often enough
+            # that no grasp-point selection is needed. An object that is only
+            # sometimes ungraspable tests luck, not selection.
+            self.model.geom_size[self._object_gid] = np.array(
+                [HANDLE_BODY_HALF, HANDLE_BODY_HALF, hs])
+            self.model.geom_type[self._handle_gid] = int(mujoco.mjtGeom.mjGEOM_BOX)
+            self.model.geom_size[self._handle_gid] = np.array(
+                [HANDLE_HALF_LENGTH, HANDLE_THICKNESS, HANDLE_THICKNESS])
+            self.model.geom_contype[self._handle_gid] = 1
+            self.model.geom_conaffinity[self._handle_gid] = 1
         else:
             self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_BOX)
             self.model.geom_size[self._object_gid] = np.array([hs, hs, hs])
+        if shape != 3:
+            # Shrunk to a millimetre and taken out of collision entirely, so
+            # every other shape is exactly what it was before the handle existed.
+            # Its *position* cannot be moved at runtime -- see the note in the
+            # scene XML -- so it is disabled rather than parked.
+            self.model.geom_size[self._handle_gid] = np.array([0.001, 0.001, 0.001])
+            self.model.geom_contype[self._handle_gid] = 0
+            self.model.geom_conaffinity[self._handle_gid] = 0
         # Keep the box a solid of constant density-free mass: mass is sampled
         # independently of size, and the inertia is recomputed to match.
         mass = world.object_mass
@@ -871,9 +931,9 @@ class GraspEnv(_BASE):
         for i in range(self.data.ncon):
             con = self.data.contact[i]
             pair = (con.geom1, con.geom2)
-            if self._object_gid not in pair:
+            if not (set(pair) & self._object_geoms):
                 continue
-            other = pair[0] if pair[1] == self._object_gid else pair[1]
+            other = pair[0] if pair[1] in self._object_geoms else pair[1]
             if other == self._pad_gids[0]:
                 left = True
             elif other == self._pad_gids[1]:

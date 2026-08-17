@@ -314,6 +314,15 @@ class GraspTaskCfg(DirectRLEnvCfg if ISAAC_AVAILABLE else object):
     """
 
     decimation = 8
+    # 4 s is 100 control steps, matching MuJoCo, for both tasks.
+    #
+    # A 6 s horizon was tried for the place task on the theory that the Franka's
+    # differential-IK tracking is slower than the mocap weld and the expert was
+    # running out of time in the lowering phase. It places 2 of 8 either way, so
+    # the horizon was not the cause and the difference was reverted rather than
+    # left in: a divergence between the two ports that buys nothing is worse
+    # than not having one, because it weakens "the same task in both simulators"
+    # for free.
     episode_length_s = 4.0
     action_space = ACT_DIM
     observation_space = OBS_DIM

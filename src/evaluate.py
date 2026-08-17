@@ -87,13 +87,32 @@ def evaluate_run(
     wrist = handled or bool(config.get("wrist", False))
     history = int(config.get("history", 1) or 1)
     max_half_size = config.get("max_half_size")
+    # A policy trained through the camera has to be scored through the
+    # camera. Scoring it on true state would report a number for a task
+    # it was never trained on, and would flatter it.
+    perception = config.get("perception")
+    # Same rule for the robot itself. An arm-trained policy evaluated on
+    # the welded hand does not fail -- the observation widths coincide --
+    # it just reports a number for a different robot. Taking these from
+    # the run rather than the command line is the only way a forgotten
+    # flag stops being silent.
+    arm = arm or bool(config.get("arm", False))
+    handled = handled or bool(config.get("handled", False))
 
     out: Dict[str, Dict] = {}
     for level in eval_levels:
-        env = make_env(level, seed=1234, max_steps=max_steps, task=task, arm=arm,
-                       travel_range=place_travel, history=history,
-                       max_half_size=max_half_size,
-                       handled=handled, wrist=wrist)
+        if perception:
+            from envs.mujoco.perception_env import make_perception_env
+            env = make_perception_env(
+                level, seed=1234, max_steps=max_steps, task=task, arm=arm,
+                travel_range=place_travel, history=history,
+                max_half_size=max_half_size, handled=handled, wrist=wrist,
+                checkpoint=perception)
+        else:
+            env = make_env(level, seed=1234, max_steps=max_steps, task=task,
+                           arm=arm, travel_range=place_travel, history=history,
+                           max_half_size=max_half_size,
+                           handled=handled, wrist=wrist)
         result = evaluate_policy(
             env, torch_policy(actor, deterministic=True),
             n_episodes=episodes, seed=FINAL_SEED_BLOCK,

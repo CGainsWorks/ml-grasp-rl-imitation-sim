@@ -67,6 +67,12 @@ CLAIMS = [
      "held-anchor RL with the wrist at cap 0.024"),
     ("nowristbc", "wrist_bench", ["docs/limitations.md"],
      "no wrist at cap 0.024"),
+    ("percbc", "none", ["README.md", "docs/limitations.md"],
+     "cloning with the pose estimator in the loop"),
+    ("armgridnonehold", "none", ["README.md", "docs/limitations.md"],
+     "the arm with a held anchor at level none"),
+    ("armgridmediumhold", "medium", ["README.md", "docs/limitations.md"],
+     "the arm with a held anchor at level medium"),
     ("fsns", "wrist_bench", ["docs/limitations.md"],
      "from scratch, no wrist, cap 0.024"),
     ("fsws", "wrist_bench", ["docs/limitations.md"],
@@ -78,6 +84,11 @@ CLAIMS = [
 # Phrasings that were true once. Each is a regex, the files it must not appear
 # in, and the result that retired it.
 RETIRED = [
+    (r"Perception is a check, not a pipeline",
+     ["README.md"],
+     "a policy trained and evaluated through the estimator reaches "
+     "0.934 [0.900, 0.968]; substituting it costs 18 points, training "
+     "through it costs about four"),
     (r"[Ee]very policy here scores ~0\.00",
      ["README.md", "docs/limitations.md"],
      "privileged distillation reaches 0.406 at measured_camera"),

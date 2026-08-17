@@ -470,12 +470,13 @@ limitation and a worse-sounding one.
 
 * **The default hand has no arm** — it floats on a mocap weld, and every
   headline number was produced that way. A six-jointed arm variant exists and
-  was measured: from-scratch RL through it never closes the fingers at all
-  (grasp rate 0.000 against 0.593 for the weld, and 0.033 even with
-  demonstrations in the replay buffer), while demonstrations with a *held*
-  cloning anchor reach **0.536** [0.416, 0.656]. That gap is the cost of the
-  abstraction; holding the anchor rather than decaying it is worth 0.176 → 0.536
-  on its own.
+  now has a grid of its own, and it does not survive randomisation: with
+  demonstrations and a held anchor it reaches **0.522** at `none`, **0.158** at
+  `low` and **0.052** at `medium`, against 0.973 → 0.582 for the weld over the
+  same range. The ceiling is the demonstrator, not the learner — the scripted
+  expert through six joints scores 0.093 at `medium`. Every headline number here
+  was produced on the weld and should be read as an upper bound on what the same
+  recipe does on an arm.
 * **The wrist changes almost nothing once the comparison is matched** — and
   getting that comparison right took three attempts. `GraspEnv` sets the object
   size cap *from the wrist flag* (0.034 m with, 0.024 m without), so every
@@ -486,10 +487,14 @@ limitation and a worse-sounding one.
   showed a two-to-one rout. The inherited from-scratch claim dissolves the same
   way: matched, **both** hands score 0.000 on the big boxes, so that zero was
   about object size and never about the wrist.
-* **Perception is a check, not a pipeline** — a CNN pose estimator from 64x64
-  renders exists and costs 18 points when substituted for ground truth. It was
-  built to *test* the sensing noise model, and it refuted one of the three
-  claims that model made.
+* **Perception is a pipeline, on the easy camera** — a policy trained *and*
+  evaluated with a CNN pose estimator in the loop reaches **0.934**
+  [0.900, 0.968], against ~0.973 on ground truth. Substituting the estimator
+  into a policy that never saw it costs 18 points; training through it costs
+  about four. The caveats are the point: the estimator is frozen, the camera is
+  fixed and unoccluded at 0.0066 m error, and a step costs 75.9 ms against
+  0.3 ms, so from-scratch RL through the camera is left undone rather than
+  claimed.
 * **Dense hand-designed reward, and it does not generalise** — it solves
   lift-and-hold. On pick-and-place, seven designs, a tripled budget and two
   curricula all fail while cloning succeeds immediately. Shaping here buys

@@ -1,0 +1,13 @@
+{
+  "algorithm": "bc",
+  "seed": 1,
+  "randomisation": "none",
+  "arm": false,
+  "handled": false,
+  "wrist": false,
+  "history": 1,
+  "hidden": 128,
+  "max_half_size": null,
+  "perception": "experiments\\perception\\pose_cnn.pt",
+  "demos": "demonstrations/expert_perception.npz"
+}

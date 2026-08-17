@@ -1,0 +1,10 @@
+{
+  "final_success_rate": 0.5,
+  "final_grasp_rate": 0.6333333333333333,
+  "best_success_rate": 0.6,
+  "episodes": 2022,
+  "steps": 200000,
+  "wall_seconds": 2757.0,
+  "seed": 3,
+  "randomisation": "none"
+}

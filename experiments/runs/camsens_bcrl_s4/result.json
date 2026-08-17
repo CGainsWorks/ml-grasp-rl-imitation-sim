@@ -1,0 +1,10 @@
+{
+  "final_success_rate": 0.0,
+  "final_grasp_rate": 0.43333333333333335,
+  "best_success_rate": 0.0,
+  "episodes": 2000,
+  "steps": 200000,
+  "wall_seconds": 1094.1,
+  "seed": 4,
+  "randomisation": "measured_camera"
+}

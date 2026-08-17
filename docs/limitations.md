@@ -706,34 +706,39 @@ and it scores zero with its control also at zero).
    to thirteen times better than the perception stack actually delivers. Widening
    the range is one line; retraining everything against it is a grid.
 
-5. **A working expert for the handled shape.** The shape itself now exists and
-   is the right test: a body 96 mm across against a 78 mm pad gap, ungraspable in
-   *both* horizontal axes, with a graspable 20 mm handle offset 118 mm along the
-   object's own x axis. The observation reports the body frame, which sits on the
-   ungraspable part, so "go to the reported position and close" cannot work — and
-   a scripted expert that does exactly that scores **1/30**, which is what makes
-   the shape a genuine test of selection rather than of luck. (An earlier version
-   was wide in one axis only and the same naive expert scored 22/30 on it: random
-   yaw presented the narrow face often enough that no selection was needed.)
+5. **A working expert for the handled shape.** The shape exists, is correct, and
+   defeats the naive strategy: a 96 mm cube against a 78 mm pad gap, ungraspable
+   along *every* axis, with a 20 mm handle offset 118 mm out and 34 mm up. The
+   observation reports the body frame, which sits on the cube, so "go to the
+   reported position and close" scores **0/30**. That is the property that makes
+   it a test of grasp-point *selection* rather than of luck.
 
-   What does not work yet is an expert that *does* select. One aimed at the
-   handle, with the wrist turned to close across its thin axis, reaches the
-   handle to within 2 mm laterally and 1 mm vertically — and then the pads close
-   through it and meet each other, with no handle contact in the list. Two
-   MuJoCo causes were found and fixed on the way there and are recorded below;
-   whatever remains is a third. Until an expert solves it there are no
-   demonstrations, so nothing is claimed about learned grasp-point selection.
+   No expert solves it yet, so there are no demonstrations and nothing is
+   claimed about learned selection. It lives in its own scene
+   (`grasp_scene_handled.xml`) and is selected with `make_env(..., handled=True)`.
 
-   Two runtime-mutation gotchas found doing this, both verified on a bare model
-   outside the environment, both silent:
+   Getting the environment to this point took five corrections, and they are
+   worth recording because four of them produced numbers that looked like
+   results:
 
-   * **`model.geom_pos` changes are ignored.** `geom_xpos` comes back equal to
-     the body position. The handle's offset is therefore compiled into the scene.
+   * **Ungraspable in two axes is not ungraspable.** At 96 x 96 x 44 the object
+     tips onto its side, presents the 44 mm dimension and is grasped normally —
+     three episodes out of three. It has to be a cube.
+   * **`model.geom_pos` changes are ignored at runtime.** `geom_xpos` comes back
+     equal to the body position. Verified on a bare model.
    * **`geom_rbound` is not recomputed when `geom_size` changes.** A geom
      compiled at 1 mm keeps a 1.7 mm broad-phase collision radius however large
-     it is made at runtime, so it never enters collision at all. This is why the
-     existing box/cylinder/sphere switching works — those sizes are all close to
-     the compiled one — and why growing a placeholder geom does not.
+     it is made, so it never collides. This is why the existing
+     box/cylinder/sphere switching works — those sizes are near the compiled one
+     — and why growing a placeholder does not.
+   * **A dedicated scene is worthless if the randomiser still rewrites it.**
+     `_apply_world` was resetting the handled body to a 22 mm box at every
+     reset, so several measurements were taken on an ordinary box while
+     appearing to be about the handled shape.
+   * **The palm sets the clearance, not the pads.** Pads sit 39 mm either side
+     of the grip centre, but the palm is 56 mm half-width, so a graspable
+     feature must stand more than 104 mm clear of an ungraspable body or the
+     hand cannot descend at all.
 
 6. **Isaac place training at a comparable budget.** The task is ported, the
    expert places 23 of 24, 128 demonstrations are recorded, and a three-seed

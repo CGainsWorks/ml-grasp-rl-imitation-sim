@@ -69,6 +69,7 @@ class ScriptedExpert:
         align_tol: float = np.deg2rad(6.0),
         grasp_offset: float = 0.0,
         grasp_yaw_offset: float = 0.0,
+        grasp_height: float = 0.0,
     ) -> None:
         # Extra yaw, in radians, between the object's frame and the direction
         # the pads should close along.
@@ -80,6 +81,9 @@ class ScriptedExpert:
         # +/-45 degrees the way a box's is folded picks the wrong one half the
         # time, which is why the handled shape needs this and the others do not.
         self.grasp_yaw_offset = float(grasp_yaw_offset)
+        # Height of the grasp point above the object frame, for shapes whose
+        # graspable feature is not on the body centreline.
+        self.grasp_height = float(grasp_height)
         # Where along the object's own x axis to grasp, in metres.
         #
         # Zero for every shape whose reported pose *is* a graspable point, which
@@ -135,6 +139,7 @@ class ScriptedExpert:
         obj = filtered[OBJ_POS]
         if self.grasp_offset:
             obj = obj + self.grasp_offset * filtered[OBJ_ROT_X]
+            obj = obj + np.array([0.0, 0.0, self.grasp_height])
         goal = obs[GOAL_POS]  # the hold point is commanded, not sensed
         self._phase_steps += 1
 

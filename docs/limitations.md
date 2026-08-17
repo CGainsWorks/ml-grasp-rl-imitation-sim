@@ -219,9 +219,17 @@ finish at exactly 0.000 against two of ten for boxes.
 This is a budget statement, not a claim that shape variety is harmful. Every
 widening of the distribution in this repository costs at 200 000 steps.
 
-No bottles, no bags, no clutter, no bin, and still nothing here demonstrates
-grasp *selection* — choosing where to grasp an unfamiliar shape — which is what
-most of the grasping literature is actually about.
+No bottles, no bags and no bin. Clutter now exists — three free distractors of
+similar size and colour, `make_env(..., clutter=3)` — and so does an environment
+that *requires* grasp selection: `make_env(..., handled=True)` puts out a 96 mm
+cube, ungraspable along every axis, with a 20 mm handle offset 118 mm from the
+body frame the observation reports. A policy that goes to the reported position
+and closes scores 0/30 on it.
+
+What is still missing is anything *solving* that environment. No scripted expert
+manages it yet, so there are no demonstrations, and this repository shows no
+learned grasp-point selection — which is what most of the grasping literature is
+actually about.
 
 **The policy is handed the object pose by default, and there is now a camera
 path that does not.** `src/perception/pose_cnn.py` estimates the object position
@@ -775,9 +783,9 @@ and it scores zero with its control also at zero).
      feature must stand more than 104 mm clear of an ungraspable body or the
      hand cannot descend at all.
 
-6. **Isaac place training at a comparable budget.** The task is ported, the
-   expert places 23 of 24, 128 demonstrations are recorded, and a three-seed
-   grid reproduces the MuJoCo finding (0.419 demonstration-seeded against 0.000
-   from scratch) — but at 4 000 steps against MuJoCo's 200 000. The pattern is
-   established; a budget-matched Isaac grid is not, and would take GPU-days
-   rather than the GPU-hour this took.
+6. **Contact-level comparison between the two simulators.** Everything cheaper
+   than that is now spent: the transfer failure is not control gain, not grip
+   force, not friction, and not vertical positioning (item 3). What is left is
+   the contact model, and telling Isaac's solver apart from MuJoCo's needs
+   penetration depths, normal forces and slip measured on the same states —
+   not another intervention in the action space.

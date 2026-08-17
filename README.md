@@ -449,10 +449,15 @@ limitation and a worse-sounding one.
   a real gap. This one is unchanged and unfixable here.
 * **Isaac Lab runs both tasks and still supplies no headline number** — the
   bring-up checks pass at `none` and `medium`, place-reward parity is 6.9e-08 on
-  the GPU, and the second task's finding reproduces there (0.419 against 0.000).
-  Every success rate quoted in *this* README was still produced in MuJoCo, and
-  two of the mapped randomisation parameters are analogues rather than
-  translations.
+  the GPU, and at a budget matched on *gradient updates* the second task's
+  finding reproduces there: **0.825** demonstration-seeded against **0.000** from
+  scratch. Every success rate quoted in *this* README was still produced in
+  MuJoCo, and two of the mapped randomisation parameters are analogues rather
+  than translations.
+* **Cross-simulator transfer is poor and now narrowed** — not control gain, not
+  grip force, not friction, and not vertical positioning: adding the missing
+  10 cm back makes it *worse*, while pressing down improves grip and lift
+  without improving success. What remains is the contact model.
 
 ---
 

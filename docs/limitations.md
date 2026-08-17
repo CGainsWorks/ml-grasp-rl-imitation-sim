@@ -694,11 +694,46 @@ and it scores zero with its control also at zero).
    on latency by 2-5x, optimistic on sensing, and omitted orientation error
    altogether. Real hardware would still be better than a literature survey.
 
-3. **Why cross-simulator transfer fails.** The evaluation exists and the answer
-   is not a control-gain constant -- seven scalings of the action, in both
-   directions, none of which clears its interval. Halving lateral commands alone
-   raises peak lift to what a successful MuJoCo policy reaches while success
-   does not move, which points at contact rather than reaching.
+3. **Why cross-simulator transfer fails -- narrowed to contact, with vertical
+   positioning ruled out.** It is not a control-gain constant (seven action
+   scalings, both directions, none clearing its interval), not grip force and
+   not friction. The end-state probe found a vertical signature -- policies still
+   gripping in 55% of episodes at the horizon, about 10 cm below the hold point
+   -- and "vertical positioning" was offered as the explanation. That was a
+   description of the symptom, and it has now been tested as a cause.
+
+   `scripts/isaac_z_probe.py` adds a constant to the vertical action, clipped to
+   the action range, and sweeps it. If the policy were systematically short by a
+   constant, adding it back would recover performance:
+
+   | vertical bias | success | peak lift | still holding at horizon |
+   | ---: | ---: | ---: | ---: |
+   | **0.00 m** | **0.083** | 0.083 m | 0.50 |
+   | +0.05 m | 0.062 | 0.082 m | 0.50 |
+   | +0.10 m | 0.073 | 0.071 m | 0.46 |
+   | +0.15 m | 0.031 | 0.069 m | 0.44 |
+   | +0.20 m | 0.031 | 0.055 m | 0.31 |
+   | **−0.05 m** | 0.073 | **0.110 m** | **0.67** |
+
+   **No upward bias helps and every large one hurts.** The one that moves the
+   behaviour is *downward*: pressing 5 cm harder into the object raises peak lift
+   from 0.083 to 0.110 m and the holding rate from 0.50 to 0.67 — and leaves
+   success statistically where it was. That is the same shape as the earlier
+   lateral-scaling probe: the height and the grip both move, and success does
+   not follow.
+
+   So the 10 cm shortfall is a consequence, not the fault. The policies are not
+   mis-aimed; they are failing to establish a grip that survives, and pressing
+   harder buys a better grip without buying the task. The remaining candidate is
+   the contact model itself — Isaac's solver against MuJoCo's, on a Franka with
+   differential IK rather than a hand on a weld — and separating those needs a
+   contact-level comparison rather than another action-space intervention.
+
+   One methodological note, because it nearly produced a wrong answer: the first
+   run of this probe used `bcrl_medium_s0`, which does nothing at all in Isaac —
+   peak lift 0.000 at every bias. A flat, uniformly-zero sweep would have read as
+   "no bias helps" for the wrong reason. The probe has to be pointed at a policy
+   that *acts*, and the one carrying the vertical signature is `bcrl_high_s1`.
 
 4. **Real** sensing ranges. The wrist-camera measurement above puts a realistic
    estimator at 0.0513 m against the 0.004-0.010 m this repository randomises

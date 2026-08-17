@@ -1,0 +1,64 @@
+{
+  "policy": "experiments/policies/bcrl_high_s1.ts.pt",
+  "randomisation": "none",
+  "episodes_per_bias": 96,
+  "note": "a constant added to the vertical action, clipped to the action range. Rising-then-falling success identifies a calibration offset; flat-and-zero success with moving peak lift means height was a symptom",
+  "rows": [
+    {
+      "bias": 0.0,
+      "success_rate": 0.08333333333333333,
+      "wilson_low": 0.04283062415096722,
+      "wilson_high": 0.15589903239709585,
+      "mean_peak_lift": 0.082961139579614,
+      "still_holding_at_horizon": 0.5
+    },
+    {
+      "bias": 0.05,
+      "success_rate": 0.0625,
+      "wilson_low": 0.028956674311051346,
+      "wilson_high": 0.12970946506441489,
+      "mean_peak_lift": 0.08196316659450531,
+      "still_holding_at_horizon": 0.5
+    },
+    {
+      "bias": 0.1,
+      "success_rate": 0.07291666666666667,
+      "wilson_low": 0.03576758131036273,
+      "wilson_high": 0.14293031665140193,
+      "mean_peak_lift": 0.07090792308251063,
+      "still_holding_at_horizon": 0.4583333333333333
+    },
+    {
+      "bias": 0.15,
+      "success_rate": 0.03125,
+      "wilson_low": 0.010684070371201164,
+      "wilson_high": 0.0878867932453698,
+      "mean_peak_lift": 0.0690054160853227,
+      "still_holding_at_horizon": 0.4375
+    },
+    {
+      "bias": 0.2,
+      "success_rate": 0.03125,
+      "wilson_low": 0.010684070371201164,
+      "wilson_high": 0.0878867932453698,
+      "mean_peak_lift": 0.05462081916630268,
+      "still_holding_at_horizon": 0.3125
+    },
+    {
+      "bias": -0.05,
+      "success_rate": 0.07291666666666667,
+      "wilson_low": 0.03576758131036273,
+      "wilson_high": 0.14293031665140193,
+      "mean_peak_lift": 0.10956145077943802,
+      "still_holding_at_horizon": 0.6666666666666666
+    }
+  ],
+  "best": {
+    "bias": 0.0,
+    "success_rate": 0.08333333333333333,
+    "wilson_low": 0.04283062415096722,
+    "wilson_high": 0.15589903239709585,
+    "mean_peak_lift": 0.082961139579614,
+    "still_holding_at_horizon": 0.5
+  }
+}

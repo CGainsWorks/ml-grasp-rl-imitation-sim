@@ -59,10 +59,12 @@ def render(
     on_episode_start=None,
     task: str = "lift",
     arm: bool = False,
+    handled: bool = False,
 ) -> List[np.ndarray]:
     env = make_env(
         randomisation, seed=seed, render_mode="rgb_array", camera=camera,
         width=width, height=height, max_steps=max_steps, task=task, arm=arm,
+        handled=handled, wrist=handled,
     )
     frames: List[np.ndarray] = []
     successes = 0
@@ -116,6 +118,8 @@ def main() -> None:
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
     parser.add_argument("--arm", action="store_true")
+    parser.add_argument("--handled", action="store_true",
+                        help="the grasp-point-selection shape; implies --wrist")
     parser.add_argument("--fps", type=int, default=25)
     parser.add_argument("--output", default=None, help="path to an .mp4")
     parser.add_argument("--gif", default=None, help="path to a .gif")
@@ -128,7 +132,15 @@ def main() -> None:
 
     on_start: Optional[callable] = None
     if args.expert:
-        expert = (ScriptedPlaceExpert() if args.task == "place" else ScriptedExpert())
+        if args.handled:
+            from envs.mujoco.grasp_env import HANDLE_CENTRE, HANDLE_HEIGHT
+            expert = ScriptedExpert(wrist=True, grasp_offset=HANDLE_CENTRE,
+                                    grasp_yaw_offset=np.pi / 2.0,
+                                    grasp_height=HANDLE_HEIGHT)
+        elif args.task == "place":
+            expert = ScriptedPlaceExpert()
+        else:
+            expert = ScriptedExpert()
         on_start = expert.reset
         policy_fn = expert.act
     else:
@@ -137,7 +149,7 @@ def main() -> None:
     frames = render(
         policy_fn, args.randomisation, args.episodes, args.seed,
         args.camera, args.width, args.height, args.max_steps, on_start,
-        args.task, args.arm,
+        args.task, args.arm, args.handled,
     )
 
     import imageio.v2 as imageio

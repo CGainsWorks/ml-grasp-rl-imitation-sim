@@ -36,10 +36,26 @@ could have disagreed. Written up rather than buried, in
 [docs/results.md](docs/results.md) §7 and
 [docs/limitations.md](docs/limitations.md).
 
-![expert rollout](videos/expert_nominal.gif)
+### What it looks like
 
-*The scripted expert that produces the demonstrations. Green bar: the success
-condition is being met. Blue bar: lift height.*
+| | |
+| --- | --- |
+| ![lift](videos/expert_nominal.gif) | **Lift and hold.** The scripted expert that produces the demonstrations. Green bar: the success condition is being met. Blue bar: lift height. |
+| ![place](videos/place_expert.gif) | **Pick and place**, the second task. Carry the box to the marked patch and *let go*. The orange disc is drawn at the success tolerance, so you can see whether the box finished inside it. |
+| ![arm](videos/arm_expert.gif) | **Through a six-jointed arm** — UR5 proportions, joint limits, self-collision, damped-least-squares IK — instead of a hand on a mocap weld. The expert drops from 1.000 to 0.680 here, and that gap is the cost of the abstraction the headline numbers use. |
+| ![grasp point](videos/handled_expert.gif) | **Grasp-point selection.** The cube is 96 mm across against a 78 mm pad gap, so it cannot be grasped anywhere; the only grasp is the handle. The observation reports the *cube's centre*. Aiming there scores **0/30**. |
+
+Three more clips show the things that went wrong, because those are the more
+useful ones:
+
+| | |
+| --- | --- |
+| ![sliding](videos/place_sac_sliding.gif) | **The failure seven reward designs kept producing.** It closes the pads on the box and *shoves* it across the table, never lifting — peak lift 0.010 m against a 0.04 m latch. The return curve was climbing the whole time. |
+| ![stalled](videos/sac_none_stalled.gif) | **A stalled SAC seed**: grasps the box and holds it on the table forever. Three of five seeds ended here before the entropy floor. |
+| ![fixed](videos/sac_none_floor.gif) | **The same seed** with one line changed — a floor under the entropy coefficient. Seed held fixed, so nothing else explains the difference. |
+
+Every clip is rendered from the final-evaluation seed block, so the failures in
+them are the failures in the tables. Nothing here is a highlight reel.
 
 ---
 
@@ -81,11 +97,31 @@ prints a success rate with a confidence interval, and fails loudly if the scene
 has been broken.
 
 ```bash
-make check                  # lint + 55 unit tests, what CI runs
+make check                  # lint + 82 unit tests, what CI runs
+make data                   # demonstrations + the perception frames (~10 min)
 make experiments            # the whole grid: 50 runs, about 3 hours on 8 cores
 make plots readme           # regenerate every figure and every table here
 make videos                 # rollout clips (needs a GL context)
 make export RUN=experiments/runs/bcrl_medium_s0   # TorchScript for deployment
+```
+
+**Datasets are not in the repository and `make data` rebuilds them.** The
+demonstration archives and the 20 000-frame perception sets were 50 MB of
+tracked binary — three quarters of what a clone pulled — for files that two
+scripts regenerate in minutes. What *is* committed is the evidence: a
+`result.json` and a `progress.csv` for every run, so any number in these tables
+can be traced back to the run that produced it without retraining anything.
+
+The second task, the arm and the grasp-point shape are flags rather than
+separate code paths:
+
+```bash
+python src/record_demos.py --task place  --output demonstrations/expert_place_low.npz
+python src/record_demos.py --arm         --output demonstrations/expert_arm_low.npz
+python src/record_demos.py --handled     --output demonstrations/expert_handled_low.npz
+python experiments/place_task.py         # pick-and-place, five seeds
+python experiments/arm_task.py           # the six-jointed arm
+python experiments/grasp_point.py        # grasp-point selection
 ```
 
 Or in Docker — the image runs the unit tests as part of its build, so a green
@@ -359,7 +395,7 @@ without being destroyed in the first few thousand updates.
 
 ---
 
-## Rollout videos
+## More rollout videos
 
 Every clip is rendered from the same seed block the evaluation uses, so these
 are episodes from the evaluated set rather than a highlight reel — the failures
@@ -372,6 +408,9 @@ in them are the failures in the tables. `make videos` regenerates all of them.
 | ![sac floor](videos/sac_none_floor.gif) | **The same seed, rescued.** Seed 3 again, with a floor under the entropy coefficient and nothing else changed — 2 of 2 episodes succeed. The before-and-after of the one-line fix, with the seed held fixed so nothing else can explain the difference |
 | ![bc+sac wide on shifted](videos/bcrl_high_shifted.gif) | **BC + SAC, wide randomisation**, on the held-out shifted worlds |
 | ![bc+sac none on shifted](videos/bcrl_none_shifted.gif) | **The same method trained without randomisation**, on the same worlds |
+| ![place bc+sac](videos/place_bcrl.gif) | **BC + SAC on pick-and-place**, 0.916 across five seeds — the task from-scratch RL never solved |
+| ![arm clone](videos/arm_clone.gif) | **A clone driving the six-jointed arm**, 0.448. From-scratch RL through the arm never closes the fingers at all |
+| ![handled clone](videos/handled_clone.gif) | **A clone finding the handle** from an observation that never states where it is — 0.896, against 0/30 for aiming at the reported pose |
 
 `videos/expert_nominal.gif` and `videos/expert_shifted.gif` show the scripted
 expert on both, and `videos/sac_none.gif` is one of the two SAC seeds that did

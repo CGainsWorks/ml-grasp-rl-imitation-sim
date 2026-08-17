@@ -97,6 +97,15 @@ dagger: $(DEMOS)  ## DAgger on top of behaviour cloning, one run per seed
 			--output $(RUNS)/dagger_s$$s --quiet; \
 	done
 
+.PHONY: data
+data: $(DEMOS)  ## Every dataset the repository needs but does not ship (~10 min)
+	$(PYTHON) src/record_demos.py --episodes 200 --randomisation low --task place --output demonstrations/expert_place_low.npz
+	$(PYTHON) src/record_demos.py --episodes 200 --randomisation low --arm --output demonstrations/expert_arm_low.npz
+	$(PYTHON) src/record_demos.py --episodes 200 --randomisation none --arm --expert-noise 0.01 --output demonstrations/expert_arm_none.npz
+	$(PYTHON) src/record_demos.py --episodes 200 --randomisation low --handled --output demonstrations/expert_handled_low.npz
+	$(PYTHON) scripts/collect_pose_data.py --episodes 200
+	$(PYTHON) scripts/collect_pose_data.py --episodes 200 --camera wrist_cam --clutter 3 --output experiments/perception/pose_data_wrist.npz
+
 .PHONY: experiments
 experiments: $(DEMOS)  ## The whole grid: ablation, imitation, imitation+RL (hours)
 	$(PYTHON) experiments/run_all.py --jobs $(JOBS) --steps $(STEPS) --seeds $(SEEDS) 		--levels $(LEVELS) --bcrl-levels $(LEVELS)

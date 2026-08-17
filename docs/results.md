@@ -720,8 +720,14 @@ In rough order of expected effect:
   structural rather than a weight: in the lift task the progress term and the
   height term point the same way, so climbing one climbs the other, and in the
   place task they are orthogonal. Testing that costs a curriculum, not a search.
-* **More steps.** Every randomised condition was still improving when training
-  stopped.
+* ~~**More steps.**~~ **Measured.** Every randomised condition was still
+  improving when training stopped, and tripling the budget to 600 000 steps
+  confirms it: paired by seed, `medium` goes 0.467 → 0.811 and `high` goes
+  0.144 → 0.600, with the two seeds that scored 0.000 and 0.133 finishing at
+  0.600 and 0.833. Transfer to `shifted` does not move (0.030), so more compute
+  buys the own-distribution score and nothing else. The headline grid stays at a
+  matched 200 000 steps regardless — see
+  [limitations.md](limitations.md).
 * **Measured randomisation ranges** instead of plausible ones — the guessed ones
   have now been audited against published measurements
   ([randomisation-sources.md](randomisation-sources.md)) and are optimistic on

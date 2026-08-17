@@ -67,7 +67,32 @@ class ScriptedExpert:
         rng: np.random.Generator | None = None,
         wrist: bool = False,
         align_tol: float = np.deg2rad(6.0),
+        grasp_offset: float = 0.0,
+        grasp_yaw_offset: float = 0.0,
     ) -> None:
+        # Extra yaw, in radians, between the object's frame and the direction
+        # the pads should close along.
+        #
+        # Zero for a box, whose faces repeat every 90 degrees, so "square to the
+        # nearest face" is unambiguous. A *bar* is not like that: it repeats
+        # every 180 degrees and there is exactly one right answer, across its
+        # thin axis rather than along its length. Folding a bar's yaw into
+        # +/-45 degrees the way a box's is folded picks the wrong one half the
+        # time, which is why the handled shape needs this and the others do not.
+        self.grasp_yaw_offset = float(grasp_yaw_offset)
+        # Where along the object's own x axis to grasp, in metres.
+        #
+        # Zero for every shape whose reported pose *is* a graspable point, which
+        # is all of them except the handled one. There the body frame sits on a
+        # part wider than the pads can open, so an expert that aims at the
+        # reported position closes on nothing -- which is the point of that
+        # shape, and is measured rather than asserted in
+        # experiments/grasp_point.py.
+        #
+        # The offset is applied in the object's frame, so it rotates with the
+        # object and the expert has to read the orientation to use it. That is
+        # the same information a policy would need.
+        self.grasp_offset = float(grasp_offset)
         self.wrist = bool(wrist)
         self.align_tol = float(align_tol)
         self.kp = kp
@@ -108,6 +133,8 @@ class ScriptedExpert:
 
         grip = filtered[GRIP_POS]
         obj = filtered[OBJ_POS]
+        if self.grasp_offset:
+            obj = obj + self.grasp_offset * filtered[OBJ_ROT_X]
         goal = obs[GOAL_POS]  # the hold point is commanded, not sensed
         self._phase_steps += 1
 
@@ -127,7 +154,13 @@ class ScriptedExpert:
         if self.wrist:
             obj_x = filtered[OBJ_ROT_X]
             object_yaw = float(np.arctan2(obj_x[1], obj_x[0]))
-            folded = (object_yaw + np.pi / 4.0) % (np.pi / 2.0) - np.pi / 4.0
+            if self.grasp_yaw_offset:
+                # A bar: one correct closing direction, and a 180-degree
+                # symmetry rather than a 90-degree one.
+                target_yaw = object_yaw + self.grasp_yaw_offset
+                folded = (target_yaw + np.pi / 2.0) % np.pi - np.pi / 2.0
+            else:
+                folded = (object_yaw + np.pi / 4.0) % (np.pi / 2.0) - np.pi / 4.0
             error = folded - float(np.arctan2(obs[WRIST_SIN], obs[WRIST_COS]))
             wrist_cmd = float(np.clip(error / WRIST_STEP, -1.0, 1.0))
             aligned = abs(error) <= self.align_tol

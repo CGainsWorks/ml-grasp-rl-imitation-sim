@@ -706,9 +706,34 @@ and it scores zero with its control also at zero).
    to thirteen times better than the perception stack actually delivers. Widening
    the range is one line; retraining everything against it is a grid.
 
-5. Grasp-point selection -- choosing *where* to grasp an unfamiliar shape --
-   which is what most of the grasping literature is about and which nothing here
-   demonstrates.
+5. **A working expert for the handled shape.** The shape itself now exists and
+   is the right test: a body 96 mm across against a 78 mm pad gap, ungraspable in
+   *both* horizontal axes, with a graspable 20 mm handle offset 118 mm along the
+   object's own x axis. The observation reports the body frame, which sits on the
+   ungraspable part, so "go to the reported position and close" cannot work — and
+   a scripted expert that does exactly that scores **1/30**, which is what makes
+   the shape a genuine test of selection rather than of luck. (An earlier version
+   was wide in one axis only and the same naive expert scored 22/30 on it: random
+   yaw presented the narrow face often enough that no selection was needed.)
+
+   What does not work yet is an expert that *does* select. One aimed at the
+   handle, with the wrist turned to close across its thin axis, reaches the
+   handle to within 2 mm laterally and 1 mm vertically — and then the pads close
+   through it and meet each other, with no handle contact in the list. Two
+   MuJoCo causes were found and fixed on the way there and are recorded below;
+   whatever remains is a third. Until an expert solves it there are no
+   demonstrations, so nothing is claimed about learned grasp-point selection.
+
+   Two runtime-mutation gotchas found doing this, both verified on a bare model
+   outside the environment, both silent:
+
+   * **`model.geom_pos` changes are ignored.** `geom_xpos` comes back equal to
+     the body position. The handle's offset is therefore compiled into the scene.
+   * **`geom_rbound` is not recomputed when `geom_size` changes.** A geom
+     compiled at 1 mm keeps a 1.7 mm broad-phase collision radius however large
+     it is made at runtime, so it never enters collision at all. This is why the
+     existing box/cylinder/sphere switching works — those sizes are all close to
+     the compiled one — and why growing a placeholder geom does not.
 
 6. **Isaac place training at a comparable budget.** The task is ported, the
    expert places 23 of 24, 128 demonstrations are recorded, and a three-seed

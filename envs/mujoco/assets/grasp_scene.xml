@@ -133,6 +133,29 @@
       <freejoint name="object_free"/>
       <geom name="object" type="box" size="0.022 0.022 0.022" material="object"
             mass="0.08" friction="1.0 0.05 0.0005" condim="4"/>
+      <!-- The graspable handle of the handled shape, and nothing at all
+           otherwise. Grasp-point selection needs an object whose *reported
+           pose is not a graspable point*: the body frame sits at the wide
+           part, so "go to the object position and close" cannot work, and the
+           policy has to use the reported orientation to find the handle. The
+           geom is parked at zero size for every other shape, so the default
+           object is exactly the box it always was. -->
+      <!-- The handle of the handled shape. Two things here are compiled rather
+           than set from Python, and both were found by measurement after the
+           obvious version silently did nothing.
+           * pos: MuJoCo 3.11 ignores a runtime change to model.geom_pos --
+             geom_xpos comes back equal to the body position. Verified on a bare
+             model outside this environment.
+           * size: geom_rbound, the broad-phase collision radius, is computed at
+             compile time and is NOT recomputed when geom_size changes. Compiled
+             at 1 mm, this geom kept a 1.7 mm collision radius however large it
+             was made at runtime, so the pads closed straight through it and met
+             each other. It is therefore compiled at full size.
+           Switching it off for every other shape is done with the contact
+           bitmasks, which *are* read every step, plus a cosmetic shrink. -->
+      <geom name="object_handle" type="box" size="0.070 0.010 0.010"
+            pos="0.118 0 0" material="object" friction="1.0 0.005 0.0001"
+            mass="0.001" contype="0" conaffinity="0"/>
     </body>
 
     <!-- Goal marker, moved at reset. Visual only. -->

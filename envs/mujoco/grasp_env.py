@@ -113,6 +113,8 @@ from src.rewards.place_reward import (  # noqa: E402
 SCENE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "grasp_scene.xml")
 ARM_SCENE_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "assets", "grasp_scene_arm.xml")
+HANDLED_SCENE_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "assets", "grasp_scene_handled.xml")
 # Damped least squares for the arm variant's IK. The damping is what makes a
 # singular configuration produce a small motion instead of an enormous one --
 
@@ -243,7 +245,12 @@ class GraspEnv(_BASE):
         start_progress: float = 0.0,
         start_progress_range: Optional[Tuple[float, float]] = None,
         clutter: int = 0,
+        handled: bool = False,
     ) -> None:
+        # The grasp-point-selection shape, which needs its own scene: see the
+        # note at the top of grasp_scene_handled.xml for the three compiled-not-
+        # live MuJoCo properties that make a runtime version impossible.
+        self.handled = bool(handled)
         if task not in TASKS:
             raise ValueError("task must be one of {}, got {!r}".format(TASKS, task))
         self.task = task
@@ -306,7 +313,8 @@ class GraspEnv(_BASE):
         self.obs_dim = WRIST_OBS_DIM if self.wrist else OBS_DIM
         self.act_dim = WRIST_ACT_DIM if self.wrist else ACT_DIM
         self.model = mujoco.MjModel.from_xml_path(
-            ARM_SCENE_PATH if self.arm else SCENE_PATH)
+            ARM_SCENE_PATH if self.arm
+            else (HANDLED_SCENE_PATH if self.handled else SCENE_PATH))
         self.data = mujoco.MjData(self.model)
 
         self.reward_cfg = reward_cfg or (
@@ -337,11 +345,15 @@ class GraspEnv(_BASE):
             None if self.arm else self.model.body("mocap").mocapid[0])
         self._object_bid = self.model.body("object").id
         self._object_gid = self.model.geom("object").id
-        self._handle_gid = self.model.geom("object_handle").id
+        try:
+            self._handle_gid = self.model.geom("object_handle").id
+        except Exception:            # the arm scene has no handle
+            self._handle_gid = -1
         # The handle is part of the object, so a pad touching it is a grasp.
         # Without this the handled shape can be held perfectly and reported as
         # ungrasped, which is indistinguishable from a targeting failure.
-        self._object_geoms = {self._object_gid, self._handle_gid}
+        self._object_geoms = ({self._object_gid, self._handle_gid}
+                              if self._handle_gid >= 0 else {self._object_gid})
         self._table_gid = self.model.geom("table_top").id
         self._grip_sid = self.model.site("grip_site").id
         if self.arm:
@@ -470,7 +482,15 @@ class GraspEnv(_BASE):
         # a radius alone. All three are set so the width the pads have to close
         # on is the same, which is what makes the comparison across shapes fair.
         shape = int(round(world.object_shape))
-        if shape == 1:
+        if self.handled:
+            # The handled scene defines its own geometry and must not be
+            # rewritten here. Without this guard the shape switcher below reset
+            # the body to a 22 mm box and the handle to a millimetre at every
+            # reset, so the dedicated scene was silently replaced by an ordinary
+            # one -- and the naive expert scored 30/30 on what was, by then,
+            # just a box.
+            pass
+        elif shape == 1:
             self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_CYLINDER)
             self.model.geom_size[self._object_gid] = np.array([hs, hs, 0.0])
         elif shape == 2:
@@ -505,7 +525,7 @@ class GraspEnv(_BASE):
         else:
             self.model.geom_type[self._object_gid] = int(mujoco.mjtGeom.mjGEOM_BOX)
             self.model.geom_size[self._object_gid] = np.array([hs, hs, hs])
-        if shape != 3:
+        if shape != 3 and not self.handled:
             # Shrunk to a millimetre and taken out of collision entirely, so
             # every other shape is exactly what it was before the handle existed.
             # Its *position* cannot be moved at runtime -- see the note in the
@@ -568,7 +588,13 @@ class GraspEnv(_BASE):
         yaw = self.np_random.uniform(-self.world.init_yaw_jitter, self.world.init_yaw_jitter)
 
         qadr = self._object_qadr
-        self.data.qpos[qadr : qadr + 3] = [ox, oy, TABLE_HEIGHT + hs + 0.001]
+        # The spawn height has to come from the geometry, not from the sampled
+        # half-size. They are the same thing for every shape the randomiser
+        # controls, and they are not for the handled scene, whose 48 mm cube was
+        # being spawned 25 mm inside the table and launched out of it.
+        spawn_hs = (float(self.model.geom_size[self._object_gid][2])
+                    if self.handled else hs)
+        self.data.qpos[qadr : qadr + 3] = [ox, oy, TABLE_HEIGHT + spawn_hs + 0.001]
         self.data.qpos[qadr + 3 : qadr + 7] = [np.cos(yaw / 2), 0.0, 0.0, np.sin(yaw / 2)]
 
         # Hand starts above the table, offset from the object so the policy has

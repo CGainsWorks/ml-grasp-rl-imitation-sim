@@ -53,43 +53,41 @@ The **place** reward computed on the GPU agrees with the shared numpy
 implementation to 6.9e-08 on the same states, which is the same standard the
 lift reward is held to.
 
-At `medium` randomisation, **seven of the eight pass and one fails**, and the
-one that fails is the expert:
+At `medium` randomisation all eight pass as well, with reward parity at
+7.27e-08.
 
-```
-[PASS] reward matches the shared numpy implementation   max difference 2.78e-08
-[PASS] observation layout matches the MuJoCo table
-[PASS] scripted expert lifts the box                    8/8 lifted
-[FAIL] scripted expert places the box on the target     0/8 placed
-[PASS] the lift latch fires, nothing is being slid      4/4 picked the object up
-[PASS] randomisation actually varies the world          mass spread 0.115 kg
-```
+### The Franka place expert took three measurements to fix, not three guesses
 
-Everything that tests whether this is *the same task* passes at both levels.
-What fails is `ScriptedPlaceExpert`'s success rate on a robot it was not written
-for, which is a fact about the expert.
+`ScriptedPlaceExpert` was written for the MuJoCo mocap weld and initially placed
+**2 of 8** here. Three things were tried and only the last two were right:
+
+| | result |
+| --- | --- |
+| double the episode to 6 s — "it must be running out of horizon" | 2 of 8, unchanged |
+| faster descent, shorter release wait | 5 of 8 |
+| looser traverse tolerance as well | **23 of 24** |
+
+The horizon guess was wrong and the way to know was cheap: printing which phase
+each expert *finished* in. They were finishing in `LOWER` and `RELEASE`, not in
+`TRAVERSE`, so they were reaching the end of the sequence and stalling there
+rather than running out of road. After the descent was loosened the stall moved
+to `TRAVERSE` — visible in the same trace — and loosening that finished the job.
+Each round cost one four-minute Isaac start; guessing would have cost several.
+
+The tuned values live in `scripts/isaac_bringup.py`, **not** in the expert's
+defaults. The speed caps are now a constructor parameter for exactly this
+reason: hard-coding faster ones would fix Isaac and move every MuJoCo number in
+the repository. The MuJoCo defaults still score 20/20 on their own simulator.
+
+Under `medium` randomisation the same expert places **7 of 24**. That is a real
+degradation and it is not obviously wrong — the MuJoCo place expert falls from
+40/40 to 5/40 on `shifted` — but it does mean an Isaac place demonstration set
+would have to be recorded on the nominal world, exactly as the MuJoCo arm's had
+to be.
 
 Two honest caveats, neither hidden:
 
-* **The expert places 2 of 8 at `none` and 0 of 8 at `medium`**, against 40 of
-  40 and 40 of 40 in MuJoCo. The Franka's pre-grasp pose and gripper are not the
-  MuJoCo hand's, and `ScriptedPlaceExpert` was tuned against the latter — it
-  lifts reliably here (8/8) and then puts the box down badly. A port is checked
-  for being the same *task*, not for reproducing a success rate, and the check
-  is written as `> 0` for that reason. It does mean **no Isaac place training
-  number exists and none is claimed**: demonstrations cannot be recorded from an
-  expert this weak, and from-scratch RL does not solve this task in MuJoCo
-  either.
-
-  The horizon was the obvious suspect and it is not the cause. Doubling the
-  place episode to 6 s, on the theory that the Franka's IK tracking is slower
-  than the mocap weld and the expert was running out of time while lowering,
-  gives 2 of 8 — exactly the same. That change was reverted rather than left in,
-  because a divergence between the two ports that buys nothing weakens "the same
-  task in both simulators" for free. What the state actually shows at the end of
-  a failed episode is the box still *in the hand*, above the target: the expert
-  reaches the lowering phase and does not finish it.
-* **Target sampling differs in method.** MuJoCo rejection-samples the target
+* **Target sampling differs in method.*** **Target sampling differs in method.** MuJoCo rejection-samples the target
   until the travel distance falls in the allowed band, which keeps the marginal
   distribution uniform over the usable region. Doing that per-environment on the
   GPU would need a loop, so this draws a bearing and a radius inside the band and

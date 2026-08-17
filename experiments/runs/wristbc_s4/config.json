@@ -1,0 +1,8 @@
+{
+  "wrist": true,
+  "history": 1,
+  "randomisation": "wrist_bench",
+  "algorithm": "bc",
+  "seed": 4,
+  "backfilled": "written after training; train_il.py now writes this itself"
+}

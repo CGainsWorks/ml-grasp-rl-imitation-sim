@@ -1,0 +1,166 @@
+{
+  "label": "camprivrl",
+  "checkpoint": "policy.pt",
+  "episodes_per_seed": 100,
+  "eval_levels": [
+    "measured_camera"
+  ],
+  "n_seeds": 5,
+  "single_seed_warning": null,
+  "runs": [
+    {
+      "run": "experiments/runs\\camprivrl_s0",
+      "train_randomisation": "measured_camera",
+      "seed": 0,
+      "levels": {
+        "measured_camera": {
+          "successes": 35,
+          "episodes": 100,
+          "success_rate": 0.35,
+          "grasp_rate": 0.65,
+          "mean_return": 146.94910649150287,
+          "mean_max_lift": 0.06395539800464435
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\camprivrl_s1",
+      "train_randomisation": "measured_camera",
+      "seed": 1,
+      "levels": {
+        "measured_camera": {
+          "successes": 31,
+          "episodes": 100,
+          "success_rate": 0.31,
+          "grasp_rate": 0.62,
+          "mean_return": 114.43997368915274,
+          "mean_max_lift": 0.06445648911221465
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\camprivrl_s2",
+      "train_randomisation": "measured_camera",
+      "seed": 2,
+      "levels": {
+        "measured_camera": {
+          "successes": 30,
+          "episodes": 100,
+          "success_rate": 0.3,
+          "grasp_rate": 0.58,
+          "mean_return": 100.33809257639903,
+          "mean_max_lift": 0.05526620232385818
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\camprivrl_s3",
+      "train_randomisation": "measured_camera",
+      "seed": 3,
+      "levels": {
+        "measured_camera": {
+          "successes": 41,
+          "episodes": 100,
+          "success_rate": 0.41,
+          "grasp_rate": 0.79,
+          "mean_return": 153.7261314675489,
+          "mean_max_lift": 0.07636531801549125
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\camprivrl_s4",
+      "train_randomisation": "measured_camera",
+      "seed": 4,
+      "levels": {
+        "measured_camera": {
+          "successes": 26,
+          "episodes": 100,
+          "success_rate": 0.26,
+          "grasp_rate": 0.67,
+          "mean_return": 108.78515371538812,
+          "mean_max_lift": 0.060428612088071904
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "measured_camera": {
+      "across_seeds": {
+        "point": 0.32599999999999996,
+        "low": 0.2554437125693252,
+        "high": 0.3965562874306747,
+        "n": 5,
+        "method": "t"
+      },
+      "across_seeds_bootstrap": {
+        "point": 0.32599999999999996,
+        "low": 0.286,
+        "high": 0.368,
+        "n": 5,
+        "method": "bootstrap"
+      },
+      "pooled_wilson": {
+        "point": 0.326,
+        "low": 0.28637531603524746,
+        "high": 0.3682779544453728,
+        "n": 500,
+        "method": "wilson"
+      },
+      "per_seed": [
+        {
+          "point": 0.35,
+          "low": 0.26364248243097527,
+          "high": 0.44745556703112027,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.31,
+          "low": 0.22779697212376038,
+          "high": 0.40626055719489407,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.3,
+          "low": 0.2189488529493276,
+          "high": 0.3958485463334666,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.41,
+          "low": 0.3186731302113651,
+          "high": 0.5079856994658921,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.26,
+          "low": 0.18404698464748132,
+          "high": 0.3537098944918718,
+          "n": 100,
+          "method": "wilson"
+        }
+      ],
+      "per_seed_rates": [
+        0.35,
+        0.31,
+        0.3,
+        0.41,
+        0.26
+      ],
+      "n_seeds": 5,
+      "episodes_per_seed": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "mean_grasp_rate": 0.662
+    }
+  },
+  "wall_seconds": 45.3
+}

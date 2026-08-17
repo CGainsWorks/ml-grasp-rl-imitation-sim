@@ -471,12 +471,16 @@ limitation and a worse-sounding one.
 * **The default hand has no arm** — it floats on a mocap weld, and every
   headline number was produced that way. A six-jointed arm variant exists and
   was measured: from-scratch RL through it never closes the fingers at all
-  (grasp rate 0.000 against 0.593 for the weld), and cloning reaches 0.448. That
-  gap is the cost of the abstraction.
-* **The wrist is optional and does not help** — the yaw joint exists, the
-  scripted expert uses it, and a policy trained with it scores 0.000 against
-  0.122 without, in two placements of the alignment reward. The joint was the
-  easy half.
+  (grasp rate 0.000 against 0.593 for the weld, and 0.033 even with
+  demonstrations in the replay buffer), while demonstrations with a *held*
+  cloning anchor reach **0.536** [0.416, 0.656]. That gap is the cost of the
+  abstraction; holding the anchor rather than decaying it is worth 0.176 → 0.536
+  on its own.
+* **The wrist is learnable but not discoverable** — from-scratch RL with the
+  yaw joint scores **0.000** against 0.122 without it, in two placements of an
+  alignment reward. That is an exploration failure, not a joint that does not
+  work: given 200 demonstrations the same variant reaches **0.478**
+  [0.447, 0.509] over five seeds. SAC never finds the alignment on its own.
 * **Perception is a check, not a pipeline** — a CNN pose estimator from 64x64
   renders exists and costs 18 points when substituted for ground truth. It was
   built to *test* the sensing noise model, and it refuted one of the three
@@ -485,12 +489,16 @@ limitation and a worse-sounding one.
   lift-and-hold. On pick-and-place, seven designs, a tripled budget and two
   curricula all fail while cloning succeeds immediately. Shaping here buys
   segments and does not chain them.
-* **No hardware, and the sensing gap says how much that matters** — `shifted` is
-  a proxy for a real robot. Worse, every policy here scores **~0.00** at the
-  pose error this repository's own camera estimator produces (0.0513 m against
-  the 0.004-0.010 m it randomises over), and so does the scripted expert. The
-  numbers in this README were produced under sensing five to thirteen times
-  better than the perception stack in the same repository delivers.
+* **No hardware, and the sensing gap costs about 60%** — `shifted` is a proxy
+  for a real robot. At the pose error this repository's own camera estimator
+  produces (0.0513 m against the 0.004-0.010 m it randomises over), every
+  policy trained the ordinary way scores **~0.00**, and so does the scripted
+  expert. One method clears it: a demonstrator that reads true state teaching a
+  policy that only ever sees the noisy view reaches **0.406** [0.345, 0.467].
+  Stacking four observation frames instead scores **0.000** — the error is
+  autocorrelated at 0.947, so a window has nothing independent to average. The
+  headline numbers here were still produced under sensing five to thirteen
+  times better than the perception stack in the same repository delivers.
 * **Isaac Lab runs both tasks and still supplies no headline number** — the
   bring-up checks pass at `none` and `medium`, place-reward parity is 6.9e-08 on
   the GPU, and at a budget matched on *gradient updates* the second task's

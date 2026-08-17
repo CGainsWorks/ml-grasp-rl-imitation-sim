@@ -118,11 +118,12 @@ def train(args: argparse.Namespace) -> Dict:
 
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
                    task=args.task, arm=args.arm,
-                   handled=args.handled, wrist=args.handled)
+                   handled=args.handled, history=args.history,
+                   wrist=args.handled or args.wrist)
     eval_env = make_env(args.randomisation, seed=args.seed + 999,
                         max_steps=args.max_steps, task=args.task,
-                        arm=args.arm, handled=args.handled,
-                        wrist=args.handled)
+                        arm=args.arm, handled=args.handled, history=args.history,
+                        wrist=args.handled or args.wrist)
     # Sized from the environment, not from the module constants: the wrist and
     # handled variants are 34-dimensional, and a 32-dimensional actor fails deep
     # inside the normaliser rather than at construction.
@@ -196,6 +197,17 @@ def train(args: argparse.Namespace) -> Dict:
         "epochs": args.epochs,
         "wall_seconds": round(time.time() - t0, 1),
     }
+    # The same config.json the RL trainer writes. Evaluation reads the
+    # observation shape from here rather than from the command line, so a
+    # cloned wrist or windowed policy can be scored without being told twice.
+    with open(os.path.join(args.output, "config.json"), "w",
+              encoding="utf-8") as fh:
+        json.dump({"algorithm": "dagger" if args.dagger else "bc",
+                   "seed": args.seed, "randomisation": args.randomisation,
+                   "arm": args.arm, "handled": args.handled,
+                   "wrist": args.handled or args.wrist,
+                   "history": args.history, "hidden": args.hidden,
+                   "demos": args.demos}, fh, indent=2)
     with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
     with open(os.path.join(args.output, "progress.csv"), "w", encoding="utf-8") as fh:
@@ -224,6 +236,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
     parser.add_argument("--arm", action="store_true")
     parser.add_argument("--handled", action="store_true")
+    parser.add_argument("--wrist", action="store_true")
+    parser.add_argument("--history", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)

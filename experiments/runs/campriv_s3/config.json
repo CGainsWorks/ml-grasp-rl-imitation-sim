@@ -1,0 +1,8 @@
+{
+  "wrist": false,
+  "history": 4,
+  "randomisation": "measured_camera",
+  "algorithm": "bc",
+  "seed": 3,
+  "backfilled": "written after training; train_il.py now writes this itself"
+}

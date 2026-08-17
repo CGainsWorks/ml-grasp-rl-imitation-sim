@@ -1,0 +1,40 @@
+{
+  "algorithm": "bc",
+  "final_success_rate": 0.5,
+  "final_grasp_rate": 0.7,
+  "final_val_mse": 0.031712159514427185,
+  "transitions": 20000,
+  "demo_episodes": 200,
+  "history": [
+    {
+      "round": 0,
+      "transitions": 20000,
+      "train_mse": 0.01406894988891944,
+      "val_mse": 0.031712159514427185,
+      "success_rate": 0.5,
+      "grasp_rate": 0.7
+    }
+  ],
+  "seed": 3,
+  "randomisation": "wrist_bench",
+  "demos": "demonstrations/expert_wrist.npz",
+  "demo_meta": {
+    "episodes_requested": 200,
+    "episodes_attempted": 365,
+    "episodes_kept": 200,
+    "expert_success_rate": 0.547945205479452,
+    "randomisation": "wrist_bench",
+    "seed": 7,
+    "expert_noise": 0.02,
+    "keep_failures": false,
+    "max_steps": 100,
+    "task": "lift",
+    "arm": false,
+    "handled": false,
+    "wrist": true,
+    "wall_seconds": 23.1,
+    "source": "src/policies/scripted_expert.py"
+  },
+  "epochs": 60,
+  "wall_seconds": 11.9
+}

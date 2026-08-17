@@ -247,7 +247,19 @@ class GraspEnv(_BASE):
         start_progress_range: Optional[Tuple[float, float]] = None,
         clutter: int = 0,
         handled: bool = False,
+        history: int = 1,
     ) -> None:
+        # How many past observations the policy sees, concatenated oldest-first.
+        #
+        # 1 is the memoryless default every headline number was produced with.
+        # It exists because the sensing error this repository randomises over is
+        # *correlated in time* -- 0.9 by assumption, 0.947 measured -- and a
+        # memoryless network cannot average correlated noise out of a single
+        # sample. Given a window it can, which is the difference between "the
+        # policy is handed a noisy pose" and "the policy is handed a sequence it
+        # can filter". At 0.0513 m of error, which is what the camera actually
+        # delivers, every memoryless policy here scores 0.00.
+        self.history = max(1, int(history))
         # The grasp-point-selection shape, which needs its own scene: see the
         # note at the top of grasp_scene_handled.xml for the three compiled-not-
         # live MuJoCo properties that make a runtime version impossible.
@@ -311,7 +323,8 @@ class GraspEnv(_BASE):
         self._max_half_size = float(
             max_half_size if max_half_size is not None
             else (WRIST_MAX_HALF_SIZE if self.wrist else 0.024))
-        self.obs_dim = WRIST_OBS_DIM if self.wrist else OBS_DIM
+        self.obs_dim = (WRIST_OBS_DIM if self.wrist else OBS_DIM) * self.history
+        self._single_obs_dim = WRIST_OBS_DIM if self.wrist else OBS_DIM
         self.act_dim = WRIST_ACT_DIM if self.wrist else ACT_DIM
         self.model = mujoco.MjModel.from_xml_path(
             ARM_SCENE_PATH if self.arm
@@ -466,6 +479,7 @@ class GraspEnv(_BASE):
         self._last_terms: Dict[str, float] = {}
         self._wrist_yaw = 0.0
         self._noise_state: Dict[str, np.ndarray] = {}
+        self._obs_window: deque = deque(maxlen=self.history)
 
         if spaces is not None:
             self.observation_space = spaces.Box(
@@ -625,6 +639,10 @@ class GraspEnv(_BASE):
             self.data.mocap_quat[self._mocap_id] = [1.0, 0.0, 0.0, 0.0]
         self._wrist_yaw = 0.0
         self._noise_state = {}
+        # Primed with copies of the first frame rather than zeros: a window of
+        # zeros is a state the policy never sees again after step `history`, and
+        # it spends the start of every episode reacting to it.
+        self._obs_window = deque(maxlen=self.history)
         # Open the fingers. Only the finger actuators: on the arm variant a
         # blanket write lands on the six joint setpoints too, leaving them at
         # zero while the joints sit at the IK solution. The actuators then close
@@ -672,6 +690,10 @@ class GraspEnv(_BASE):
         # the observation reads site positions.
         mujoco.mj_forward(self.model, self.data)
         self._prev_grip = self._grip_pos().copy()
+        if self.history > 1:
+            first = self._single_observation()
+            for _ in range(self.history):
+                self._obs_window.append(first)
         return self._observation(), self._info(False, False, 0.0)
 
     def _place_clutter(self, ox: float, oy: float, half_size: float) -> None:
@@ -1022,6 +1044,41 @@ class GraspEnv(_BASE):
         return self._grasp_latch > 0
 
     def _observation(self) -> np.ndarray:
+        """The stacked observation the policy sees.
+
+        With ``history == 1`` this is exactly what it always was, so every
+        existing number and every saved checkpoint is unaffected.
+        """
+        current = self._single_observation()
+        if self.history == 1:
+            return current
+        self._obs_window.append(current)
+        return np.concatenate(list(self._obs_window)).astype(np.float32)
+
+    def clean_observation(self) -> np.ndarray:
+        """The observation with the sensing noise switched off.
+
+        For privileged distillation only: a demonstrator uses this, a policy
+        never does. Kept as an explicit method rather than a flag so that any
+        use of it is visible at the call site -- a policy quietly reading this
+        would be reporting a number for a task nobody set.
+        """
+        saved = (self.world.obs_noise_pos, self.world.obs_noise_vel,
+                 self.world.obs_noise_rot)
+        object.__setattr__(self.world, "obs_noise_pos", 0.0)
+        object.__setattr__(self.world, "obs_noise_vel", 0.0)
+        object.__setattr__(self.world, "obs_noise_rot", 0.0)
+        try:
+            clean = self._single_observation()
+        finally:
+            object.__setattr__(self.world, "obs_noise_pos", saved[0])
+            object.__setattr__(self.world, "obs_noise_vel", saved[1])
+            object.__setattr__(self.world, "obs_noise_rot", saved[2])
+        if self.history == 1:
+            return clean
+        return np.concatenate([clean] * self.history).astype(np.float32)
+
+    def _single_observation(self) -> np.ndarray:
         grip = self._grip_pos()
         dt = self.model.opt.timestep * self.n_substeps
         grip_vel = (grip - self._prev_grip) / max(dt, 1e-6)

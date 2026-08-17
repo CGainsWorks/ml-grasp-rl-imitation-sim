@@ -42,9 +42,13 @@ def record(
     task: str = "lift",
     arm: bool = False,
     handled: bool = False,
+    wrist: bool = False,
+    privileged: bool = False,
+    history: int = 1,
 ) -> dict:
     env = make_env(randomisation, seed=seed, max_steps=max_steps, task=task,
-                   arm=arm, handled=handled, wrist=handled)
+                   arm=arm, handled=handled, wrist=handled or wrist,
+                   history=history)
     rng = np.random.default_rng(seed)
     expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
     if handled:
@@ -56,6 +60,8 @@ def record(
                             grasp_offset=HANDLE_CENTRE,
                             grasp_yaw_offset=np.pi / 2.0,
                             grasp_height=HANDLE_HEIGHT)
+    elif wrist:
+        expert = expert_cls(noise=expert_noise, rng=rng, wrist=True)
     else:
         expert = expert_cls(noise=expert_noise, rng=rng)
 
@@ -71,7 +77,18 @@ def record(
         ep_obs, ep_act, ep_rew, ep_next, ep_done = [], [], [], [], []
         info: dict = {}
         while True:
-            action = expert.act(obs)
+            # Privileged distillation: the expert acts on the *clean* state, the
+            # transition stores the *noisy* observation the policy will have.
+            #
+            # This is the only honest way to demonstrate a task whose sensing is
+            # too poor to act on directly. At the camera's measured 0.0513 m the
+            # object's reported position is wrong by more than the box is wide,
+            # and the error is correlated in time at 0.947 -- so it cannot be
+            # averaged away by a filter or a short window, which is exactly why
+            # both of those failed. A demonstrator that can see teaches a policy
+            # that cannot, and the policy has to learn what to do rather than
+            # where the box is.
+            action = expert.act(env.clean_observation() if privileged else obs)
             next_obs, reward, terminated, truncated, info = env.step(action)
             ep_obs.append(obs)
             ep_act.append(action)
@@ -122,6 +139,9 @@ def record(
                 "task": task,
                 "arm": arm,
                 "handled": handled,
+                "wrist": wrist,
+                "privileged": privileged,
+                "history": history,
                 "wall_seconds": round(time.time() - t0, 1),
                 "source": ("src/policies/scripted_place_expert.py" if task == "place"
                            else "src/policies/scripted_expert.py"),
@@ -142,6 +162,16 @@ def main() -> None:
     parser.add_argument("--keep-failures", action="store_true")
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--task", default="lift", choices=("lift", "place"))
+    parser.add_argument("--history", type=int, default=1,
+                        help="stack this many observation frames, matching "
+                             "the policy the demonstrations will train")
+    parser.add_argument("--privileged", action="store_true",
+                        help="the expert sees the noise-free state while the "
+                             "stored observation stays noisy. For sensing levels "
+                             "no demonstrator could act through")
+    parser.add_argument("--wrist", action="store_true",
+                        help="the 5-D wrist-yaw variant: the pads can be turned "
+                             "square to a face before closing")
     parser.add_argument("--handled", action="store_true",
                         help="the grasp-point-selection shape: a cube that "
                              "cannot be grasped anywhere, with an offset handle "
@@ -155,7 +185,7 @@ def main() -> None:
     data = record(
         args.episodes, args.randomisation, args.seed,
         args.expert_noise, args.keep_failures, args.max_steps, args.task,
-        args.arm, args.handled,
+        args.arm, args.handled, args.wrist, args.privileged, args.history,
     )
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     np.savez_compressed(args.output, **data)

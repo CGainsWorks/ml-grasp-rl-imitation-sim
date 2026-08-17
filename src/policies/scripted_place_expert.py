@@ -69,10 +69,26 @@ class ScriptedPlaceExpert(ScriptedExpert):
     """Phase-based expert for ``task="place"``. One instance per episode."""
 
     def __init__(self, *args, release_steps: int = 6, carry_tol: float = 0.020,
-                 lower_tol: float = 0.010, **kwargs) -> None:
+                 lower_tol: float = 0.010, speed_caps: dict | None = None,
+                 **kwargs) -> None:
         self.release_steps = int(release_steps)
         self.carry_tol = float(carry_tol)
         self.lower_tol = float(lower_tol)
+        # Per-phase speed caps, overridable per instance rather than per module.
+        #
+        # The defaults are tuned for the MuJoCo mocap weld, which tracks a
+        # Cartesian setpoint almost rigidly. On the Isaac Franka the same script
+        # reaches the lowering phase and stalls in it: a 0.30 cap on a chain
+        # driven through differential IK is slow enough that the descent
+        # tolerance is never met inside the phase timeout, so the fingers never
+        # open. Phase traces from the bring-up show the experts finishing in
+        # LOWER and RELEASE, not in TRAVERSE, which is what ruled out "it ran out
+        # of horizon" -- doubling the episode length changes nothing.
+        #
+        # Hard-coding faster caps would fix Isaac and change every MuJoCo number
+        # in the repository, so the caps are a parameter and the robot-specific
+        # values live with the robot.
+        self.speed_caps = dict(SPEED_CAP if speed_caps is None else speed_caps)
         super().__init__(*args, **kwargs)
 
     def reset(self) -> None:
@@ -140,8 +156,8 @@ class ScriptedPlaceExpert(ScriptedExpert):
         else:
             target = grip + (want - obj)
 
-        delta = np.clip(self.kp * (target - grip), -SPEED_CAP[phase],
-                        SPEED_CAP[phase])
+        cap = self.speed_caps[phase]
+        delta = np.clip(self.kp * (target - grip), -cap, cap)
         if self.wrist:
             action = np.concatenate([delta, [0.0], [grip_cmd]])
         else:

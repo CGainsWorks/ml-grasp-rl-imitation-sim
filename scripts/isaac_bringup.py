@@ -57,7 +57,19 @@ from envs.isaac.grasp_task import (  # noqa: E402
     GraspTaskCfg,
 )
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
+from src.policies.scripted_place_expert import (  # noqa: E402
+    LOWER,
+    RELEASE,
+    RETREAT,
+    TRAVERSE,
+)
+from src.policies.scripted_place_expert import LIFT as _LIFT  # noqa: E402
 from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
+
+# The MuJoCo caps with the descent and release loosened for a chain driven by
+# differential IK rather than a near-rigid mocap weld.
+FRANKA_PLACE_CAPS = {_LIFT: 0.55, TRAVERSE: 0.70, LOWER: 0.60, RELEASE: 0.20,
+                     RETREAT: 0.60}
 from src.rewards.grasp_reward import GraspRewardConfig, grasp_reward  # noqa: E402
 from src.rewards.place_reward import PlaceRewardConfig, place_reward  # noqa: E402
 
@@ -136,8 +148,16 @@ check("reward matches the shared numpy implementation", max_diff < 1e-4,
 successes, lifted = 0, 0
 for episode in range(args.episodes):
     obs_dict, _ = env.reset()
-    expert_cls = ScriptedPlaceExpert if args.task == "place" else ScriptedExpert
-    experts = [expert_cls() for _ in range(args.num_envs)]
+    if args.task == "place":
+        # Franka-specific, and only here. The MuJoCo defaults stall this robot in
+        # the lowering phase -- see the speed_caps comment in
+        # src/policies/scripted_place_expert.py. The shared defaults are left
+        # alone so no MuJoCo number moves.
+        experts = [ScriptedPlaceExpert(
+            speed_caps=dict(FRANKA_PLACE_CAPS), lower_tol=0.016,
+            carry_tol=0.035, release_steps=4) for _ in range(args.num_envs)]
+    else:
+        experts = [ScriptedExpert() for _ in range(args.num_envs)]
     peak = torch.zeros(args.num_envs, device=env.device)
     # Stop two steps short of the horizon. DirectRLEnv auto-resets the instant
     # the time-out fires, so reading the state after the last step reports the
@@ -159,6 +179,12 @@ for episode in range(args.episodes):
         np.round(env.goal_pos[:, 2].cpu().numpy(), 3)), flush=True)
     print("      grasped flag:      {}".format(
         env._grasped().cpu().numpy()), flush=True)
+    # Which phase each expert finished in. A state machine that never leaves a
+    # phase is the difference between "the port is wrong" and "the expert ran
+    # out of road on a robot it was not written for", and guessing between those
+    # two costs a four-minute Isaac start per guess.
+    print("      expert final phase: {}".format(
+        [e.phase for e in experts]), flush=True)
 
 total = args.episodes * args.num_envs
 check("scripted expert lifts the box", lifted > 0,

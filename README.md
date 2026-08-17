@@ -22,7 +22,12 @@ carried over to it unchanged at 0.978. From-scratch RL has now been through
 clearing 0.05, and the diagnosis is that shaping of this kind buys *segments* —
 put a maximum where a segment ends and the policy learns that segment and stops
 there. Reaching, grasping, lifting and carrying were each bought that way;
-chaining them was not. That is written up rather than buried, in
+chaining them was not.
+
+**The Isaac port reproduces it on a different robot**: 0.419 demonstration-seeded
+against 0.000 from scratch, with the prediction recorded before the runs. A
+second simulator agreeing is worth more than an eighth reward design on the
+first, because it could have disagreed. Written up rather than buried, in
 [docs/results.md](docs/results.md) §7.
 
 ![expert rollout](videos/expert_nominal.gif)

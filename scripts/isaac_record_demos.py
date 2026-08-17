@@ -33,6 +33,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--episodes", type=int, default=128)
 parser.add_argument("--num-envs", type=int, default=32)
 parser.add_argument("--randomisation", default="low")
+parser.add_argument("--task", default="lift", choices=("lift", "place"))
 parser.add_argument("--expert-noise", type=float, default=0.02)
 parser.add_argument("--keep-failures", action="store_true")
 parser.add_argument("--output", default="demonstrations/isaac_expert_low.npz")
@@ -49,8 +50,32 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from envs.isaac.grasp_task import GraspTask, GraspTaskCfg  # noqa: E402
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
+from src.policies.scripted_place_expert import (  # noqa: E402
+    LOWER,
+    RELEASE,
+    RETREAT,
+    TRAVERSE,
+)
+from src.policies.scripted_place_expert import LIFT as _LIFT  # noqa: E402
+from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
+
+# The Franka-tuned place parameters, identical to scripts/isaac_bringup.py. The
+# expert's own defaults are for the MuJoCo weld and place 2 of 8 here; these
+# place 23 of 24. See envs/isaac/README.md for how they were found.
+FRANKA_PLACE_CAPS = {_LIFT: 0.55, TRAVERSE: 0.70, LOWER: 0.60, RELEASE: 0.20,
+                     RETREAT: 0.60}
+
+
+def make_expert(noise, rng):
+    if args.task == "place":
+        return ScriptedPlaceExpert(
+            noise=noise, rng=rng, speed_caps=dict(FRANKA_PLACE_CAPS),
+            lower_tol=0.016, carry_tol=0.035, release_steps=4)
+    return ScriptedExpert(noise=noise, rng=rng)
+
 
 cfg = GraspTaskCfg()
+cfg.task = args.task
 cfg.scene.num_envs = args.num_envs
 cfg.randomisation_level = args.randomisation
 env = GraspTask(cfg)
@@ -64,7 +89,7 @@ horizon = int(env.max_episode_length) - 2
 
 while kept < args.episodes:
     obs_dict, _ = env.reset()
-    experts = [ScriptedExpert(noise=args.expert_noise, rng=rng) for _ in range(args.num_envs)]
+    experts = [make_expert(args.expert_noise, rng) for _ in range(args.num_envs)]
     # Per-environment rollout buffers; each environment is one episode.
     ep_obs = [[] for _ in range(args.num_envs)]
     ep_act = [[] for _ in range(args.num_envs)]

@@ -732,6 +732,21 @@ In rough order of expected effect:
   have now been audited against published measurements
   ([randomisation-sources.md](randomisation-sources.md)) and are optimistic on
   latency by 2-5x, but a survey is not hardware.
-* **An Isaac port of the place task.** The reward is written
-  backend-agnostically for exactly that and the port has not been done, so the
-  second task is a MuJoCo-only result.
+* ~~**An Isaac port of the place task.**~~ **Done, and it reproduces the
+  finding.** Three seeds each, 4 000 steps, the same shared reward:
+
+  | | Isaac | MuJoCo |
+  | --- | ---: | ---: |
+  | demonstration-seeded RL | **0.419** (0.414, 0.461, 0.383) | 0.870-0.973 |
+  | from scratch | **0.000** (0.000, 0.000, 0.000) | ≤0.007 over seven designs |
+
+  The prediction was recorded in `experiments/isaac_place_grid.py` before the
+  runs: if the port is faithful, the *pattern* should survive — demonstrations
+  work, from-scratch does not — while the absolute numbers should not match,
+  because it is a different robot, gripper and contact solver on a budget fifty
+  times smaller. Both halves held. Every from-scratch seed reaches a grasp rate
+  of 0.23-0.56 and a success rate of exactly zero, which is the same behaviour
+  MuJoCo shows: the policy learns to hold the box and not what to do with it.
+
+  A second simulator agreeing is worth more than an eighth reward design on the
+  first one, because it could have disagreed.

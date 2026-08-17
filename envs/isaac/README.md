@@ -56,6 +56,27 @@ lift reward is held to.
 At `medium` randomisation all eight pass as well, with reward parity at
 7.27e-08.
 
+### And it trains, reproducing the MuJoCo finding
+
+128 demonstrations recorded from the retuned expert (0.901 success while
+recording), then three seeds each at 4 000 steps:
+
+| | Isaac | MuJoCo, for reference |
+| --- | ---: | ---: |
+| demonstration-seeded RL | **0.419** (0.414, 0.461, 0.383) | 0.870-0.973 |
+| from scratch, with Isaac's own entropy floor | **0.000** (0.000, 0.000, 0.000) | ≤0.007 over seven reward designs |
+
+The prediction was written into `experiments/isaac_place_grid.py` before the runs
+were started: a faithful port should reproduce the *pattern* and should **not**
+reproduce the numbers, since this is a different robot, gripper and contact
+solver on a budget fifty times smaller. Both halves held. Every from-scratch seed
+ends with a grasp rate of 0.23-0.56 and success of exactly zero — the same
+behaviour MuJoCo shows, a policy that has learned to hold the box and not what to
+do with it.
+
+The from-scratch arm uses the 0.30 entropy floor Isaac's own sweep chose, not
+MuJoCo's 0.15, so the baseline is the fair one rather than the collapsed one.
+
 ### The Franka place expert took three measurements to fix, not three guesses
 
 `ScriptedPlaceExpert` was written for the MuJoCo mocap weld and initially placed

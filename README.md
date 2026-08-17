@@ -138,13 +138,17 @@ The same runs as the table above with one line changed -- a floor under the entr
 
 | trained with | seeds | on its own distribution | on `shifted` | gap |
 | --- | ---: | --- | --- | ---: |
-| `none` | 5 | **0.986** [0.967, 1.000] | **0.000** [0.000, 0.000] | +0.986 |
-| `low` | 5 | **0.228** [0.000, 0.527] | **0.002** [0.000, 0.008] | +0.226 |
-| `medium` | 5 | **0.364** [0.004, 0.724] | **0.004** [0.000, 0.015] | +0.360 |
-| `high` | 5 | **0.228** [0.020, 0.436] | **0.006** [0.000, 0.017] | +0.222 |
+| `none` | **10** | **0.993** [0.984, 1.000] | **0.000** [0.000, 0.000] | +0.993 |
+| `low` | **10** | **0.338** [0.147, 0.529] | **0.003** [0.000, 0.006] | +0.335 |
+| `medium` | **10** | **0.382** [0.201, 0.563] | **0.004** [0.000, 0.009] | +0.378 |
+| `high` | **10** | **0.230** [0.123, 0.337] | **0.011** [0.002, 0.020] | +0.219 |
 
-* `shifted_high_vs_none`: difference +0.006 in mean success, Welch t = 1.50
-* `shifted_medium_vs_none`: difference +0.004 in mean success, Welch t = 1.00
+Ten seeds per cell, not five. Doubling them barely moved the point estimates and
+roughly halved the interval widths, which is the useful outcome: the randomised
+cells really are that spread, and the spread is *bimodal* -- a seed either finds
+the behaviour or collapses -- rather than noise around a mean. That is the case
+where five samples mislead most, and it is why the shape comparison below was
+also taken to ten.
 
 ### Randomisation ablation: imitation-seeded SAC
 

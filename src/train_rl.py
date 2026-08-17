@@ -79,10 +79,14 @@ def train(args: argparse.Namespace) -> Dict:
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
                    wrist=args.wrist, task=args.task, arm=args.arm,
                    travel_range=args.place_travel,
+                   start_progress=args.place_start_progress,
+                   start_progress_range=args.place_start_range,
                    reward_config=args.reward_config)
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
                         wrist=args.wrist, task=args.task, arm=args.arm,
                         travel_range=args.place_travel,
+                        start_progress=args.place_start_progress,
+                        start_progress_range=args.place_start_range,
                         reward_config=args.reward_config)
 
     obs_dim, act_dim = env.obs_dim, env.act_dim
@@ -104,6 +108,18 @@ def train(args: argparse.Namespace) -> Dict:
         state = torch.load(args.init_actor, map_location="cpu", weights_only=False)
         agent.actor.load_state_dict(state["actor"])
         print("initialised actor from {}".format(args.init_actor))
+        if args.init_critic:
+            # The reverse curriculum needs this. Each stage moves the start
+            # backwards, and what the previous stage learned is mostly in the
+            # *critic* -- it is the thing that knows the later segments are
+            # worth reaching. Carrying only the actor across throws that away
+            # and makes every stage re-derive it.
+            #
+            # SAC.load_state_dict is used rather than assigning the critic by
+            # hand: it also rebuilds the target network and carries the entropy
+            # coefficient, and getting either of those wrong is silent.
+            agent.load_state_dict(state)
+            print("initialised critic and alpha from {}".format(args.init_actor))
 
     config_blob = {
         "algorithm": "sac",
@@ -131,6 +147,8 @@ def train(args: argparse.Namespace) -> Dict:
         "wrist": args.wrist,
         "task": args.task,
         "place_travel": args.place_travel,
+        "place_start_progress": args.place_start_progress,
+        "place_start_range": args.place_start_range,
         "arm": args.arm,
     }
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
@@ -250,6 +268,16 @@ def build_parser() -> argparse.ArgumentParser:
                              "policies and results are not comparable with the "
                              "4-D ones (docs/limitations.md)")
     parser.add_argument("--max-steps", type=int, default=100)
+    parser.add_argument("--place-start-progress", type=float, default=0.0,
+                        help="reverse curriculum: how far along the place task "
+                             "an episode begins. 1.0 starts with the object in "
+                             "the closed gripper over the target")
+    parser.add_argument("--place-start-range", type=float, nargs=2, default=None,
+                        metavar=("MIN", "MAX"),
+                        help="sample the reverse curriculum's start point per "
+                             "episode from this range instead of fixing it, so "
+                             "every batch spans the whole task and no stage can "
+                             "overwrite the last")
     parser.add_argument("--place-travel", type=float, nargs=2, default=None,
                         metavar=("MIN", "MAX"),
                         help="how far the place target sits from the object, in "
@@ -305,6 +333,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="apply the BC term only where the critic prefers the expert "
                              "action; off by default, see src/policies/sac.py")
     parser.add_argument("--demo-fraction", type=float, default=0.0)
+    parser.add_argument("--init-critic", action="store_true",
+                        help="also carry the critic across from --init-actor's "
+                             "checkpoint. Off by default because the imitation "
+                             "runs deliberately start from a fresh critic; on "
+                             "for the reverse curriculum, where the critic is "
+                             "what carries a stage's learning to the next")
     parser.add_argument("--init-actor", default=None,
                         help="checkpoint to initialise the actor from")
     return parser

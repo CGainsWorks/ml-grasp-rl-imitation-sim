@@ -256,9 +256,29 @@ imitation of a five-dimensional action from a fixed budget cannot.
 
 What does not survive is the headline. "The wrist does not help" is defensible
 as a summary of four small deltas straddling zero. It is not defensible as the
-two-to-one rout published here for a few hours. The older from-scratch claim
-(0.000 with the wrist against 0.122 without) is confounded by the same cap and
-is being re-run matched.
+two-to-one rout published here for a few hours.
+
+The older from-scratch claim carried the same confound, and matching it changes
+what the number was about. "0.000 with the wrist against 0.122 without" compared
+a wrist on boxes up to 34 mm against no wrist on boxes capped at 24 mm. Matched,
+five seeds, 200 000 steps with the entropy floor:
+
+| from scratch | wrist | no wrist |
+| --- | ---: | ---: |
+| cap 0.034 (yaw binds) | 0.000, grasp 0.45 | 0.000, grasp 0.49 |
+| cap 0.024 (yaw never binds) | 0.158 [0.000, 0.424] | 0.424 [0.105, 0.743] |
+
+**Both hands score zero on the big boxes.** The zero was never about the wrist:
+it is what from-scratch RL does when the object is large enough that yaw
+matters, and it does it whether or not the hand can yaw. Both variants still
+*grasp* -- 0.45 and 0.49 -- so the failure is in lifting and holding a box near
+the limit of the pads, not in reaching it.
+
+At the small cap both learn, the wrist is lower, and the intervals overlap so
+heavily (0.158 [0.000, 0.424] against 0.424 [0.105, 0.743]) that the honest
+statement is five seeds is not enough to separate them. What can be said is that
+the fifth dimension does not help exploration, which is the weaker version of
+what this section used to claim.
 
 This is recorded at length because the error was made twice, in opposite
 directions, and both times the wrong number was the more dramatic one. First a

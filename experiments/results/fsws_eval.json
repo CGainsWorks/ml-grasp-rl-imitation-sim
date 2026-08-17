@@ -1,0 +1,166 @@
+{
+  "label": "fsws",
+  "checkpoint": "policy.pt",
+  "episodes_per_seed": 100,
+  "eval_levels": [
+    "wrist_bench"
+  ],
+  "n_seeds": 5,
+  "single_seed_warning": null,
+  "runs": [
+    {
+      "run": "experiments/runs\\fsws_s0",
+      "train_randomisation": "wrist_bench",
+      "seed": 0,
+      "levels": {
+        "wrist_bench": {
+          "successes": 21,
+          "episodes": 100,
+          "success_rate": 0.21,
+          "grasp_rate": 0.84,
+          "mean_return": 216.04678879322856,
+          "mean_max_lift": 0.12549879368908817
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\fsws_s1",
+      "train_randomisation": "wrist_bench",
+      "seed": 1,
+      "levels": {
+        "wrist_bench": {
+          "successes": 0,
+          "episodes": 100,
+          "success_rate": 0.0,
+          "grasp_rate": 0.81,
+          "mean_return": -10.368409765625229,
+          "mean_max_lift": 0.009937664167961564
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\fsws_s2",
+      "train_randomisation": "wrist_bench",
+      "seed": 2,
+      "levels": {
+        "wrist_bench": {
+          "successes": 51,
+          "episodes": 100,
+          "success_rate": 0.51,
+          "grasp_rate": 0.97,
+          "mean_return": 368.56878159931375,
+          "mean_max_lift": 0.1393545847263211
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\fsws_s3",
+      "train_randomisation": "wrist_bench",
+      "seed": 3,
+      "levels": {
+        "wrist_bench": {
+          "successes": 7,
+          "episodes": 100,
+          "success_rate": 0.07,
+          "grasp_rate": 0.89,
+          "mean_return": 82.04925007540122,
+          "mean_max_lift": 0.13372085155220018
+        }
+      }
+    },
+    {
+      "run": "experiments/runs\\fsws_s4",
+      "train_randomisation": "wrist_bench",
+      "seed": 4,
+      "levels": {
+        "wrist_bench": {
+          "successes": 0,
+          "episodes": 100,
+          "success_rate": 0.0,
+          "grasp_rate": 0.83,
+          "mean_return": -3.1431129455633684,
+          "mean_max_lift": 0.016111294744171924
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "wrist_bench": {
+      "across_seeds": {
+        "point": 0.158,
+        "low": 0.0,
+        "high": 0.42446708176433345,
+        "n": 5,
+        "method": "t"
+      },
+      "across_seeds_bootstrap": {
+        "point": 0.158,
+        "low": 0.014000000000000002,
+        "high": 0.348,
+        "n": 5,
+        "method": "bootstrap"
+      },
+      "pooled_wilson": {
+        "point": 0.158,
+        "low": 0.1286526978644355,
+        "high": 0.19256235101126623,
+        "n": 500,
+        "method": "wilson"
+      },
+      "per_seed": [
+        {
+          "point": 0.21,
+          "low": 0.141656540619153,
+          "high": 0.29979968834089865,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.0,
+          "low": 3.469446951953614e-18,
+          "high": 0.03699349820698568,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.51,
+          "low": 0.4134801193402717,
+          "high": 0.6057800106955886,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.07,
+          "low": 0.03431926106727268,
+          "high": 0.137495147390735,
+          "n": 100,
+          "method": "wilson"
+        },
+        {
+          "point": 0.0,
+          "low": 3.469446951953614e-18,
+          "high": 0.03699349820698568,
+          "n": 100,
+          "method": "wilson"
+        }
+      ],
+      "per_seed_rates": [
+        0.21,
+        0.0,
+        0.51,
+        0.07,
+        0.0
+      ],
+      "n_seeds": 5,
+      "episodes_per_seed": [
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "mean_grasp_rate": 0.868
+    }
+  },
+  "wall_seconds": 52.5
+}

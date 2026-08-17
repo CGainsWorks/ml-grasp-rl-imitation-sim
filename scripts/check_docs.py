@@ -46,7 +46,9 @@ T95 = {2: 12.706, 3: 4.303, 4: 3.182, 5: 2.776, 6: 2.571, 7: 2.447, 8: 2.365,
 
 # label, level, the documents that quote it, and what it is called in prose.
 CLAIMS = [
-    ("wristhold", "wrist_bench", ["README.md", "docs/limitations.md"],
+    # The README now summarises the wrist as four deltas and keeps the
+    # per-cell numbers in limitations.md, so only that file quotes this.
+    ("wristhold", "wrist_bench", ["docs/limitations.md"],
      "the wrist with a held cloning anchor"),
     ("campriv", "measured_camera", ["README.md", "docs/limitations.md"],
      "privileged distillation at camera-grade sensing"),
@@ -65,6 +67,10 @@ CLAIMS = [
      "held-anchor RL with the wrist at cap 0.024"),
     ("nowristbc", "wrist_bench", ["docs/limitations.md"],
      "no wrist at cap 0.024"),
+    ("fsns", "wrist_bench", ["docs/limitations.md"],
+     "from scratch, no wrist, cap 0.024"),
+    ("fsws", "wrist_bench", ["docs/limitations.md"],
+     "from scratch, wrist, cap 0.024"),
     ("camord", "measured_camera", ["README.md", "docs/limitations.md"],
      "the ordinary-demonstrator control at camera-grade sensing"),
 ]
@@ -82,6 +88,9 @@ RETIRED = [
     (r"wrist is learnable but not discoverable",
      ["README.md", "docs/limitations.md"],
      "superseded by the matched-cap grid"),
+    (r"scores \*\*0\.000\*\* against 0\.122 without it",
+     ["README.md"],
+     "matched, both hands score 0.000 at cap 0.034; the zero was object size"),
     (r"identical pipeline \*?without\*? the wrist reaches \*\*0\.838",
      ["README.md"],
      "0.838 vs 0.478 compared two different object size caps; matched, the "

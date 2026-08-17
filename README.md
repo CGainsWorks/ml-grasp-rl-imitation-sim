@@ -483,8 +483,9 @@ limitation and a worse-sounding one.
   object distributions. Matched on the cap, five seeds, 100 episodes: cloning is
   **-0.034** and **-0.046** with the wrist, held-anchor RL is **+0.014** and
   **+0.074**. Four small deltas straddling zero, where the unmatched version
-  showed a two-to-one rout. The wrist is learnable (0.000 from scratch → 0.478
-  with demonstrations); what it is not is decisive.
+  showed a two-to-one rout. The inherited from-scratch claim dissolves the same
+  way: matched, **both** hands score 0.000 on the big boxes, so that zero was
+  about object size and never about the wrist.
 * **Perception is a check, not a pipeline** — a CNN pose estimator from 64x64
   renders exists and costs 18 points when substituted for ground truth. It was
   built to *test* the sensing noise model, and it refuted one of the three

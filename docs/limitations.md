@@ -527,14 +527,16 @@ perception stack (built, and it refuted one of the three claims this file made
 about sensing error), and a sparse-reward variant with hindsight replay (built,
 and it scores zero with its control also at zero).
 
-1. **Why the second task needs demonstrations and the first does not.** The
-   place task is solved by cloning at 0.978 and by demonstration-seeded RL, and
-   from-scratch RL has now been through four reward designs and a 3x budget
-   without clearing zero. The lift task's from-scratch runs work. Something
-   about the longer chain -- most likely that lifting and transporting are
-   orthogonal in the place task where they are collinear in the lift task -- is
-   the actual obstacle, and it is more interesting than anything else on this
-   list.
+1. **Chaining segments without demonstrations.** The place investigation
+   finished at seven reward designs, a tripled budget and a task decomposition,
+   and the answer was that shaping of this kind buys *segments*: put a maximum
+   where a segment ends and the policy learns that segment and stops there.
+   Reaching, grasping, lifting and carrying were each bought exactly that way;
+   the chain was not. Demonstrations supply the chain for free. The methods that
+   attack this directly -- hindsight relabelling over sub-goals, a learned
+   curriculum, options -- are the interesting next step, and the hindsight
+   variant already built here is the wrong one, because it relabels the *final*
+   goal rather than intermediate ones.
 
 2. Measured randomisation ranges from real hardware. The guessed ones have now
    been checked against published measurements rather than defended

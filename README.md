@@ -101,19 +101,19 @@ seed blocks, which interval and why — is in
 | method | seeds | eval: `none` | eval: `medium` | eval: `shifted` |
 | --- | ---: | --- | --- | --- |
 | scripted expert (reference) | -- | 1.000 | 0.940 | 0.470 |
-| behaviour cloning | 5 | **1.000** [1.000, 1.000] | **0.900** [0.868, 0.932] | **0.236** [0.179, 0.293] |
+| behaviour cloning | **10** | **1.000** [1.000, 1.000] | **0.895** [0.880, 0.910] | **0.234** [0.191, 0.277] |
 | behaviour cloning + DAgger | 5 | **0.966** [0.937, 0.995] | **0.862** [0.809, 0.915] | **0.408** [0.344, 0.472] |
 | SAC, no randomisation | 5 | **0.402** [0.000, 1.000] | **0.272** [0.000, 0.723] | **0.002** [0.000, 0.008] |
 | SAC, low randomisation | 5 | **0.146** [0.000, 0.511] | **0.080** [0.000, 0.282] | **0.008** [0.000, 0.030] |
 | SAC, medium randomisation | 5 | **0.220** [0.007, 0.433] | **0.128** [0.000, 0.302] | **0.004** [0.000, 0.011] |
 | SAC, wide randomisation | 5 | **0.122** [0.000, 0.331] | **0.058** [0.000, 0.167] | **0.000** [0.000, 0.000] |
-| SAC + entropy floor, no randomisation | 5 | **0.986** [0.967, 1.000] | **0.640** [0.571, 0.709] | **0.000** [0.000, 0.000] |
-| SAC + entropy floor, low randomisation | 5 | **0.364** [0.000, 0.838] | **0.206** [0.000, 0.496] | **0.002** [0.000, 0.008] |
-| SAC + entropy floor, medium randomisation | 5 | **0.582** [0.028, 1.000] | **0.364** [0.004, 0.724] | **0.004** [0.000, 0.015] |
-| SAC + entropy floor, wide randomisation | 5 | **0.390** [0.016, 0.764] | **0.240** [0.000, 0.506] | **0.006** [0.000, 0.017] |
+| SAC + entropy floor, no randomisation | **10** | **0.993** [0.984, 1.000] | **0.658** [0.623, 0.693] | **0.000** [0.000, 0.000] |
+| SAC + entropy floor, low randomisation | **10** | **0.515** [0.234, 0.796] | **0.294** [0.123, 0.465] | **0.003** [0.000, 0.006] |
+| SAC + entropy floor, medium randomisation | **10** | **0.593** [0.315, 0.871] | **0.382** [0.201, 0.563] | **0.004** [0.000, 0.009] |
+| SAC + entropy floor, wide randomisation | **10** | **0.397** [0.207, 0.587] | **0.258** [0.123, 0.393] | **0.011** [0.002, 0.020] |
 | BC + SAC, no randomisation | 5 | **1.000** [1.000, 1.000] | **0.516** [0.454, 0.578] | **0.002** [0.000, 0.008] |
 | BC + SAC, low randomisation | 5 | **0.968** [0.934, 1.000] | **0.640** [0.612, 0.668] | **0.028** [0.000, 0.065] |
-| BC + SAC, medium randomisation | 5 | **0.968** [0.934, 1.000] | **0.726** [0.658, 0.794] | **0.032** [0.000, 0.064] |
+| BC + SAC, medium randomisation | **10** | **0.973** [0.958, 0.988] | **0.734** [0.698, 0.770] | **0.034** [0.018, 0.050] |
 | BC + SAC, wide randomisation | 5 | **0.976** [0.942, 1.000] | **0.756** [0.727, 0.785] | **0.072** [0.050, 0.094] |
 
 `none` is the nominal world, `medium` a training-like distribution, and `shifted` the held-out worlds that stand in for a real robot ([why that is a proxy](docs/sim-to-real.md)).

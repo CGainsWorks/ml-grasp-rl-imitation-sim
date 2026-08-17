@@ -41,13 +41,16 @@ help:  ## Show this help
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: check
-check: lint test  ## Everything CI runs
+check: lint test docs-check  ## Everything CI runs
 
 .PHONY: test
 test:  ## Unit tests (no training, no GL)
 	$(PYTHON) -m pytest tests/ -q
 
 .PHONY: lint
+docs-check:  ## Do the documents still agree with the results they quote?
+	$(PYTHON) scripts/check_docs.py
+
 lint:  ## Formatting and obvious errors
 	$(PYTHON) -m flake8 src/ envs/ tests/ analysis/ experiments/ scripts/
 

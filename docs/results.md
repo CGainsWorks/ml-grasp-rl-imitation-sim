@@ -648,9 +648,17 @@ A reverse curriculum then made the same point from the other side. Trained on
 start states sampled across the whole task, one policy reaches 0.750 when handed
 the object already lifted, 0.367 when handed it grasped on the table, and
 **0.000** when it has to close the fingers itself — while the shaped from-scratch
-runs grasp on 63-90% of steps and never lift. Each half is learnable; nothing
-tried here learns both in sequence. Details and the full stage table are in
-[limitations.md](limitations.md).
+runs grasp on 63-90% of steps and never lift.
+
+The two are complements, so the last experiment gives one policy both: seed the
+curriculum from a shaped checkpoint that grasps at 0.90. It **loses the grasp**
+— 0.03 grasp rate and 0.002 success at the true start, having started from 0.90 —
+because four fifths of mixed-start episodes begin with the object already held,
+so the gradient maintaining the grasp is a minority of every batch.
+
+Each half is learnable; nothing tried here learns both in sequence; and every
+attempt to combine them erases whichever half the training distribution needs
+less. The full tables are in [limitations.md](limitations.md).
 
 Meanwhile the imitation column never moved: 0.978 cloned, and 0.870-0.967
 demonstration-seeded across the reward variants. **Seven reward designs and a

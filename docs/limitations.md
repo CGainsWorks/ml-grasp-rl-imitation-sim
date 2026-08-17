@@ -524,16 +524,41 @@ So it is not forgetting. One policy, trained on all start points at once, does
 everything from "already holding the box" onwards at 0.37 to 0.75 — and scores
 zero whenever it has to close the fingers itself.
 
-**The two failures are different and that is the point.** From-scratch RL under
-the shaped reward grasps on 63-90% of steps and never lifts. The curriculum
-policy lifts, carries, lowers and releases and never grasps. Each half of the
-task is demonstrably learnable by this algorithm on this robot; **no method tried
-here learns both halves in sequence, and demonstrations are the only thing that
-supplied the sequence.**
+**The two failures are complements.** From-scratch RL under the shaped reward
+grasps on 63-90% of steps and never lifts. The curriculum policy lifts, carries,
+lowers and releases and never grasps. So the obvious last experiment is to give
+one policy both halves: seed the mixed-start curriculum from a shaped
+from-scratch checkpoint — actor *and* critic — at the same 200 000 steps.
 
-That is a much sharper claim than "pick-and-place is hard", and it took a second
-task, seven reward designs, a travel ladder and two curricula to be able to make
-it.
+It starts with the grasp and **loses it**:
+
+| seeded from a policy that grasps at 0.90 | success | peak lift | grasp at end |
+| --- | ---: | ---: | ---: |
+| start 0.00 — the real task | **0.002** | 0.002 m | 0.03 |
+| start 0.15 — fingers open | 0.000 | 0.012 m | 0.08 |
+| start 0.30 — grasped, on the table | 0.433 | 0.100 m | 0.45 |
+| start 0.55 — lifted, carrying | 0.483 | 0.125 m | 0.48 |
+| start 1.00 — over the target | 0.517 | 0.108 m | 0.43 |
+
+The grasp is not merely absent from what the curriculum teaches — it is **actively
+overwritten**. About four fifths of mixed-start episodes begin with the object
+already held, so the gradient that maintains "close the fingers on a box on the
+table" is a minority of every batch, and 200 000 steps of it erases a behaviour
+the initialisation arrived with. The policy ends up exactly where the unseeded
+curriculum did.
+
+So the complete statement, after seven reward designs, a tripled budget, a travel
+ladder, a staged curriculum, a mixed curriculum and a seeded combination, every
+one at a matched budget:
+
+**Each half of pick-and-place is learnable by this algorithm on this robot. No
+method tried here learns both in sequence, and every attempt to combine them
+loses whichever half the current training distribution needs less. Demonstrations
+are the only thing that supplied the sequence, and they did it on the first
+attempt.**
+
+That is a much sharper claim than "pick-and-place is hard", and earning it took a
+second task and six separate controlled experiments.
 
 **The honest conclusion is about the family of designs, not the next weight.**
 Hand-shaped dense rewards of this form solved lift-and-hold and did not solve

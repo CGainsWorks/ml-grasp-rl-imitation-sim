@@ -410,8 +410,8 @@ to 0.006 on `shifted`, the same as the un-floored ones, so the poor transfer in
 this repository is not an artefact of an undertrained baseline — which is the
 first thing one would want to check before believing it.
 
-**Two tasks now, and the second one is where the reward-design method stopped
-working.** `task="place"` is pick-and-place: carry the box to a target patch
+**Two tasks now, in two simulators, and the second task is where the
+reward-design method stopped working.** `task="place"` is pick-and-place: carry the box to a target patch
 elsewhere on the table and let go of it there. It was chosen to break the lift
 task's assumptions rather than to be easy -- the goal is somewhere else on the
 table so the object has to travel laterally, success requires the hand to have
@@ -592,9 +592,9 @@ and it scores zero with its control also at zero).
    which is what most of the grasping literature is about and which nothing here
    demonstrates.
 
-6. **Isaac place training numbers.** The task is ported (reward parity 7.3e-08
-   on the GPU, all eight bring-up checks passing at `none` and `medium`) and the
-   expert now places 23 of 24 there after being retuned for the Franka. What
-   does not exist yet is a recorded demonstration set and a training grid, which
-   is GPU-hours rather than an open question — and the MuJoCo result says what
-   to expect: cloning should work and from-scratch RL should not.
+6. **Isaac place training at a comparable budget.** The task is ported, the
+   expert places 23 of 24, 128 demonstrations are recorded, and a three-seed
+   grid reproduces the MuJoCo finding (0.419 demonstration-seeded against 0.000
+   from scratch) — but at 4 000 steps against MuJoCo's 200 000. The pattern is
+   established; a budget-matched Isaac grid is not, and would take GPU-days
+   rather than the GPU-hour this took.

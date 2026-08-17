@@ -1,0 +1,11 @@
+{
+  "final_success_rate": 0.4140625,
+  "best_success_rate": 0.484375,
+  "steps": 4000,
+  "num_envs": 64,
+  "transitions": 256000,
+  "seed": 0,
+  "randomisation": "none",
+  "simulator": "isaac-sim-5.1.0",
+  "wall_seconds": 510.4
+}

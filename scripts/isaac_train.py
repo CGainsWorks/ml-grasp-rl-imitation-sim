@@ -35,6 +35,7 @@ parser.add_argument("--num-envs", type=int, default=64)
 parser.add_argument("--steps", type=int, default=200_000,
                     help="environment steps (each contributes num_envs transitions)")
 parser.add_argument("--randomisation", default="none")
+parser.add_argument("--task", default="lift", choices=("lift", "place"))
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--hidden", type=int, default=128)
 parser.add_argument("--start-steps", type=int, default=500)
@@ -75,6 +76,7 @@ os.makedirs(args.output, exist_ok=True)
 torch.manual_seed(args.seed)
 
 cfg = GraspTaskCfg()
+cfg.task = args.task
 cfg.scene.num_envs = args.num_envs
 cfg.randomisation_level = args.randomisation
 env = GraspTask(cfg)

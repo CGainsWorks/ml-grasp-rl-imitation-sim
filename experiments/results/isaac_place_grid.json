@@ -1,0 +1,19 @@
+{
+  "steps": 4000,
+  "num_envs": 64,
+  "randomisation": "none",
+  "floor": "0.30",
+  "prediction": "MuJoCo says the demonstration arm works and the from-scratch arm does not; matching absolute numbers across two robots would be suspicious rather than reassuring",
+  "results": {
+    "bcrl": [
+      0.4140625,
+      0.4609375,
+      0.3828125
+    ],
+    "sac": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

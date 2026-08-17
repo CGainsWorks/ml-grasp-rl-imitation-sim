@@ -1,0 +1,12 @@
+{
+  "algorithm": "bc",
+  "seed": 0,
+  "randomisation": "wrist_bench",
+  "arm": false,
+  "handled": false,
+  "wrist": false,
+  "history": 1,
+  "hidden": 128,
+  "max_half_size": 0.034,
+  "demos": "demonstrations/expert_nowrist_big.npz"
+}

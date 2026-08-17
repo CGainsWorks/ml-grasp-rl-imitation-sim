@@ -1,0 +1,43 @@
+{
+  "algorithm": "bc",
+  "final_success_rate": 0.48,
+  "final_grasp_rate": 0.7,
+  "final_val_mse": 0.010281100869178772,
+  "transitions": 20000,
+  "demo_episodes": 200,
+  "history": [
+    {
+      "round": 0,
+      "transitions": 20000,
+      "train_mse": 0.003020638727884687,
+      "val_mse": 0.010281100869178772,
+      "success_rate": 0.48,
+      "grasp_rate": 0.7
+    }
+  ],
+  "seed": 2,
+  "randomisation": "wrist_bench",
+  "demos": "demonstrations/expert_nowrist_big.npz",
+  "demo_meta": {
+    "episodes_requested": 200,
+    "episodes_attempted": 395,
+    "episodes_kept": 200,
+    "expert_success_rate": 0.5063291139240507,
+    "randomisation": "wrist_bench",
+    "seed": 7,
+    "expert_noise": 0.02,
+    "keep_failures": false,
+    "max_steps": 100,
+    "task": "lift",
+    "arm": false,
+    "handled": false,
+    "wrist": false,
+    "privileged": false,
+    "history": 1,
+    "max_half_size": 0.035,
+    "wall_seconds": 23.2,
+    "source": "src/policies/scripted_expert.py"
+  },
+  "epochs": 60,
+  "wall_seconds": 9.9
+}

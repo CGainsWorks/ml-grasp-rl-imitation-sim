@@ -119,10 +119,12 @@ def train(args: argparse.Namespace) -> Dict:
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
                    task=args.task, arm=args.arm,
                    handled=args.handled, history=args.history,
+                   max_half_size=args.max_half_size,
                    wrist=args.handled or args.wrist)
     eval_env = make_env(args.randomisation, seed=args.seed + 999,
                         max_steps=args.max_steps, task=args.task,
                         arm=args.arm, handled=args.handled, history=args.history,
+                        max_half_size=args.max_half_size,
                         wrist=args.handled or args.wrist)
     # Sized from the environment, not from the module constants: the wrist and
     # handled variants are 34-dimensional, and a 32-dimensional actor fails deep
@@ -207,6 +209,7 @@ def train(args: argparse.Namespace) -> Dict:
                    "arm": args.arm, "handled": args.handled,
                    "wrist": args.handled or args.wrist,
                    "history": args.history, "hidden": args.hidden,
+                   "max_half_size": args.max_half_size,
                    "demos": args.demos}, fh, indent=2)
     with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
@@ -237,6 +240,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--arm", action="store_true")
     parser.add_argument("--handled", action="store_true")
     parser.add_argument("--wrist", action="store_true")
+    parser.add_argument("--max-half-size", type=float, default=None,
+                        help="cap on object half-size in metres. The "
+                             "default (0.024) sits below the band where "
+                             "yaw binds against the 0.078 m pad gap; "
+                             "0.028-0.039 is where a square box fits "
+                             "aligned and does not fit rotated")
     parser.add_argument("--history", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=256)

@@ -79,6 +79,7 @@ def train(args: argparse.Namespace) -> Dict:
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
                    wrist=args.wrist or args.handled, task=args.task,
                    arm=args.arm, handled=args.handled, history=args.history,
+                   max_half_size=args.max_half_size,
                    travel_range=args.place_travel,
                    start_progress=args.place_start_progress,
                    start_progress_range=args.place_start_range,
@@ -86,6 +87,7 @@ def train(args: argparse.Namespace) -> Dict:
     eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
                         wrist=args.wrist or args.handled, task=args.task,
                         arm=args.arm, handled=args.handled, history=args.history,
+                        max_half_size=args.max_half_size,
                         travel_range=args.place_travel,
                         start_progress=args.place_start_progress,
                         start_progress_range=args.place_start_range,
@@ -148,6 +150,7 @@ def train(args: argparse.Namespace) -> Dict:
         "act_dim": act_dim,
         "wrist": args.wrist,
         "history": args.history,
+        "max_half_size": args.max_half_size,
         "task": args.task,
         "place_travel": args.place_travel,
         "place_start_progress": args.place_start_progress,
@@ -286,6 +289,12 @@ def build_parser() -> argparse.ArgumentParser:
                         help="how far the place target sits from the object, in "
                              "metres. Shorter ranges decompose the task rather "
                              "than ease it: see PLACE_TRAVEL_LADDER")
+    parser.add_argument("--max-half-size", type=float, default=None,
+                        help="cap on object half-size in metres. The "
+                             "default (0.024) sits below the band where "
+                             "yaw binds against the 0.078 m pad gap; "
+                             "0.028-0.039 is where a square box fits "
+                             "aligned and does not fit rotated")
     parser.add_argument("--history", type=int, default=1,
                         help="how many past observations the policy sees. 1 is "
                              "the memoryless default. The sensing error here is "

@@ -218,38 +218,55 @@ a statement about exploration. 200 demonstrations were recorded with the wrist
 The wrist is learnable. What it is not is *discoverable* -- SAC never finds the
 alignment on its own, and no shaping term tried here made it find one.
 
-**And learnable is not the same as useful.** The table above has no control in
-it: every row has the wrist, so it establishes that demonstrations rescue the
-wrist from zero and nothing else. The missing row is the same pipeline, the same
-200-episode budget, the same benchmark, *without* the extra degree of freedom:
+**And learnable is not the same as useful -- but measuring that took three
+attempts, and the first two were wrong in opposite directions.**
 
-| at `wrist_bench`, 5 seeds, 100 episodes | mean | 95% CI | grasp |
-| --- | ---: | :---: | ---: |
-| wrist, cloning | 0.398 | [0.376, 0.420] | 0.648 |
-| wrist, cloning + held anchor | 0.478 | [0.447, 0.509] | 0.716 |
-| **no wrist, cloning** | **0.838** | [0.811, 0.865] | **1.000** |
+The table above has no control in it: every row has the wrist. The first
+correction added a no-wrist row and reported a rout, 0.838 against 0.478. That
+control was not one. `GraspEnv` sets the object size cap *from the wrist flag* --
+0.034 m with a wrist, 0.024 m without -- so it compared a hand that rotates on
+boxes up to 34 mm against a hand that cannot on boxes capped at 24 mm. The
+comment above that line says it is overridable "so the wrist can be ablated
+properly ... or the comparison is between two different tasks", and until this
+session nothing had ever passed the override. Every wrist number in this
+repository's history was measured that way.
 
-The control wins by a factor of about two and the intervals are nowhere near
-each other. The no-wrist clone grasps on **every single episode**; the best
-wrist policy manages 0.716. The scripted demonstrator shows the same ordering
-before any learning happens -- 0.855 without the wrist against 0.548 with it, on
-the same level.
+Matched on the cap, same demonstration budget, same level, 100 episodes over
+five seeds:
 
-So the original claim in this section was right and the correction was wrong.
-"The wrist does not help" survives contact with demonstrations; what changes is
-only the *reason*. It is not that the wrist makes the task unlearnable -- 0.478
-is a working policy -- it is that the fifth degree of freedom costs more in
-exploration and in demonstration coverage than the alignment it buys back, at
-every budget measured here. A yaw joint is worth having when the gripper cannot
-otherwise reach the object's short axis. At a 24 mm half-size cap against a
-78 mm pad gap, it cannot, which is the condition this repository set for itself
-further up this section.
+| | wrist | no wrist | delta |
+| --- | ---: | ---: | ---: |
+| **cloning**, cap 0.034 (yaw binds) | 0.398 [0.376, 0.420] | 0.432 [0.361, 0.503] | -0.034 |
+| **cloning**, cap 0.024 (yaw never binds) | 0.792 [0.745, 0.839] | 0.838 [0.811, 0.865] | -0.046 |
+| **held-anchor RL**, cap 0.034 | 0.478 [0.447, 0.509] | 0.464 [0.424, 0.504] | +0.014 |
+| **held-anchor RL**, cap 0.024 | 0.892 [0.838, 0.946] | 0.818 [0.808, 0.828] | **+0.074** |
 
-This is recorded at length because the error was mine and it was the ordinary
-kind: three arms were run, all three had the wrist, the best one beat the
-from-scratch baseline, and the conclusion went in before anyone asked what the
-same pipeline does without the joint. The number that mattered was the one not
-run.
+The scripted expert agrees: matched at 0.034 it scores 0.548 with the wrist
+against 0.506 without, and at 0.024 it is 0.980 against 0.855. Nothing like the
+gap the unmatched comparison produced, in either direction.
+
+So the answer is small, and its sign depends on the method. **Cloning is
+slightly worse with the wrist** at both caps -- a fifth action dimension is one
+more thing to imitate from the same 200 episodes -- and both intervals overlap.
+**Held-anchor RL is slightly better with it**, and at the small-box cap the
+intervals are disjoint (0.892 against 0.818), the only cell here where the joint
+clearly earns anything. The plausible reading is that yaw improves grip quality
+even when the box would fit unaligned, and that RL can exploit that where
+imitation of a five-dimensional action from a fixed budget cannot.
+
+What does not survive is the headline. "The wrist does not help" is defensible
+as a summary of four small deltas straddling zero. It is not defensible as the
+two-to-one rout published here for a few hours. The older from-scratch claim
+(0.000 with the wrist against 0.122 without) is confounded by the same cap and
+is being re-run matched.
+
+This is recorded at length because the error was made twice, in opposite
+directions, and both times the wrong number was the more dramatic one. First a
+conclusion was drawn from three arms that all had the wrist, which established
+only that the wrist beats its own baseline. Then the control meant to fix that
+silently changed the task. A comparison is only a comparison if the thing not
+being tested is held still, and a flag that moves with the thing being tested is
+the hardest way to get that wrong.
 
 The middle row is the interesting one. Decaying the cloning anchor is **worse
 than not doing the RL at all**, and the failure has a visible timestamp: those

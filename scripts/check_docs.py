@@ -84,6 +84,11 @@ CLAIMS = [
 # Phrasings that were true once. Each is a regex, the files it must not appear
 # in, and the result that retired it.
 RETIRED = [
+    (r"Isaac Lab runs both tasks and still supplies no headline number",
+     ["README.md"],
+     "the Isaac port now carries a four-level, five-seed sweep on both "
+     "arms: from scratch 0.000 everywhere, demonstration-seeded 0.969 "
+     "to 0.041"),
     (r"Perception is a check, not a pipeline",
      ["README.md"],
      "a policy trained and evaluated through the estimator reaches "

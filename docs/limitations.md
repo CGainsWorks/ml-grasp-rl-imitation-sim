@@ -1050,13 +1050,48 @@ inside Isaac on the GPU agrees with the shared numpy implementation to about
 asserted. Randomisation is driven through Isaac's event manager from the same
 JSON ranges, with the same interval arithmetic.
 
-What it does *not* do is produce any number quoted in the README's headline
-tables; every success rate there was produced in MuJoCo. It does now carry its
-own five-seed grids: from scratch against demonstration-seeded on the nominal
-world (0.000 against 0.969), the entropy floor against its control (0.194
-against 0.463, t = 1.01 — not separated), and a randomised grid at `medium`
-(0.275 [0.182, 0.368] at 4 000 steps, 0.131 [0.000, 0.272] at 15 000), and two
-floor sweeps. The randomised runs get *worse* with more training, and the
+**The randomisation sweep is now complete on both arms.** Four levels, five
+seeds each, twenty runs per arm, 4 000 steps at 512 environments:
+
+| level | from scratch | demonstration-seeded |
+| --- | ---: | ---: |
+| `none` | 0.000 [0.000, 0.000] | **0.969** [0.902, 1.000] |
+| `low` | 0.000 [0.000, 0.000] | 0.519 [0.451, 0.586] |
+| `medium` | 0.000 [0.000, 0.000] | 0.275 [0.182, 0.368] |
+| `high` | 0.000 [0.000, 0.000] | 0.041 [0.025, 0.056] |
+
+Two readings, and one caution that has to come with them.
+
+**From-scratch RL is 0.000 at every level, on all forty runs.** Not small, not
+noisy: zero, with intervals of zero width. This repository's central claim --
+that demonstrations are what make this task learnable at this budget -- now
+holds in a second simulator across a full randomisation sweep rather than at one
+operating point.
+
+**Demonstration-seeding degrades monotonically and then falls off a cliff.**
+0.969 to 0.519 to 0.275 to 0.041. The `high` column is the interesting one: the
+grasp rate there is 0.08-0.10, so the policy is failing to *close on the box*
+rather than failing to lift it. That is consistent with the contact finding
+above -- Isaac's grip is the fragile part -- though the link is asserted from
+two measurements sitting next to each other, not established.
+
+The caution is the budget. Isaac runs 4 000 steps at 512 environments against
+MuJoCo's 200 000, matched on **gradient updates** rather than transitions,
+because matching updates is what made the two agree at `none` in the first
+place. MuJoCo over the comparable range goes 0.973 to 0.582 at `medium`, so
+Isaac's collapse is steeper -- but that compares two configurations, not two
+simulators, and this document has already recorded three cross-condition
+comparisons that turned out to be measuring something other than what they
+claimed. Treat the shape as real and the rate as configuration-specific.
+
+`medium` appears twice in this repository at different budgets: 0.275 at 4 000
+steps and 0.131 at 15 000. That is not an inconsistency, it is the documented
+finding that randomised Isaac runs get *worse* with more training, and the table
+above quotes the 4 000-step column throughout for comparability.
+
+Every success rate in the README's headline tables was still produced in MuJoCo.
+The port also carries the entropy floor against its control (0.194 against
+0.463, t = 1.01 — not separated) and two floor sweeps. The randomised runs get *worse* with more training, and the
 mechanism is now known without the cause being known: the entropy coefficient
 collapses to 0.0011 and critic loss grows twentyfold, and clamping the
 coefficient prevents the critic blow-up on every seed while making success worse

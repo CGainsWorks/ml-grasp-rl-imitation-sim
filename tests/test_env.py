@@ -184,3 +184,22 @@ def test_observation_history_stacks_and_reports_its_width():
     single = env._single_obs_dim
     assert np.allclose(obs[:single], obs[-single:])
     env.close()
+
+
+def test_action_latency_is_never_negative():
+    """A latency is a queue depth, and `high` widens the range below zero.
+
+    `absolute` ranges widen about their midpoint, so at scale 1.8 the 0-2 step
+    latency becomes (-0.8, 2.8). MuJoCo absorbed the negative silently -- a list
+    multiplied by a negative count is empty -- while Isaac used it as a gather
+    index and crashed the CUDA context, taking PhysX with it. Every Isaac run at
+    `high` died this way.
+    """
+    from src.randomisation.domain_rand import load_randomisation, sample_world
+
+    for level in ("none", "low", "medium", "high", "shifted"):
+        cfg = load_randomisation(level)
+        rng = np.random.default_rng(0)
+        latencies = [sample_world(cfg, rng).action_latency for _ in range(500)]
+        assert min(latencies) >= 0, (
+            "level {} samples a negative action latency".format(level))

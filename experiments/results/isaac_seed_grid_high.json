@@ -1,0 +1,13 @@
+{
+  "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+  "randomisation": "high",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "arms": [],
+  "note": "Across-seed t intervals, the same standard the MuJoCo tables use."
+}

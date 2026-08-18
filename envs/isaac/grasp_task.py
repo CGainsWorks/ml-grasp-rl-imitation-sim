@@ -513,11 +513,15 @@ class GraspTask(DirectRLEnv):  # type: ignore[misc]
         latency_spec = self.ranges.get("params", {}).get("action_latency")
         rand_scale_l = float(self.ranges["scale"])
         if latency_spec is not None and rand_scale_l > 0.0:
-            self._max_latency = int(round(_scaled(latency_spec, rand_scale_l)[1]))
+            self._max_latency = max(
+                0, int(round(_scaled(latency_spec, rand_scale_l)[1])))
         else:
             self._max_latency = 0
+        # Clamped for the reason given in domain_rand.sample_world: at scale
+        # 1.8 the widened range starts below zero, and a negative latency is
+        # not a shorter delay, it is an out-of-bounds gather.
         self._latency_range = (
-            _scaled(latency_spec, rand_scale_l)
+            tuple(max(0.0, v) for v in _scaled(latency_spec, rand_scale_l))
             if latency_spec is not None and rand_scale_l > 0.0
             else (0.0, 0.0)
         )

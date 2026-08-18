@@ -1,0 +1,62 @@
+{
+  "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
+  "randomisation": "low",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "arms": [
+    {
+      "arm": "scratch",
+      "final_per_seed": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "best_per_seed": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "across_seeds": {
+        "point": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "n": 5,
+        "method": "t"
+      }
+    },
+    {
+      "arm": "bcrl",
+      "final_per_seed": [
+        0.4765625,
+        0.48046875,
+        0.57421875,
+        0.48046875,
+        0.58203125
+      ],
+      "best_per_seed": [
+        0.482421875,
+        0.458984375,
+        0.572265625,
+        0.53125,
+        0.615234375
+      ],
+      "across_seeds": {
+        "point": 0.51875,
+        "low": 0.4513440777128968,
+        "high": 0.5861559222871032,
+        "n": 5,
+        "method": "t"
+      }
+    }
+  ],
+  "note": "Across-seed t intervals, the same standard the MuJoCo tables use."
+}

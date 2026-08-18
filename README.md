@@ -518,10 +518,15 @@ limitation and a worse-sounding one.
   scratch. Every success rate quoted in *this* README was still produced in
   MuJoCo, and two of the mapped randomisation parameters are analogues rather
   than translations.
-* **Cross-simulator transfer is poor and now narrowed** — not control gain, not
-  grip force, not friction, and not vertical positioning: adding the missing
-  10 cm back makes it *worse*, while pressing down improves grip and lift
-  without improving success. What remains is the contact model.
+* **Cross-simulator transfer is poor, narrowed to contact, and not tunable at
+  the extremes** — not control gain, not grip force, not friction, not vertical
+  positioning. What remains is the contact model, and a four-corner sweep of
+  friction against solver iterations never retains the grip: `still_held` is
+  0.00 in all seven measurements, against MuJoCo's rigid hold. One cell read
+  **+121.3 mm** against MuJoCo's +117.9 and looked like a match — it failed to
+  replicate three times out of three (+25.8, +14.6, +15.7) and was noise. A
+  policy that depends on the grip surviving has to be trained in the engine it
+  will run in.
 
 ---
 

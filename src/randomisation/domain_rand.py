@@ -183,4 +183,11 @@ def sample_world(cfg: RandomisationConfig, rng: np.random.Generator,
     # wrist, and only then does yaw alignment become part of the task rather
     # than a detail the size cap hides.
     out.object_half_size = float(np.clip(out.object_half_size, 0.014, max_half_size))
+    # A latency is a queue depth, so it cannot be negative. `absolute` ranges
+    # widen about their midpoint, and at scale 1.8 the 0-2 step range becomes
+    # (-0.8, 2.8): MuJoCo absorbed the negative silently, because a list
+    # multiplied by a negative count is empty, while Isaac used it as a gather
+    # index and took the CUDA context down with it. Clamping here makes both
+    # simulators agree on purpose rather than by accident.
+    out.action_latency = max(0, int(out.action_latency))
     return out

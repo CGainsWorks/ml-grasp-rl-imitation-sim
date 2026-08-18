@@ -90,10 +90,14 @@ def measure(friction: float, iterations: int, rest: float) -> dict:
     cfg = GraspTaskCfg()
     cfg.scene.num_envs = args.num_envs
     cfg.randomisation_level = "none"
-    cfg.scene.obj.spawn.physics_material.static_friction = friction
-    cfg.scene.obj.spawn.physics_material.dynamic_friction = friction
-    cfg.scene.obj.spawn.rigid_props.solver_position_iteration_count = iterations
-    cfg.scene.obj.spawn.collision_props.rest_offset = rest
+    # The object config hangs off the task config, not off the scene:
+    # GraspTask builds it with RigidObject(self.cfg.obj). Reaching through
+    # cfg.scene silently finds nothing, which is how the first run of this
+    # sweep produced eighteen failed cells instead of eighteen measurements.
+    cfg.obj.spawn.physics_material.static_friction = friction
+    cfg.obj.spawn.physics_material.dynamic_friction = friction
+    cfg.obj.spawn.rigid_props.solver_position_iteration_count = iterations
+    cfg.obj.spawn.collision_props.rest_offset = rest
 
     env = GraspTask(cfg)
     obs_dict, _ = env.reset()

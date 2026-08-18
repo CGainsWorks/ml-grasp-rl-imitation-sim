@@ -60,6 +60,18 @@ parser.add_argument("--frictions", type=float, nargs="+",
 parser.add_argument("--iterations", type=int, nargs="+", default=[4, 16, 64])
 parser.add_argument("--rest-offsets", type=float, nargs="+",
                     default=[0.0, 0.001])
+parser.add_argument("--contact-offsets", type=float, nargs="+", default=[None],
+                    help="PhysX contact offset on the object, metres. The "
+                         "distance at which contacts start being generated")
+parser.add_argument("--velocity-iterations", type=int, nargs="+",
+                    default=[None],
+                    help="PhysX velocity-solver iterations on the object. "
+                         "Position iterations fix penetration; these fix "
+                         "sliding, which is what a slipping pinch looks like")
+parser.add_argument("--grip-stiffness", type=float, nargs="+", default=[None],
+                    help="scale on the finger drive stiffness. A pinch that "
+                         "slips because the fingers give way is a drive "
+                         "problem rather than a contact one")
 parser.add_argument("--num-envs", type=int, default=8)
 parser.add_argument("--settle-steps", type=int, default=40)
 parser.add_argument("--lift-steps", type=int, default=30)
@@ -85,7 +97,9 @@ from envs.isaac.grasp_task import ACT_DIM, GraspTask, GraspTaskCfg  # noqa: E402
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
 
 
-def measure(friction: float, iterations: int, rest: float) -> dict:
+def measure(friction: float, iterations: int, rest: float,
+            contact_offset=None, velocity_iterations=None,
+            grip_stiffness=None) -> dict:
     """One cell of the sweep, on contact_probe.py's protocol exactly."""
     cfg = GraspTaskCfg()
     cfg.scene.num_envs = args.num_envs
@@ -98,6 +112,20 @@ def measure(friction: float, iterations: int, rest: float) -> dict:
     cfg.obj.spawn.physics_material.dynamic_friction = friction
     cfg.obj.spawn.rigid_props.solver_position_iteration_count = iterations
     cfg.obj.spawn.collision_props.rest_offset = rest
+    if contact_offset is not None:
+        cfg.obj.spawn.collision_props.contact_offset = contact_offset
+    if velocity_iterations is not None:
+        cfg.obj.spawn.rigid_props.solver_velocity_iteration_count = (
+            velocity_iterations)
+    if grip_stiffness is not None:
+        # The *finger* drive only. The Franka config has three actuator groups
+        # -- panda_shoulder, panda_forearm, panda_hand -- and the first version
+        # of this scaled all of them, which detuned the arm at 5x and 20x so
+        # thoroughly that the box was never touched. Both cells reported
+        # "+0.0 mm, held 0.00", which reads in a table exactly like a grip that
+        # slipped and is nothing of the kind.
+        hand = cfg.robot.actuators["panda_hand"]
+        hand.stiffness = hand.stiffness * grip_stiffness
 
     env = GraspTask(cfg)
     obs_dict, _ = env.reset()
@@ -116,40 +144,58 @@ def measure(friction: float, iterations: int, rest: float) -> dict:
 
     close = torch.zeros((env.num_envs, ACT_DIM), device=env.device)
     close[:, 3] = 1.0
+    # Did the fingers ever actually touch the box? Without this a cell that
+    # never made contact and a cell whose grip slipped both report
+    # "lift ~0, held 0.00", which are entirely different failures. Two cells in
+    # this sweep were misread that way before it was recorded.
+    ever_touched = torch.zeros(env.num_envs, device=env.device, dtype=torch.bool)
     for _ in range(args.settle_steps):
         obs_dict, _, _, _, _ = env.step(close)
+        ever_touched |= env._grasped() > 0.5
 
     start_z = env._object_pos()[:, 2].clone()
     up = close.clone()
     up[:, 2] = 1.0
     for _ in range(args.lift_steps):
         obs_dict, _, _, _, _ = env.step(up)
+        ever_touched |= env._grasped() > 0.5
 
     lift_mm = float((env._object_pos()[:, 2] - start_z).mean()) * 1e3
     held = float((env._grasped() > 0.5).float().mean())
     env.close()
 
+    touched = float(ever_touched.float().mean())
     row = {"friction": friction, "solver_iterations": iterations,
            "rest_offset": rest, "lift_gained_mm": lift_mm,
-           "fraction_still_held": held,
+           "fraction_still_held": held, "fraction_ever_touched": touched,
+           "interpretable": bool(touched > 0.5),
            "matches_mujoco": bool(held > 0.5 and lift_mm > 0.5 * MUJOCO_LIFT_MM)}
     print("friction {:.1f}  iters {:3d}  rest {:.4f}  ->  lift {:+7.1f} mm  "
-          "held {:.2f}  {}".format(friction, iterations, rest, lift_mm, held,
-                                   "MATCH" if row["matches_mujoco"] else ""),
+          "held {:.2f}  touched {:.2f}  {}{}".format(
+              friction, iterations, rest, lift_mm, held, touched,
+              "MATCH" if row["matches_mujoco"] else "",
+              "" if row["interpretable"]
+              else "  NO CONTACT -- not a grip failure"),
           flush=True)
     return row
 
 
 rows = []
-for friction, iterations, rest in itertools.product(
-        args.frictions, args.iterations, args.rest_offsets):
+for friction, iterations, rest, coff, viters, gstiff in itertools.product(
+        args.frictions, args.iterations, args.rest_offsets,
+        args.contact_offsets, args.velocity_iterations, args.grip_stiffness):
     try:
-        rows.append(measure(friction, iterations, rest))
+        row = measure(friction, iterations, rest, coff, viters, gstiff)
+        row.update({"contact_offset": coff, "velocity_iterations": viters,
+                    "grip_stiffness": gstiff})
+        rows.append(row)
     except Exception as exc:  # a cell that will not build is data, not a crash
         print("friction {:.1f} iters {} rest {}: FAILED {}".format(
             friction, iterations, rest, exc), flush=True)
         rows.append({"friction": friction, "solver_iterations": iterations,
-                     "rest_offset": rest, "error": str(exc)})
+                     "rest_offset": rest, "contact_offset": coff,
+                     "velocity_iterations": viters, "grip_stiffness": gstiff,
+                     "error": str(exc)})
 
 matches = [r for r in rows if r.get("matches_mujoco")]
 best = max((r for r in rows if "lift_gained_mm" in r),

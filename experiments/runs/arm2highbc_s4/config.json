@@ -1,0 +1,13 @@
+{
+  "algorithm": "bc",
+  "seed": 4,
+  "randomisation": "high",
+  "arm": true,
+  "handled": false,
+  "wrist": false,
+  "history": 1,
+  "hidden": 128,
+  "max_half_size": null,
+  "perception": null,
+  "demos": "demonstrations/expert_arm2_high.npz"
+}

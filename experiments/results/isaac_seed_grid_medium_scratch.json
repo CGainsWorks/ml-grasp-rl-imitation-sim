@@ -1,6 +1,6 @@
 {
   "simulator": "Isaac Sim 5.1.0 / Isaac Lab 2.3.2",
-  "randomisation": "high",
+  "randomisation": "medium",
   "seeds": [
     0,
     1,
@@ -29,30 +29,6 @@
         "point": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "n": 5,
-        "method": "t"
-      }
-    },
-    {
-      "arm": "bcrl",
-      "final_per_seed": [
-        0.0234375,
-        0.056640625,
-        0.03515625,
-        0.04296875,
-        0.044921875
-      ],
-      "best_per_seed": [
-        0.013671875,
-        0.037109375,
-        0.02734375,
-        0.03515625,
-        0.0390625
-      ],
-      "across_seeds": {
-        "point": 0.040625,
-        "low": 0.025347237584840428,
-        "high": 0.055902762415159575,
         "n": 5,
         "method": "t"
       }

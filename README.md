@@ -511,13 +511,17 @@ limitation and a worse-sounding one.
   0.947, so a window has nothing independent to average. The
   headline numbers here were still produced under sensing five to thirteen
   times better than the perception stack in the same repository delivers.
-* **Isaac Lab runs both tasks and still supplies no headline number** — the
-  bring-up checks pass at `none` and `medium`, place-reward parity is 6.9e-08 on
-  the GPU, and at a budget matched on *gradient updates* the second task's
-  finding reproduces there: **0.825** demonstration-seeded against **0.000** from
-  scratch. Every success rate quoted in *this* README was still produced in
-  MuJoCo, and two of the mapped randomisation parameters are analogues rather
-  than translations.
+* **Isaac Lab runs both tasks and now carries a full randomisation sweep** —
+  four levels, five seeds per arm, forty runs. From-scratch RL is **0.000 at
+  every level**, with zero-width intervals; demonstration-seeding goes
+  **0.969 → 0.519 → 0.275 → 0.041** across `none`/`low`/`medium`/`high`. At
+  `high` the grasp rate is 0.08-0.10, so the policy fails to close on the box
+  rather than to lift it. Place-reward parity is 6.9e-08 on the GPU. The budget
+  is matched on *gradient updates*, not transitions (4 000 steps x 512
+  environments against MuJoCo's 200 000), so the steeper collapse describes
+  these configurations rather than the simulators. Every success rate quoted in
+  *this* README was still produced in MuJoCo, and two of the mapped
+  randomisation parameters are analogues rather than translations.
 * **Cross-simulator transfer is poor, narrowed to contact, and not tunable at
   the extremes** — not control gain, not grip force, not friction, not vertical
   positioning. What remains is the contact model, and a four-corner sweep of

@@ -124,12 +124,14 @@ def train(args: argparse.Namespace) -> Dict:
                   task=args.task, arm=args.arm,
                   handled=args.handled, history=args.history,
                   max_half_size=args.max_half_size,
+                  clutter=args.clutter,
                   wrist=args.handled or args.wrist, **pextra)
     eval_env = factory(args.randomisation, seed=args.seed + 999,
                        max_steps=args.max_steps, task=args.task,
                        arm=args.arm, handled=args.handled,
                        history=args.history,
                        max_half_size=args.max_half_size,
+                       clutter=args.clutter,
                        wrist=args.handled or args.wrist, **pextra)
     # Sized from the environment, not from the module constants: the wrist and
     # handled variants are 34-dimensional, and a 32-dimensional actor fails deep
@@ -216,6 +218,7 @@ def train(args: argparse.Namespace) -> Dict:
                    "history": args.history, "hidden": args.hidden,
                    "max_half_size": args.max_half_size,
                    "perception": args.perception,
+                   "clutter": args.clutter,
                    "demos": args.demos}, fh, indent=2)
     with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh:
         json.dump(summary, fh, indent=2)
@@ -258,6 +261,8 @@ def build_parser() -> argparse.ArgumentParser:
                              "position in every observation comes from a "
                              "64x64 render instead of the simulator. "
                              "About 250x slower per step")
+    parser.add_argument("--clutter", type=int, default=0,
+                        help="distractor objects on the table, up to 3")
     parser.add_argument("--history", type=int, default=1)
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=256)

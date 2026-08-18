@@ -1,0 +1,14 @@
+{
+  "algorithm": "bc",
+  "seed": 2,
+  "randomisation": "measured_camera_realsensor",
+  "arm": false,
+  "handled": false,
+  "wrist": false,
+  "history": 1,
+  "hidden": 128,
+  "max_half_size": null,
+  "perception": "experiments/perception/pose_cnn_wrist.pt",
+  "clutter": 3,
+  "demos": "demonstrations/expert_realsensor.npz"
+}

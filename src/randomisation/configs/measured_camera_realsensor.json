@@ -1,0 +1,68 @@
+{
+  "name": "measured_camera_realsensor",
+  "scale": 1.0,
+  "_comment": [
+    "measured_camera with the *injected* sensing noise removed, so the only",
+    "pose error is whatever the CNN in the loop actually makes.",
+    "",
+    "measured_camera models the wrist camera by drawing position error from a",
+    "0.03-0.078 m band, correlated in time. That band was calibrated from this",
+    "repository's own estimator, so the magnitudes agree -- but a draw from a",
+    "band is random every episode, while the estimator is a deterministic",
+    "function of the image: the same scene always yields the same wrong pose.",
+    "A policy can learn to invert a repeatable distortion and cannot invert a",
+    "fresh random one.",
+    "",
+    "This level exists so that difference can be measured with the dynamics",
+    "held identical. Comparing a CNN-in-the-loop run at `none` against a",
+    "measured_camera run would compare sensing *and* friction, mass, latency,",
+    "compliance and gripper gain at once."
+  ],
+  "params": {
+    "object_half_size": {
+      "low": 0.85,
+      "high": 1.1,
+      "mode": "scale"
+    },
+    "object_mass": {
+      "low": 0.5,
+      "high": 2.0,
+      "mode": "scale"
+    },
+    "object_friction": {
+      "low": 0.46,
+      "high": 1.9,
+      "mode": "scale"
+    },
+    "table_friction": {
+      "low": 0.46,
+      "high": 1.9,
+      "mode": "scale"
+    },
+    "gripper_gain": {
+      "low": 0.7,
+      "high": 1.4,
+      "mode": "scale"
+    },
+    "hand_compliance": {
+      "low": 0.7,
+      "high": 1.8,
+      "mode": "scale"
+    },
+    "action_latency": {
+      "low": 1.0,
+      "high": 6.0,
+      "mode": "absolute"
+    },
+    "gravity": {
+      "low": 0.999,
+      "high": 1.001,
+      "mode": "scale"
+    },
+    "action_noise": {
+      "low": 0.0,
+      "high": 0.05,
+      "mode": "absolute"
+    }
+  }
+}

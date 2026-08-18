@@ -69,6 +69,12 @@ CLAIMS = [
      "no wrist at cap 0.024"),
     ("percbc", "none", ["README.md", "docs/limitations.md"],
      "cloning with the pose estimator in the loop"),
+    ("wristcam", "none", ["README.md", "docs/limitations.md"],
+     "the wrist camera with clutter, nominal dynamics"),
+    ("realsensor", "measured_camera_realsensor",
+     ["README.md", "docs/limitations.md"],
+     "the wrist camera with clutter at measured_camera's dynamics -- the "
+     "controlled half of the noise-model comparison"),
     # The arm2* runs are the grid retrained on the corrected position servo.
     # The armgrid* runs are kept on disk but no longer quoted: they measured a
     # servo whose gain was scaled without its bias.
@@ -89,6 +95,10 @@ CLAIMS = [
 # Phrasings that were true once. Each is a regex, the files it must not appear
 # in, and the result that retired it.
 RETIRED = [
+    (r"[Pp]erception is a pipeline, on the easy camera",
+     ["README.md"],
+     "the wrist camera with clutter reaches 0.960 at nominal dynamics "
+     "and 0.728 at measured_camera's"),
     (r"it does not survive randomisation",
      ["README.md", "docs/limitations.md"],
      "the collapse to 0.052 was a position-servo bug; corrected, the "

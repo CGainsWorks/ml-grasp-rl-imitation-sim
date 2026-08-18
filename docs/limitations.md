@@ -432,11 +432,59 @@ camera cannot accidentally be scored on true state.
 So the pipeline works, and it costs about four points rather than eighteen.
 Training through the estimator is not the same problem as inheriting it.
 
+**The hard camera, and a noise model that turned out to be harsher than the
+estimator it was built from.**
+
+The paragraph above used to end by conceding that the camera here is fixed and
+unoccluded, and that the wrist camera with clutter -- 0.0513 m error -- is the
+realistic case that nothing survives. That has now been run, and it changes the
+sensing story in this repository.
+
+The wrist estimator in the loop makes the error the section above quotes:
+0.0499 m measured over 2 000 frames, against the 0.0513 m on record. It is not
+better near the object (0.0491 m inside 5 cm) and it is not a simple offset
+(bias is 0.36 of the scatter). It is, however, a **function**: a CNN returns the
+same wrong pose for the same scene every time.
+
+That distinction turns out to be worth more than the magnitude. Five seeds,
+100 episodes, privileged demonstrations throughout:
+
+| pose error of about 0.05 m, from | dynamics | success | grasp |
+| --- | --- | ---: | ---: |
+| the CNN, in the loop | nominal | **0.960** [0.937, 0.983] | 0.99 |
+| the CNN, in the loop | `measured_camera`'s | **0.728** [0.677, 0.779] | 0.93 |
+| injected random noise | `measured_camera`'s | 0.406 [0.345, 0.467] | 0.70 |
+
+The middle and bottom rows are the controlled pair, and they are the point. Same
+friction 0.46-1.9, same mass 0.5-2.0, same 1-6 step latency, same compliance and
+gripper gain. The only difference is where the pose error comes from, and the
+intervals are disjoint: **0.728 against 0.406**.
+
+`measured_camera` draws its error from a band calibrated on this estimator's
+*magnitude*, redrawn every episode. The estimator's error is instead a
+deterministic distortion of the scene, and a policy trained through it learns to
+invert one. Matching the magnitude and discarding the structure made the level
+substantially harsher than the thing it was modelling.
+
+That control needed building: `measured_camera_realsensor` is `measured_camera`
+with the injected sensing noise removed, so the CNN supplies the only pose
+error. Without it the comparison was the CNN at nominal dynamics against
+injected noise at full randomisation, which is sensing *and* five dynamics
+parameters at once -- and it flattered the conclusion by about twenty points.
+
+What this does **not** say is that real cameras are easy. 0.728 is still short
+of 0.973 on ground truth, so perception costs about a quarter of the task even
+when its error is learnable. And a physical camera has error sources this one
+does not -- calibration drift, changing light, motion blur, a moving base --
+several of which are closer to a fresh random draw than to a repeatable
+function. The honest reading is narrower than "sensing is fine": **a noise model
+calibrated on error magnitude alone overstates the damage**, because the
+structure it throws away is the part a policy can learn around.
+
 Three caveats, all of which matter more than the number. The estimator is
 **frozen** -- fine-tuning it on the policy's own state distribution is the
-obvious next step and is not done, so this is a floor. The camera is **fixed and
-unoccluded**, which is the easy case; the wrist camera with clutter produces
-0.0513 m error and nothing here survives that (see the sensing section). And the
+obvious next step and is not done, so this is a floor. The camera was **fixed and
+unoccluded** here; the wrist camera with clutter is measured directly above. And the
 error is small enough to servo on: at 0.0066 m the scripted expert works
 unchanged, which is why this needed ordinary demonstrations where
 `measured_camera` needed privileged ones.

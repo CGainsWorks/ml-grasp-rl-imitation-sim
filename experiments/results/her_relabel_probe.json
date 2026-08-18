@@ -1,0 +1,22 @@
+{
+  "policy": "uniform random, deliberately: this measures the relabeller rather than any trained agent",
+  "note": "the zero without a curriculum is an exploration result, not a structural property of hindsight. The latch travels with the transition and is recomputed correctly; there is simply never a lifted transition to relabel.",
+  "rows": [
+    {
+      "label": "no curriculum",
+      "relabelled_successes": 0,
+      "relabelled_total": 16000,
+      "hit_rate": 0.0,
+      "latch_fraction": 0.0,
+      "released_fraction": 0.9985
+    },
+    {
+      "label": "curriculum 0.2-0.8",
+      "relabelled_successes": 7961,
+      "relabelled_total": 16000,
+      "hit_rate": 0.4975625,
+      "latch_fraction": 0.575,
+      "released_fraction": 0.88625
+    }
+  ]
+}

@@ -97,6 +97,19 @@ def main() -> None:
                              "condition. Not a task to report numbers on -- it "
                              "exists to test whether the latch is what makes "
                              "hindsight relabelling inapplicable")
+    parser.add_argument("--start-progress", type=float, default=0.0,
+                        help="reverse curriculum: begin episodes this far "
+                             "along the scripted trajectory (Florensa et "
+                             "al. 2017). Sparse reward plus hindsight "
+                             "cannot explore its way to a first success; "
+                             "this supplies one")
+    parser.add_argument("--start-range", type=float, nargs=2, default=None,
+                        help="low and high of the start-progress band, so every "
+                             "batch spans the whole task rather than one stage "
+                             "at a time")
+    parser.add_argument("--observe-latch", action="store_true",
+                        help="append the lift latch to the observation, "
+                             "making the place task Markovian")
     parser.add_argument("--her", action="store_true",
                         help="relabel with hindsight goals; off is the control arm")
     parser.add_argument("--her-k", type=int, default=4,
@@ -132,10 +145,17 @@ def main() -> None:
                   if place else "src/rewards/configs/sparse.json")
     reward_cfg = (load_place_config if place else load_reward_config)(sparse_cfg)
     env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   task=args.task, reward_config=sparse_cfg)
+                   task=args.task, reward_config=sparse_cfg,
+                   observe_latch=args.observe_latch,
+                   start_progress=args.start_progress,
+                   start_progress_range=args.start_range)
+    # Evaluation always starts at the beginning of the task. A curriculum that
+    # is also applied at evaluation reports how well the policy finishes a job
+    # someone else started.
     eval_env = make_env(args.randomisation, seed=args.seed + 999,
                         max_steps=args.max_steps, task=args.task,
-                        reward_config=sparse_cfg)
+                        reward_config=sparse_cfg,
+                        observe_latch=args.observe_latch)
 
     cfg = SACConfig(hidden=(args.hidden, args.hidden), alpha_floor=args.alpha_floor)
     agent = SAC(env.obs_dim, env.act_dim, cfg, seed=args.seed)

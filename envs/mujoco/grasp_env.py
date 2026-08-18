@@ -241,6 +241,7 @@ class GraspEnv(_BASE):
         wrist: bool = False,
         arm: bool = False,
         max_half_size: Optional[float] = None,
+        observe_latch: bool = False,
         task: str = "lift",
         travel_range: Optional[Tuple[float, float]] = None,
         start_progress: float = 0.0,
@@ -316,6 +317,13 @@ class GraspEnv(_BASE):
             None if start_progress_range is None
             else (float(start_progress_range[0]), float(start_progress_range[1])))
         self.arm = bool(arm)
+        # The place success condition reads a lift latch -- 'this box was
+        # once 4 cm off the table' -- which is a fact about the episode's
+        # history. A policy that cannot see it is solving a partially
+        # observed problem, and hindsight relabelling of it is only valid
+        # if the latch travels with the transition. Appending it to the
+        # observation makes both true.
+        self.observe_latch = bool(observe_latch)
         self.wrist = bool(wrist)
         # Overridable so the wrist can be ablated properly: the same box
         # distribution has to be presented to a hand that can rotate and one
@@ -323,8 +331,10 @@ class GraspEnv(_BASE):
         self._max_half_size = float(
             max_half_size if max_half_size is not None
             else (WRIST_MAX_HALF_SIZE if self.wrist else 0.024))
-        self.obs_dim = (WRIST_OBS_DIM if self.wrist else OBS_DIM) * self.history
-        self._single_obs_dim = WRIST_OBS_DIM if self.wrist else OBS_DIM
+        base_obs = (WRIST_OBS_DIM if self.wrist else OBS_DIM) + (
+            1 if self.observe_latch else 0)
+        self.obs_dim = base_obs * self.history
+        self._single_obs_dim = base_obs
         self.act_dim = WRIST_ACT_DIM if self.wrist else ACT_DIM
         self.model = mujoco.MjModel.from_xml_path(
             ARM_SCENE_PATH if self.arm
@@ -1113,6 +1123,12 @@ class GraspEnv(_BASE):
                 self._goal - obj,
             ]
         ).astype(np.float64)
+
+        if self.observe_latch:
+            # Appended last so every existing index keeps its meaning: the
+            # perception wrapper and the hindsight relabeller both address this
+            # vector by constant slices.
+            obs = np.concatenate([obs, [self._lifted]])
 
         if self.world.obs_noise_pos > 0.0:
             obs[0:3] += self._sensor_noise("grip", self.world.obs_noise_pos)

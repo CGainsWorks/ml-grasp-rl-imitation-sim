@@ -18,6 +18,7 @@ with an NVIDIA driver, ``MUJOCO_GL=osmesa`` for software rendering.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from typing import List, Optional
@@ -60,25 +61,58 @@ def render(
     task: str = "lift",
     arm: bool = False,
     handled: bool = False,
+    wrist: bool = False,
+    max_half_size=None,
+    perception=None,
 ) -> List[np.ndarray]:
-    env = make_env(
-        randomisation, seed=seed, render_mode="rgb_array", camera=camera,
-        width=width, height=height, max_steps=max_steps, task=task, arm=arm,
-        handled=handled, wrist=handled,
-    )
+    if perception:
+        # A policy trained through the camera has to be *shown* through the
+        # camera, or the clip is of a different task than the caption claims.
+        from envs.mujoco.perception_env import make_perception_env
+
+        env = make_perception_env(
+            randomisation, seed=seed, max_steps=max_steps, task=task, arm=arm,
+            handled=handled, wrist=handled or wrist,
+            max_half_size=max_half_size, checkpoint=perception,
+        )
+        # The wrapper pins the estimator to its own 64x64 front camera, which is
+        # the wrong size and angle for a clip. A second environment is stepped
+        # with the identical action sequence from the identical seed and used
+        # only for the picture. Both are deterministic given (seed, actions), so
+        # the film shows the trajectory the policy actually flew -- but it is a
+        # replay rather than the same object, and if that ever stopped holding
+        # the clip would quietly disagree with the run.
+        film = make_env(
+            randomisation, seed=seed, render_mode="rgb_array", camera=camera,
+            width=width, height=height, max_steps=max_steps, task=task, arm=arm,
+            handled=handled, wrist=handled or wrist,
+            max_half_size=max_half_size,
+        )
+    else:
+        film = None
+        env = make_env(
+            randomisation, seed=seed, render_mode="rgb_array", camera=camera,
+            width=width, height=height, max_steps=max_steps, task=task, arm=arm,
+            handled=handled, wrist=handled or wrist,
+            max_half_size=max_half_size,
+        )
     frames: List[np.ndarray] = []
     successes = 0
     for ep in range(episodes):
         if on_episode_start is not None:
             on_episode_start()
         obs, _ = env.reset(seed=seed + ep)
+        if film is not None:
+            film.reset(seed=seed + ep)
         info = {}
         while True:
             action = policy_fn(obs)
             obs, _, terminated, truncated, info = env.step(action)
+            if film is not None:
+                film.step(action)
             frames.append(
                 _overlay(
-                    env.render(),
+                    (film if film is not None else env).render(),
                     bool(info.get("is_success", False)),
                     float(info.get("object_height", 0.0)) / (0.06 if task == "place" else 0.15),
                 )
@@ -89,6 +123,8 @@ def render(
         # Two frames of black between episodes, so a viewer can see the cut.
         frames.extend([np.zeros_like(frames[-1])] * 2)
     env.close()
+    if film is not None:
+        film.close()
     print("rendered {} episodes, {} successful, {} frames".format(episodes, successes, len(frames)))
     return frames
 
@@ -127,6 +163,22 @@ def main() -> None:
     parser.add_argument("--gif-width", type=int, default=320)
     args = parser.parse_args()
 
+    # Take the robot from the run rather than the command line. A clip of an
+    # arm policy rendered on the welded hand does not fail -- the observation
+    # widths coincide -- it just films a different robot than the caption says.
+    arm, handled, wrist = args.arm, args.handled, False
+    max_half_size, perception = None, None
+    if args.policy:
+        cfg_path = os.path.join(os.path.dirname(args.policy), "config.json")
+        if os.path.exists(cfg_path):
+            with open(cfg_path, "r", encoding="utf-8") as fh:
+                cfg = json.load(fh)
+            arm = arm or bool(cfg.get("arm", False))
+            handled = handled or bool(cfg.get("handled", False))
+            wrist = bool(cfg.get("wrist", False))
+            max_half_size = cfg.get("max_half_size")
+            perception = cfg.get("perception")
+
     if not args.policy and not args.expert:
         parser.error("give --policy or --expert")
 
@@ -149,7 +201,7 @@ def main() -> None:
     frames = render(
         policy_fn, args.randomisation, args.episodes, args.seed,
         args.camera, args.width, args.height, args.max_steps, on_start,
-        args.task, args.arm, args.handled,
+        args.task, arm, handled, wrist, max_half_size, perception,
     )
 
     import imageio.v2 as imageio

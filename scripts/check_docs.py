@@ -176,6 +176,14 @@ def main() -> int:
             REPO, "experiments", "results", "*_eval.json"))
         if os.path.basename(p)[: -len("_eval.json")] not in known)
 
+    # Every clip the README shows must exist. A missing GIF is a broken image
+    # on the front page, and nothing else in the build would notice.
+    readme = io.open(os.path.join(REPO, "README.md"), encoding="utf-8").read()
+    for ref in sorted(set(re.findall(r"\((videos/[^)]+\.gif)\)", readme))):
+        if not os.path.exists(os.path.join(REPO, ref)):
+            failures.append(
+                "README.md shows {} and the file does not exist".format(ref))
+
     if failures:
         print("documents disagree with the results they quote:\n")
         for f in failures:

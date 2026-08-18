@@ -580,7 +580,17 @@ class GraspEnv(_BASE):
             # is the same substitution the Isaac port documents. Scaled from the
             # nominal 0.02 so the same JSON drives both variants.
             gain = float(np.clip(0.02 / max(world.hand_compliance, 1e-4), 0.2, 5.0))
+            # Both terms, for exactly the reason stated above the gripper: a
+            # MuJoCo position servo is gainprm[0] * ctrl + biasprm[1] * qpos,
+            # and it is only a position servo while those have equal magnitude
+            # and opposite signs. Scaling the gain alone leaves the bias at the
+            # original stiffness, so the joints settle at (new/old) * commanded
+            # -- a systematic kinematic error of up to 43% at `medium`, which no
+            # amount of extra time or gravity compensation can remove. That is
+            # what made the arm miss the box by 143 mm and made its whole
+            # randomisation grid a measurement of a mis-specified actuator.
             self.model.actuator_gainprm[self._arm_ctrl, 0] = self._arm_gain0 * gain
+            self.model.actuator_biasprm[self._arm_ctrl, 1] = -self._arm_gain0 * gain
         else:
             self.model.eq_solref[self._weld_id, 0] = world.hand_compliance
         self.model.opt.gravity[2] = -world.gravity

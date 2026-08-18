@@ -51,7 +51,7 @@ tables report:
 | | |
 | --- | --- |
 | ![perception](videos/perception_clone.gif) | **Seeing, rather than being told.** The object's position comes from a CNN reading 64x64 renders — at training time and here — so the policy never gets ground truth. **0.934** [0.900, 0.968] against ~0.973 for a policy handed the true state. Substituting the estimator into a policy that never saw it costs 18 points; training through it costs about four. |
-| ![arm hold](videos/arm_hold.gif) | **The arm, at the best it reaches.** Demonstrations with a *held* cloning anchor: **0.522**, against 0.448 for cloning alone and **0.000** from scratch — through six joints, RL never closes the fingers at all. The clip shows two episodes, one of which fails, which is what 0.522 looks like. |
+| ![arm hold](videos/arm_hold.gif) | **The arm, on a corrected position servo.** Demonstrations with a *held* cloning anchor: **0.530** at `none`, and 0.354 even at the widest randomisation — where the previous, buggy version of this grid collapsed to 0.052. Through six joints, joint limits, self-collision and IK. Two episodes, one of which fails — which is what 0.530 looks like. |
 | ![wrist hold](videos/wrist_hold.gif) | **The yaw joint earning its place.** At a matched object-size cap this is the one cell where the wrist clearly beats not having one: **0.892** against 0.818. Unmatched, the same comparison read two-to-one the *other* way — the cap moves with the wrist flag unless you pin it. |
 
 Three more clips show the things that went wrong, because those are the more
@@ -479,13 +479,16 @@ limitation and a worse-sounding one.
 
 * **The default hand has no arm** — it floats on a mocap weld, and every
   headline number was produced that way. A six-jointed arm variant exists and
-  now has a grid of its own, and it does not survive randomisation: with
-  demonstrations and a held anchor it reaches **0.522** at `none`, **0.158** at
-  `low` and **0.052** at `medium`, against 0.973 → 0.582 for the weld over the
-  same range. The ceiling is the demonstrator, not the learner — the scripted
-  expert through six joints scores 0.093 at `medium`. Every headline number here
-  was produced on the weld and should be read as an upper bound on what the same
-  recipe does on an arm.
+  now has a four-level grid of its own. With demonstrations and a held anchor it
+  reaches **0.530 / 0.452 / 0.388 / 0.354** across `none`/`low`/`medium`/`high`.
+  An earlier version of this line reported a tenfold collapse to 0.052 — that
+  was a bug, not the robot: the arm's position servo had its gain scaled without
+  its bias, so every joint settled at up to 43% off its commanded angle and the
+  hand stopped 143 mm short of the box. Fixing it also restored the point of
+  domain randomisation, which the bug had erased: `shifted` transfer was 0.000
+  everywhere and now **rises** with training width (0.010 → 0.116). The arm is
+  still about half the weld's 0.973, and that gap is the cost of the
+  abstraction — but it is a gap, not a collapse.
 * **The wrist changes almost nothing once the comparison is matched** — and
   getting that comparison right took three attempts. `GraspEnv` sets the object
   size cap *from the wrist flag* (0.034 m with, 0.024 m without), so every

@@ -4,117 +4,67 @@
     "lift_gained_mm": 117.9,
     "still_held": true
   },
-  "note": "one object, one mass, one grip command. A cell that matches shows the gap is tunable at this operating point; it does not show the two engines agree in general",
-  "rows": [
+  "scope": "REDUCED. The full grid was 3 frictions x 3 solver-iteration counts x 2 rest offsets = 18 cells. Building a second GraspTask inside a live Isaac app is pathologically slow (one cell ~10 min including startup, the next unfinished after 28 min), so the sweep was cut to the four corners at rest offset 0.0 and each cell run in its own process. This is a deliberate reduction in coverage, recorded rather than implied.",
+  "determinism": "Isaac warns 'Seed not set for the environment'. Identical settings gave -16.2, -32.4 and -32.6 mm, so single cells are noisy samples and magnitudes are not point values.",
+  "corners": [
     {
       "friction": 1.0,
       "solver_iterations": 4,
       "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 1.0,
-      "solver_iterations": 4,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 1.0,
-      "solver_iterations": 16,
-      "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 1.0,
-      "solver_iterations": 16,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
+      "lift_gained_mm": -32.64645114541054,
+      "fraction_still_held": 0.0,
+      "matches_mujoco": false
     },
     {
       "friction": 1.0,
       "solver_iterations": 64,
       "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 1.0,
-      "solver_iterations": 64,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 2.0,
-      "solver_iterations": 4,
-      "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 2.0,
-      "solver_iterations": 4,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 2.0,
-      "solver_iterations": 16,
-      "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 2.0,
-      "solver_iterations": 16,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 2.0,
-      "solver_iterations": 64,
-      "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 2.0,
-      "solver_iterations": 64,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
+      "lift_gained_mm": -16.51155576109886,
+      "fraction_still_held": 0.0,
+      "matches_mujoco": false
     },
     {
       "friction": 4.0,
       "solver_iterations": 4,
       "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 4.0,
-      "solver_iterations": 4,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 4.0,
-      "solver_iterations": 16,
-      "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 4.0,
-      "solver_iterations": 16,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
+      "lift_gained_mm": 121.29387259483337,
+      "fraction_still_held": 0.0,
+      "matches_mujoco": false
     },
     {
       "friction": 4.0,
       "solver_iterations": 64,
       "rest_offset": 0.0,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
-    },
-    {
-      "friction": 4.0,
-      "solver_iterations": 64,
-      "rest_offset": 0.001,
-      "error": "'InteractiveSceneCfg' object has no attribute 'obj'"
+      "lift_gained_mm": -29.835131019353867,
+      "fraction_still_held": 0.0,
+      "matches_mujoco": false
     }
   ],
-  "n_matching": 0,
-  "best_lift": null
+  "replicates_of_best_corner": [
+    {
+      "friction": 4.0,
+      "solver_iterations": 4,
+      "rest_offset": 0.0,
+      "lift_gained_mm": 25.77821910381317,
+      "fraction_still_held": 0.0,
+      "matches_mujoco": false
+    },
+    {
+      "friction": 4.0,
+      "solver_iterations": 4,
+      "rest_offset": 0.0,
+      "lift_gained_mm": 14.588184654712677,
+      "fraction_still_held": 0.0,
+      "matches_mujoco": false
+    },
+    {
+      "friction": 4.0,
+      "solver_iterations": 4,
+      "rest_offset": 0.0,
+      "lift_gained_mm": 15.744835138320923,
+      "fraction_still_held": 0.0,
+      "matches_mujoco": false
+    }
+  ],
+  "conclusion": "No cell holds the box: fraction_still_held is 0.00 in every measurement taken. Quadrupling friction moves the lift from negative (-16 to -33 mm) to slightly positive (+15 to +26 mm) but never retains the grip. One sample read +121.3 mm, close to MuJoCo's +117.9, and failed to replicate three times out of three (+25.8, +14.6, +15.7). It was noise, and replication is the only reason it is not being reported as a match."
 }

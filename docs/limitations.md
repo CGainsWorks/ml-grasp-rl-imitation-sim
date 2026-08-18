@@ -667,6 +667,60 @@ hand, so a poor initial grasp cannot be fully separated from a poor *sustained*
 one. Narrowing that is the next measurement, and it is a measurement rather than
 an open question.
 
+#### Is the gap tunable? Four corners say no, and one of them nearly lied
+
+A mechanism is a diagnosis, not a fix, so the obvious next question is whether
+some setting of Isaac's contact parameters holds what MuJoCo holds.
+`scripts/isaac_contact_match.py` sweeps object friction, PhysX position-solver
+iterations and collision rest offset on `contact_probe.py`'s protocol unchanged,
+so the numbers sit next to MuJoCo's +117.9 mm rather than beside it.
+
+Two things about how this was run, stated because neither is visible in the
+result. **The scope was cut**: the intended grid was 3 frictions x 3 iteration
+counts x 2 rest offsets, 18 cells, and building a second `GraspTask` inside a
+live Isaac app turned out to be pathologically slow -- one cell took ~10 minutes
+including startup, the next had burned 28 minutes of full-core CPU without
+finishing. The sweep was reduced to the four corners at rest offset 0.0, each in
+its own process. **The measurement is unseeded**: Isaac warns as much, and
+identical settings returned -16.2, -32.4 and -32.6 mm, so a single cell is a
+noisy sample rather than a value.
+
+| friction | solver iterations | lift gained | still held |
+| ---: | ---: | ---: | ---: |
+| 1.0 | 4 | -32.6 mm | 0.00 |
+| 1.0 | 64 | -16.5 mm | 0.00 |
+| 4.0 | 4 | **+121.3 mm** | 0.00 |
+| 4.0 | 64 | -29.8 mm | 0.00 |
+
+That third row is why this section exists. **+121.3 mm is within 3 mm of
+MuJoCo's +117.9**, and taken alone it says the transfer gap is a friction
+setting. Replicated three times at identical settings it gave **+25.8, +14.6 and
++15.7 mm**. It was noise. Nothing but replication separated a headline finding
+from a fluke, and the only reason it was replicated is that it disagreed with
+its own `still_held` column.
+
+What the corners do support, across every measurement taken:
+
+* **No setting holds the box.** `still_held` is 0.00 in all four corners and all
+  three replicates -- seven measurements, no grip retained, against MuJoCo's
+  rigid hold.
+* **Friction moves the lift and does not fix the grasp.** Quadrupling it takes
+  the lift from clearly negative (-16 to -33 mm) to slightly positive (+15 to
+  +26 mm). The box is dragged upward a little further; it is still not held.
+* **More solver iterations do not help.** At friction 4.0, going from 4 to 64
+  iterations moved the lift from positive back to -29.8 mm.
+
+So the honest conclusion is the structural one this script was written to allow.
+At the extremes of the parameters that plausibly govern a pinch, PhysX does not
+reproduce MuJoCo's rigid grasp, and the difference is not a number waiting to be
+tuned. A policy that depends on the grip surviving has to be trained in the
+engine it will run in.
+
+What this does **not** establish: that no parameterisation anywhere reproduces
+it. Four corners of a three-dimensional space, at one object, one mass and one
+grip command, cannot rule out an interior setting -- and joint drive stiffness,
+contact offset and solver *velocity* iterations were never varied at all.
+
 **The reward is dense and hand-designed, and removing it is not recoverable
 here.** The sparse version was built and run: reward 1.0 on the step the success
 condition holds and 0 everywhere else, with hindsight relabelling

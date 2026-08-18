@@ -1,0 +1,37 @@
+{
+  "protocol": "identical to scripts/contact_probe.py: close at full command, settle, raise at a fixed rate, record height gained and whether still gripped",
+  "mujoco_reference": {
+    "lift_gained_mm": 117.9,
+    "still_held": true
+  },
+  "note": "one object, one mass, one grip command. A cell that matches shows the gap is tunable at this operating point; it does not show the two engines agree in general",
+  "rows": [
+    {
+      "friction": 1.0,
+      "solver_iterations": 4,
+      "rest_offset": 0.0,
+      "lift_gained_mm": -48.166874796152115,
+      "fraction_still_held": 0.0,
+      "fraction_ever_touched": 1.0,
+      "interpretable": true,
+      "matches_mujoco": false,
+      "contact_offset": null,
+      "velocity_iterations": null,
+      "grip_stiffness": null
+    }
+  ],
+  "n_matching": 0,
+  "best_lift": {
+    "friction": 1.0,
+    "solver_iterations": 4,
+    "rest_offset": 0.0,
+    "lift_gained_mm": -48.166874796152115,
+    "fraction_still_held": 0.0,
+    "fraction_ever_touched": 1.0,
+    "interpretable": true,
+    "matches_mujoco": false,
+    "contact_offset": null,
+    "velocity_iterations": null,
+    "grip_stiffness": null
+  }
+}

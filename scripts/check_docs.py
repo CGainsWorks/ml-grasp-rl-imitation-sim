@@ -69,10 +69,15 @@ CLAIMS = [
      "no wrist at cap 0.024"),
     ("percbc", "none", ["README.md", "docs/limitations.md"],
      "cloning with the pose estimator in the loop"),
-    ("armgridnonehold", "none", ["README.md", "docs/limitations.md"],
-     "the arm with a held anchor at level none"),
-    ("armgridmediumhold", "medium", ["README.md", "docs/limitations.md"],
-     "the arm with a held anchor at level medium"),
+    # The arm2* runs are the grid retrained on the corrected position servo.
+    # The armgrid* runs are kept on disk but no longer quoted: they measured a
+    # servo whose gain was scaled without its bias.
+    ("arm2nonehold", "none", ["README.md", "docs/limitations.md"],
+     "the arm with a held anchor at level none, corrected servo"),
+    ("arm2mediumhold", "medium", ["docs/limitations.md"],
+     "the arm with a held anchor at level medium, corrected servo"),
+    ("arm2highhold", "high", ["README.md", "docs/limitations.md"],
+     "the arm with a held anchor at level high, corrected servo"),
     ("fsns", "wrist_bench", ["docs/limitations.md"],
      "from scratch, no wrist, cap 0.024"),
     ("fsws", "wrist_bench", ["docs/limitations.md"],
@@ -84,6 +89,10 @@ CLAIMS = [
 # Phrasings that were true once. Each is a regex, the files it must not appear
 # in, and the result that retired it.
 RETIRED = [
+    (r"it does not survive randomisation",
+     ["README.md", "docs/limitations.md"],
+     "the collapse to 0.052 was a position-servo bug; corrected, the "
+     "arm declines mildly from 0.530 to 0.354 across the range"),
     (r"Isaac Lab runs both tasks and still supplies no headline number",
      ["README.md"],
      "the Isaac port now carries a four-level, five-seed sweep on both "

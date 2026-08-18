@@ -343,46 +343,69 @@ finish at exactly 0.000 against two of ten for boxes.
 This is a budget statement, not a claim that shape variety is harmful. Every
 widening of the distribution in this repository costs at 200 000 steps.
 
-### The arm has its own grid now, and it does not survive randomisation
+### The arm: a grid, and the bug that was most of the old one
 
 Every headline number in this repository was produced on the welded hand. The
-arm existed and had been measured at one level, which is not a grid. This is the
-grid: demonstrations recorded through the arm at each level, cloning, then
-demonstration-seeded SAC with the anchor held, five seeds, 100 episodes.
+arm now carries its own four-level grid -- and the first version of that grid
+was mostly measuring a broken actuator.
 
-| trained and evaluated at | cloning | + held anchor | grasp | `shifted` |
-| --- | ---: | ---: | ---: | ---: |
-| `none` | 0.448 [0.246, 0.650] | **0.522** [0.449, 0.595] | 0.62 | 0.000 |
-| `low` | 0.168 [0.158, 0.178] | 0.158 [0.131, 0.185] | 0.20 | 0.000 |
-| `medium` | 0.066 [0.039, 0.093] | 0.052 [0.042, 0.062] | 0.12 | 0.000 |
+**The bug.** A MuJoCo position servo produces
+``gainprm[0] * ctrl + biasprm[1] * qpos``, and it is only a position servo while
+those are equal and opposite. This file's own code says so, in a comment above
+the *gripper*, where both terms are set. The arm set only the gain. So when
+`hand_compliance` scaled the arm's stiffness, the bias kept its original value
+and every joint settled at ``(new/old)`` times its commanded angle -- up to 43%
+off at `medium`. The hand stopped 143 mm short of the box and the scripted
+expert simply never reached it.
 
-Three things this says, and one it does not.
+Finding it took a one-parameter-at-a-time sweep, because the symptom pointed
+elsewhere. Every other randomisation parameter left the expert's closest
+approach at about 50 mm; `hand_compliance` alone pushed it to 152 mm. Two
+plausible explanations were tested first and both were wrong, which is worth
+recording because both were the obvious guess:
 
-**The arm collapses under randomisation far faster than the weld.** The welded
-hand goes 0.973 at `none` to 0.582 at `medium`; the arm goes 0.522 to 0.052.
-That is not a small penalty for realism, it is most of the performance.
+* **not a time limit** -- best reach is identical at 100, 200 and 400 steps, so
+  the arm converges and then sits there. That is a steady-state error;
+* **not gravity droop** -- hand-rolled gravity compensation made it *worse*
+  (0.650 to 0.050 at `none`, because the servo was tuned with the load present),
+  and MuJoCo's own `body_gravcomp` changed nothing at all.
 
-**The held anchor only helps where there is something to hold on to.** It is
-worth +0.074 at `none` and nothing at `low` or `medium` -- the intervals overlap
-and the point estimates are slightly *lower*. Everywhere else in this repository
-holding the anchor was the fix; here it stops working exactly where the
-demonstrations stop being good, which is the more informative version of the
-result.
+Scripted expert through the arm, 40 episodes:
 
-**The demonstrator is the ceiling.** The scripted expert through six joints
-scores 0.093 at `medium` while the same expert on the weld scores near 1.0.
-Cloning reaches 0.066 from that. No amount of training fixes a demonstrator that
-does not work: the arm's grid is limited by inverse kinematics under randomised
-dynamics, not by the learning algorithm.
+| | before | after |
+| --- | ---: | ---: |
+| `none` | 0.633 | 0.650 |
+| `low` | 0.200 | **0.575** |
+| `medium` | 0.133 | **0.525** |
+| `high` | 0.133 | **0.350** |
 
-What it does not say is that six joints are unlearnable. It says that *this*
-demonstrator, at *this* budget, through *this* IK controller, degrades sharply
-with randomisation, and that every headline number produced on the weld should
-be read as an upper bound on what the same recipe does on an arm.
+**The grid, retrained on the corrected servo.** Five seeds, 100 episodes:
 
-Every arm row is 0.000 on `shifted`. That is the same held-out distribution the
-weld reaches 0.000 on too, so it is not an arm-specific failure -- but it does
-mean the arm has no margin anywhere.
+| trained and evaluated at | cloning | + held anchor | `shifted` |
+| --- | ---: | ---: | ---: |
+| `none` | 0.402 [0.264, 0.540] | **0.530** [0.484, 0.576] | 0.010 |
+| `low` | 0.502 [0.469, 0.535] | 0.452 [0.344, 0.560] | 0.054 |
+| `medium` | 0.398 [0.378, 0.418] | 0.388 [0.382, 0.394] | 0.104 |
+| `high` | 0.354 [0.327, 0.381] | 0.354 [0.312, 0.396] | 0.116 |
+
+The previous version of this section reported 0.522, 0.158 and 0.052 and
+concluded that the arm "does not survive randomisation". **That conclusion was
+wrong, and it was wrong because of the bug.** Corrected, the arm declines mildly
+across the whole range -- 0.530 to 0.354 -- rather than collapsing tenfold.
+
+The second thing the bug hid is arguably more interesting. Every arm row used to
+score **0.000** on the held-out `shifted` distribution, at every training level.
+It now *rises with training randomisation*: 0.010, 0.054, 0.104, 0.116. Training
+wider transfers better, which is the entire premise of domain randomisation, and
+the broken servo had erased the effect completely. The weld shows the same
+ordering; the arm now agrees with it.
+
+What is still true: the arm is worse than the weld. 0.530 against 0.973 at
+`none` is roughly half, and the gap is the cost of the abstraction the headline
+numbers use. Every number produced on the weld should be read as an upper bound
+on what the same recipe does through six joints, IK, joint limits and
+self-collision. But "an upper bound about twice as high" is a different claim
+from "the arm falls apart", and only the first one is supported.
 
 ### Perception in the loop: the estimator is a pipeline now
 

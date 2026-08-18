@@ -45,6 +45,15 @@ could have disagreed. Written up rather than buried, in
 | ![arm](videos/arm_expert.gif) | **Through a six-jointed arm** — UR5 proportions, joint limits, self-collision, damped-least-squares IK — instead of a hand on a mocap weld. The expert drops from 1.000 to 0.680 here, and that gap is the cost of the abstraction the headline numbers use. |
 | ![grasp point](videos/handled_expert.gif) | **Grasp-point selection.** The cube is 96 mm across against a 78 mm pad gap, so it cannot be grasped anywhere; the only grasp is the handle. The observation reports the *cube's centre*. Aiming there scores **0/30**. |
 
+Three clips of *learned* policies on the harder variants, at the numbers the
+tables report:
+
+| | |
+| --- | --- |
+| ![perception](videos/perception_clone.gif) | **Seeing, rather than being told.** The object's position comes from a CNN reading 64x64 renders — at training time and here — so the policy never gets ground truth. **0.934** [0.900, 0.968] against ~0.973 for a policy handed the true state. Substituting the estimator into a policy that never saw it costs 18 points; training through it costs about four. |
+| ![arm hold](videos/arm_hold.gif) | **The arm, at the best it reaches.** Demonstrations with a *held* cloning anchor: **0.522**, against 0.448 for cloning alone and **0.000** from scratch — through six joints, RL never closes the fingers at all. The clip shows two episodes, one of which fails, which is what 0.522 looks like. |
+| ![wrist hold](videos/wrist_hold.gif) | **The yaw joint earning its place.** At a matched object-size cap this is the one cell where the wrist clearly beats not having one: **0.892** against 0.818. Unmatched, the same comparison read two-to-one the *other* way — the cap moves with the wrist flag unless you pin it. |
+
 Three more clips show the things that went wrong, because those are the more
 useful ones:
 
@@ -409,7 +418,7 @@ in them are the failures in the tables. `make videos` regenerates all of them.
 | ![bc+sac wide on shifted](videos/bcrl_high_shifted.gif) | **BC + SAC, wide randomisation**, on the held-out shifted worlds |
 | ![bc+sac none on shifted](videos/bcrl_none_shifted.gif) | **The same method trained without randomisation**, on the same worlds |
 | ![place bc+sac](videos/place_bcrl.gif) | **BC + SAC on pick-and-place**, 0.916 across five seeds — the task from-scratch RL never solved |
-| ![arm clone](videos/arm_clone.gif) | **A clone driving the six-jointed arm**, 0.448. From-scratch RL through the arm never closes the fingers at all |
+| ![arm clone](videos/arm_clone.gif) | **A clone driving the six-jointed arm**, 0.448. From-scratch RL through the arm never closes the fingers at all; with a held anchor the same arm reaches 0.522 |
 | ![handled clone](videos/handled_clone.gif) | **A clone finding the handle** from an observation that never states where it is — 0.896, against 0/30 for aiming at the reported pose |
 
 `videos/expert_nominal.gif` and `videos/expert_shifted.gif` show the scripted

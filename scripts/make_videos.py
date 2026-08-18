@@ -117,6 +117,33 @@ CLIPS = [
     },
     # --- grasp-point selection
     {
+        "name": "arm_hold",
+        "policy": "experiments/runs/armgridnonehold_s0/policy.pt",
+        "args": ["--randomisation", "none", "--episodes", "3",
+                 "--seed", "90000"],
+        "why": "the arm with a held cloning anchor, 0.522 -- the best the arm "
+               "reaches, against 0.448 for cloning alone and 0.000 from scratch",
+    },
+    # --- the wrist, matched
+    {
+        "name": "wrist_hold",
+        "policy": "experiments/runs/wristsmallhold_s0/policy.pt",
+        "args": ["--randomisation", "wrist_bench", "--episodes", "3",
+                 "--seed", "90000"],
+        "why": "the yaw joint at a matched object size cap, 0.892 -- the one "
+               "cell where the wrist clearly beats not having one",
+    },
+    # --- perception in the loop
+    {
+        "name": "perception_clone",
+        "policy": "experiments/runs/percbc_s0/policy.pt",
+        "args": ["--randomisation", "none", "--episodes", "3",
+                 "--seed", "90000"],
+        "why": "a policy whose object position comes from a CNN reading 64x64 "
+               "renders, trained and evaluated that way, 0.934",
+    },
+    # --- grasp-point selection
+    {
         "name": "handled_expert",
         "args": ["--expert", "--handled", "--randomisation", "none",
                  "--episodes", "2"],

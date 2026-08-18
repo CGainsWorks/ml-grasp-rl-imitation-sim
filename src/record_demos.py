@@ -49,12 +49,14 @@ def record(
     history: int = 1,
     max_half_size=None,
     perception=None,
+    clutter: int = 0,
 ) -> dict:
     factory = make_perception_env if perception else make_env
     extra = {"checkpoint": perception} if perception else {}
     env = factory(randomisation, seed=seed, max_steps=max_steps, task=task,
                   arm=arm, handled=handled, wrist=handled or wrist,
-                  history=history, max_half_size=max_half_size, **extra)
+                  history=history, max_half_size=max_half_size,
+                  clutter=clutter, **extra)
     rng = np.random.default_rng(seed)
     expert_cls = ScriptedPlaceExpert if task == "place" else ScriptedExpert
     if handled:
@@ -150,6 +152,7 @@ def record(
                 "history": history,
                 "max_half_size": max_half_size,
                 "perception": perception,
+                "clutter": clutter,
                 "wall_seconds": round(time.time() - t0, 1),
                 "source": ("src/policies/scripted_place_expert.py" if task == "place"
                            else "src/policies/scripted_expert.py"),
@@ -182,6 +185,8 @@ def main() -> None:
                              "position in every observation comes from a "
                              "64x64 render instead of the simulator. "
                              "About 250x slower per step")
+    parser.add_argument("--clutter", type=int, default=0,
+                        help="distractor objects on the table, up to 3")
     parser.add_argument("--history", type=int, default=1,
                         help="stack this many observation frames, matching "
                              "the policy the demonstrations will train")
@@ -206,7 +211,7 @@ def main() -> None:
         args.episodes, args.randomisation, args.seed,
         args.expert_noise, args.keep_failures, args.max_steps, args.task,
         args.arm, args.handled, args.wrist, args.privileged, args.history,
-        args.max_half_size, args.perception,
+        args.max_half_size, args.perception, args.clutter,
     )
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     np.savez_compressed(args.output, **data)

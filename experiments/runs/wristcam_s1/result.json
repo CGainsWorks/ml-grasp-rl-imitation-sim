@@ -1,0 +1,45 @@
+{
+  "algorithm": "bc",
+  "final_success_rate": 1.0,
+  "final_grasp_rate": 1.0,
+  "final_val_mse": 0.005031260661780834,
+  "transitions": 20000,
+  "demo_episodes": 200,
+  "history": [
+    {
+      "round": 0,
+      "transitions": 20000,
+      "train_mse": 0.002251197257682576,
+      "val_mse": 0.005031260661780834,
+      "success_rate": 1.0,
+      "grasp_rate": 1.0
+    }
+  ],
+  "seed": 1,
+  "randomisation": "none",
+  "demos": "demonstrations/expert_wristcam.npz",
+  "demo_meta": {
+    "episodes_requested": 200,
+    "episodes_attempted": 200,
+    "episodes_kept": 200,
+    "expert_success_rate": 1.0,
+    "randomisation": "none",
+    "seed": 7,
+    "expert_noise": 0.02,
+    "keep_failures": false,
+    "max_steps": 100,
+    "task": "lift",
+    "arm": false,
+    "handled": false,
+    "wrist": false,
+    "privileged": true,
+    "history": 1,
+    "max_half_size": null,
+    "perception": "experiments/perception/pose_cnn_wrist.pt",
+    "clutter": 3,
+    "wall_seconds": 79.3,
+    "source": "src/policies/scripted_expert.py"
+  },
+  "epochs": 60,
+  "wall_seconds": 20.8
+}

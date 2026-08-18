@@ -499,14 +499,18 @@ limitation and a worse-sounding one.
   showed a two-to-one rout. The inherited from-scratch claim dissolves the same
   way: matched, **both** hands score 0.000 on the big boxes, so that zero was
   about object size and never about the wrist.
-* **Perception is a pipeline, on the easy camera** — a policy trained *and*
-  evaluated with a CNN pose estimator in the loop reaches **0.934**
-  [0.900, 0.968], against ~0.973 on ground truth. Substituting the estimator
-  into a policy that never saw it costs 18 points; training through it costs
-  about four. The caveats are the point: the estimator is frozen, the camera is
-  fixed and unoccluded at 0.0066 m error, and a step costs 75.9 ms against
-  0.3 ms, so from-scratch RL through the camera is left undone rather than
-  claimed.
+* **Perception is a pipeline, on both cameras — and the noise model was harsher
+  than the estimator** — a policy trained *and* evaluated with the CNN in the
+  loop reaches **0.934** [0.900, 0.968] on the fixed camera and **0.960**
+  [0.937, 0.983] on the wrist camera with three distractors, whose error is
+  0.05 m. The controlled comparison is the interesting part: with dynamics held
+  identical, the real estimator gives **0.728** [0.677, 0.779] where injected
+  random noise of the same magnitude gives **0.406** [0.345, 0.467], disjoint.
+  A CNN returns the same wrong pose for the same scene, and a policy learns to
+  invert a repeatable distortion; `measured_camera` matched the magnitude and
+  threw the structure away. Still short of 0.973 on ground truth, the estimator
+  is frozen, and a step costs 75.9 ms against 0.3 ms, so from-scratch RL through
+  the camera is left undone rather than claimed.
 * **Dense hand-designed reward, and it does not generalise** — it solves
   lift-and-hold. On pick-and-place, seven designs, a tripled budget and two
   curricula all fail while cloning succeeds immediately. Shaping here buys

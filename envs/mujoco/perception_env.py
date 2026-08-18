@@ -52,6 +52,13 @@ GOAL_MINUS_OBJ = slice(29, 32)
 GRIP = slice(0, 3)
 
 DEFAULT_CHECKPOINT = os.path.join("experiments", "perception", "pose_cnn.pt")
+WRIST_CHECKPOINT = os.path.join("experiments", "perception",
+                                "pose_cnn_wrist.pt")
+# Which camera each checkpoint was trained on. Pairing a checkpoint with
+# the wrong view does not fail -- both are 64x64 RGB -- it just produces a
+# confidently wrong pose, which is the hardest kind of error to notice.
+CHECKPOINT_CAMERA = {DEFAULT_CHECKPOINT: "front_cam",
+                     WRIST_CHECKPOINT: "wrist_cam"}
 
 
 class PerceptionEnv:
@@ -141,6 +148,13 @@ def make_perception_env(*args, checkpoint: str = DEFAULT_CHECKPOINT,
     kwargs["render_mode"] = "rgb_array"
     kwargs.setdefault("width", 64)
     kwargs.setdefault("height", 64)
-    kwargs.setdefault("camera", "front_cam")
+    expected = CHECKPOINT_CAMERA.get(os.path.normpath(checkpoint))
+    kwargs.setdefault("camera", expected or "front_cam")
+    if expected is not None and kwargs["camera"] != expected:
+        raise ValueError(
+            "{} was trained on {} and this environment renders {}. Both are "
+            "64x64 RGB so nothing would fail; the estimator would simply be "
+            "wrong.".format(os.path.basename(checkpoint), expected,
+                            kwargs["camera"]))
     return PerceptionEnv(make_env(*args, **kwargs), checkpoint=checkpoint,
                          device=device)

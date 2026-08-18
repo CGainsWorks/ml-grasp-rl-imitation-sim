@@ -203,3 +203,26 @@ def test_action_latency_is_never_negative():
         latencies = [sample_world(cfg, rng).action_latency for _ in range(500)]
         assert min(latencies) >= 0, (
             "level {} samples a negative action latency".format(level))
+
+
+def test_arm_actuators_stay_position_servos_under_randomisation():
+    """Scaling a MuJoCo position servo means scaling both of its terms.
+
+    The actuator force is ``gainprm[0] * ctrl + biasprm[1] * qpos``, and it is
+    only a position servo while those are equal in magnitude and opposite in
+    sign. `hand_compliance` scales the arm's stiffness; scaling the gain alone
+    left the bias at the original value, so the joints settled at
+    ``(new/old) * commanded`` -- a systematic kinematic error that made the
+    scripted expert miss the box by 143 mm at `medium` and turned the arm's
+    randomisation grid into a measurement of a mis-specified actuator.
+    """
+    for level in ("none", "low", "medium", "high"):
+        env = make_env(level, seed=0, arm=True)
+        for i in range(6):
+            env.reset(seed=100 + i)
+            gain = env.model.actuator_gainprm[env._arm_ctrl, 0]
+            bias = env.model.actuator_biasprm[env._arm_ctrl, 1]
+            assert np.allclose(bias, -gain), (
+                "level {}: arm actuator is not a position servo "
+                "(gain {}, bias {})".format(level, gain, bias))
+        env.close()

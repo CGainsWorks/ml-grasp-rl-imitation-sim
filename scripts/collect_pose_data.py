@@ -32,6 +32,7 @@ import os
 import sys
 
 import numpy as np
+import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -49,18 +50,40 @@ def main() -> None:
     parser.add_argument("--clutter", type=int, default=0,
                         help="distractor objects on the table, up to 3")
     parser.add_argument("--expert-fraction", type=float, default=0.7)
+    parser.add_argument("--policy", default=None,
+                        help="roll out this trained policy instead of the "
+                             "scripted expert, to collect frames from the "
+                             "state distribution the policy actually visits. "
+                             "An estimator is only accurate where it saw data, "
+                             "and the shipped one saw expert and random "
+                             "trajectories -- this is DAgger for perception")
     parser.add_argument("--output", default="experiments/perception/pose_data.npz")
     args = parser.parse_args()
     os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     rng = np.random.default_rng(0)
+    actor = None
+    if args.policy:
+        from src.evaluate import load_actor
+        actor = load_actor(args.policy)
     images, poses, occluded = [], [], []
 
     for ep in range(args.episodes):
         level = args.levels[ep % len(args.levels)]
-        env = make_env(level, seed=1000 + ep, render_mode="rgb_array",
-                       width=args.resolution, height=args.resolution,
-                       camera=args.camera, clutter=args.clutter)
+        if args.policy:
+            # The policy was trained through the camera, so it has to be rolled
+            # out through the camera: feeding it ground truth would collect
+            # frames from states it never actually visits.
+            from envs.mujoco.perception_env import (
+                CHECKPOINT_CAMERA, WRIST_CHECKPOINT, make_perception_env)
+            ckpt = (WRIST_CHECKPOINT if args.camera == "wrist_cam"
+                    else list(CHECKPOINT_CAMERA)[0])
+            env = make_perception_env(level, seed=1000 + ep,
+                                      clutter=args.clutter, checkpoint=ckpt)
+        else:
+            env = make_env(level, seed=1000 + ep, render_mode="rgb_array",
+                           width=args.resolution, height=args.resolution,
+                           camera=args.camera, clutter=args.clutter)
         expert = ScriptedExpert()
         obs, _ = env.reset()
         expert.reset()
@@ -86,8 +109,14 @@ def main() -> None:
             else:
                 occluded.append(float(grip[1] < obj[1] and
                                       np.linalg.norm(grip[:2] - obj[:2]) < 0.05))
-            action = (expert.act(obs) if use_expert
-                      else rng.uniform(-1, 1, env.act_dim).astype(np.float32))
+            if actor is not None:
+                with torch.no_grad():
+                    a, _ = actor(torch.as_tensor(obs, dtype=torch.float32)[None],
+                                 deterministic=True, with_logprob=False)
+                action = a.squeeze(0).numpy()
+            else:
+                action = (expert.act(obs) if use_expert
+                          else rng.uniform(-1, 1, env.act_dim).astype(np.float32))
             obs, _, term, trunc, _ = env.step(action)
             done = term or trunc
         env.close()

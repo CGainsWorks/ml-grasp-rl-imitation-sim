@@ -481,9 +481,32 @@ function. The honest reading is narrower than "sensing is fine": **a noise model
 calibrated on error magnitude alone overstates the damage**, because the
 structure it throws away is the part a policy can learn around.
 
-Three caveats, all of which matter more than the number. The estimator is
-**frozen** -- fine-tuning it on the policy's own state distribution is the
-obvious next step and is not done, so this is a floor. The camera was **fixed and
+**Unfreezing the estimator buys nothing, and the reason is worth more than the
+result.** The obvious next step was DAgger for perception: an estimator is only
+accurate where it saw data, the shipped one saw scripted-expert and random
+trajectories, and a trained policy visits different states. So 12 000 frames
+were collected from a trained policy's own distribution -- rolled out *through*
+the camera, since feeding it ground truth would sample states it never actually
+visits -- and the estimator was retrained on those plus the original 20 000.
+
+| estimator | error | success |
+| --- | ---: | ---: |
+| frozen, expert and random states | 0.0499 m | 0.728 [0.677, 0.779] |
+| retrained on policy states | 0.0477 m | 0.734 [0.687, 0.781] |
+
+The error improves by 4% and the policy by 0.006, which is nothing: the
+intervals overlap almost entirely. The collection report says why. On-policy
+frames flag **0.0%** as hard, against a mixture in the original set -- a trained
+policy keeps the box in view, so the states it visits are the *easy* ones.
+DAgger's usual premise is that the learner wanders somewhere the demonstrator
+never went; here it wanders somewhere better, and retraining on that adds data
+the estimator had already mastered.
+
+So "the estimator is frozen" was a real caveat and it is now a measured
+non-issue at this operating point. What would move the number is a harder
+estimator problem rather than a better-matched one.
+
+Two caveats remain, and they matter more than the number. The camera was **fixed and
 unoccluded** here; the wrist camera with clutter is measured directly above. And the
 error is small enough to servo on: at 0.0066 m the scripted expert works
 unchanged, which is why this needed ordinary demonstrations where

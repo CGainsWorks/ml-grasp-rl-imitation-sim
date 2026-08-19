@@ -1316,23 +1316,42 @@ left on it.
    optimistic. A survey is not a robot, `shifted` is a proxy, and no amount of
    further simulation closes that.
 
-Four things that *were* on this list are now findings rather than plans, and are
-written up above rather than promised here:
+Everything that *was* on this list is now a finding rather than a plan, and is
+written up above rather than promised here. Four of them changed meaning when
+they were finally measured, and in every case the cause was different from the
+one this document had blamed:
 
-* **Chaining segments without demonstrations** — seven reward designs, a tripled
-  budget, a travel-ladder decomposition, two curricula and a seeded combination.
-  Each half of pick-and-place is learnable; nothing tried learns both in
-  sequence; every attempt to combine them loses whichever half the training
-  distribution needs less. Hindsight is structurally inapplicable, and that is
-  measured rather than argued: 0 successes in 2.4 million relabelled transitions.
+* **Chaining segments without demonstrations** — **solved on the nominal world,
+  and the old explanation was wrong.** Seven shaped designs, a tripled budget and
+  two curricula all scored 0.000, and this document concluded that shaping buys
+  segments without chaining them, and that hindsight was *structurally
+  inapplicable*. Neither held. The relabeller always carried the lift latch
+  correctly; the zero came from exploration, with the latch set on 0.00 of frames
+  so there was nothing to relabel. A sparse binary reward with hindsight and a
+  start curriculum that **anneals back to the true start** reaches **0.944**
+  [0.914, 0.974] — above the 0.916 of the demonstration-seeded pipeline, with no
+  demonstrations and no shaping. It scores **0.000** at `medium`, so the scope is
+  the nominal world only.
 * **Why cross-simulator transfer fails** — narrowed past every action-space
-  explanation to the contact model, and then measured at the contact level: the
-  same grip that is rigid in MuJoCo drops the object in Isaac.
-* **Real sensing ranges** — measured, the consequence measured, and then
-  partly recovered. Every policy trained the ordinary way scores ~0.00 at the
-  error this repository's own estimator produces, and so does the scripted
-  expert. Privileged distillation clears it: **0.406** [0.345, 0.467] for a
-  policy that only ever sees the noisy view. Stacking observation frames does
-  not, and the autocorrelation says why before the runs do.
+  explanation to the contact model, measured at the contact level, and then
+  tested for tunability: friction, position and velocity solver iterations,
+  collision rest and contact offset, and finger drive stiffness. Contact is made
+  in every cell and the grip is retained in none. The difference is structural,
+  not a parameter waiting to be found.
+* **Real sensing ranges** — measured, the consequence measured, then largely
+  **un-measured**: the noise model turned out to be harsher than the estimator it
+  was calibrated from. With dynamics held identical, the real CNN in the loop
+  gives **0.728** [0.677, 0.779] where injected random noise of the same
+  magnitude gives **0.406** [0.345, 0.467]. A CNN returns the same wrong pose for
+  the same scene, and a policy learns to invert a repeatable distortion;
+  `measured_camera` matched the magnitude and discarded the structure.
+  Unfreezing the estimator changes nothing (0.734), because a trained policy
+  visits *easier* states, not harder ones.
 * **Grasp-point selection** — built and learned: 0/30 for the naive strategy,
   0.896 cloned, 0.996 demonstration-seeded.
+
+Two further items were closed by finding bugs rather than by running more
+compute, which is worth recording as a pattern: the arm's collapse under
+randomisation was a position servo whose gain was scaled without its bias, and
+every wrist-versus-no-wrist number in this repository's history compared two
+different object-size distributions because the cap moved with the wrist flag.

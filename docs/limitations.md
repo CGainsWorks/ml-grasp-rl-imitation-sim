@@ -885,11 +885,37 @@ start. Annealing the band's upper bound to zero over the first 80% of training,
 with the band always anchored at 0 so earlier stages stay in every batch, is the
 difference between 0.000 and 0.944.
 
-Two things this does not claim. The curriculum needs ``start_progress``, which
-is scripted knowledge of the task -- cheaper than 200 demonstrations, and not
-nothing, so "no demonstrations" is not "no prior knowledge". And this is the
-nominal world: whether it survives randomisation is untested, and every other
-method in this repository degrades sharply when it meets `medium`.
+One thing this does not claim: the curriculum needs ``start_progress``, which is
+scripted knowledge of the task -- cheaper than 200 demonstrations, and not
+nothing, so "no demonstrations" is not "no prior knowledge".
+
+**And it does not survive randomisation.** That caveat was written as untested
+and is now measured. The same recipe at `medium`, five seeds, 200 000 steps:
+
+| | success | peak grasp rate in training |
+| --- | ---: | ---: |
+| nominal | **0.944** [0.914, 0.974] | 0.97-1.00 |
+| `medium` | **0.000** [0.000, 0.000] | 0.03-0.13 |
+
+Zero on every seed, pooled Wilson [0.000, 0.008]. This is the steepest fall of
+any method here: the weld goes 0.973 to 0.582 over the same range, the arm 0.530
+to 0.388, and Isaac's demonstration-seeded arm 0.969 to 0.275. Demonstrations
+degrade; this collapses.
+
+The grasp column is the mechanism rather than a symptom. The recipe rests
+entirely on relabelling manufacturing successes, and a relabelled success needs
+the box at a goal, released, with the lift latch set. Under randomised mass,
+friction, latency and compliance the policy grasps on at most 13% of episodes
+against effectively all of them on the nominal world, so the latch is rarely
+set and relabelling starves -- the identical failure mode as having no
+curriculum at all, arrived at from the other direction. The curriculum supplies
+lifted *start* states, but the policy still has to reproduce the lift itself
+once the band anneals away, and under randomisation it never learns to.
+
+So the honest scope is narrow and worth stating exactly: **a sparse binary
+reward chains pick-and-place on the nominal world, better than demonstrations,
+and not at all under the randomisation this repository treats as the realistic
+case.**
 
 The relabelling itself is tested: goal entries, the derived goal-minus-object
 entries and the recomputed reward, against the simulator's true object position

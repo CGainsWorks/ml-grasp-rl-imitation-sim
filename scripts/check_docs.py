@@ -67,6 +67,8 @@ CLAIMS = [
      "held-anchor RL with the wrist at cap 0.024"),
     ("nowristbc", "wrist_bench", ["docs/limitations.md"],
      "no wrist at cap 0.024"),
+    ("hermed", "medium", ["docs/limitations.md"],
+     "the sparse recipe under medium randomisation, where it collapses"),
     ("herfinal", "none", ["README.md", "docs/limitations.md"],
      "sparse reward with hindsight and an annealed start curriculum"),
     ("percbc", "none", ["README.md", "docs/limitations.md"],
@@ -110,10 +112,15 @@ RETIRED = [
      ["README.md"],
      "the wrist camera with clutter reaches 0.960 at nominal dynamics "
      "and 0.728 at measured_camera's"),
-    (r"it does not survive randomisation",
+    # Anchored to the arm specifically. The bare phrase "does not survive
+    # randomisation" is *true* of the sparse hindsight recipe, which collapses
+    # to 0.000 at `medium`, so retiring the phrase alone flagged a correct
+    # sentence about a different subject. A retirement has to name the claim,
+    # not the wording.
+    (r"grid of its own,? and it does not survive randomisation",
      ["README.md", "docs/limitations.md"],
-     "the collapse to 0.052 was a position-servo bug; corrected, the "
-     "arm declines mildly from 0.530 to 0.354 across the range"),
+     "the arm's collapse to 0.052 was a position-servo bug; corrected, it "
+     "declines mildly from 0.530 to 0.354 across the range"),
     (r"Isaac Lab runs both tasks and still supplies no headline number",
      ["README.md"],
      "the Isaac port now carries a four-level, five-seed sweep on both "

@@ -1,86 +1,45 @@
 {
-  "algorithm": "dagger",
-  "final_success_rate": 0.34,
-  "final_grasp_rate": 0.9,
-  "final_val_mse": 0.015212560072541237,
-  "transitions": 32500,
+  "algorithm": "bc",
+  "final_success_rate": 0.7666666666666667,
+  "final_grasp_rate": 0.9666666666666667,
+  "final_val_mse": 0.00759162986651063,
+  "transitions": 20000,
   "demo_episodes": 200,
   "history": [
     {
       "round": 0,
       "transitions": 20000,
-      "train_mse": 0.0017454176141001598,
-      "val_mse": 0.008801482617855072,
-      "success_rate": 0.2,
-      "grasp_rate": 0.96
-    },
-    {
-      "round": 1,
-      "transitions": 22500,
-      "beta": 0.5,
-      "rollout_success": 0.2,
-      "train_mse": 0.00544772986904718,
-      "val_mse": 0.015915006399154663,
-      "success_rate": 0.28,
-      "grasp_rate": 0.84
-    },
-    {
-      "round": 2,
-      "transitions": 25000,
-      "beta": 0.375,
-      "rollout_success": 0.4,
-      "train_mse": 0.005051861874314703,
-      "val_mse": 0.014751769602298737,
-      "success_rate": 0.32,
-      "grasp_rate": 0.76
-    },
-    {
-      "round": 3,
-      "transitions": 27500,
-      "beta": 0.25,
-      "rollout_success": 0.44,
-      "train_mse": 0.008674224790608146,
-      "val_mse": 0.02057102508842945,
-      "success_rate": 0.38,
-      "grasp_rate": 0.96
-    },
-    {
-      "round": 4,
-      "transitions": 30000,
-      "beta": 0.125,
-      "rollout_success": 0.32,
-      "train_mse": 0.007736542490574549,
-      "val_mse": 0.01611393690109253,
-      "success_rate": 0.32,
-      "grasp_rate": 0.94
-    },
-    {
-      "round": 5,
-      "transitions": 32500,
-      "beta": 0.0,
-      "rollout_success": 0.52,
-      "train_mse": 0.008677661648708517,
-      "val_mse": 0.015212560072541237,
-      "success_rate": 0.34,
-      "grasp_rate": 0.9
+      "train_mse": 0.002251755897100018,
+      "val_mse": 0.00759162986651063,
+      "success_rate": 0.7666666666666667,
+      "grasp_rate": 0.9666666666666667
     }
   ],
   "seed": 0,
-  "randomisation": "shifted",
-  "demos": "demonstrations\\expert_low.npz",
+  "randomisation": "measured_camera_realsensor",
+  "demos": "demonstrations/expert_dagger.npz",
   "demo_meta": {
     "episodes_requested": 200,
-    "episodes_attempted": 201,
+    "episodes_attempted": 229,
     "episodes_kept": 200,
-    "expert_success_rate": 0.9950248756218906,
-    "randomisation": "low",
+    "expert_success_rate": 0.8733624454148472,
+    "randomisation": "measured_camera_realsensor",
     "seed": 7,
     "expert_noise": 0.02,
     "keep_failures": false,
     "max_steps": 100,
-    "wall_seconds": 13.2,
+    "task": "lift",
+    "arm": false,
+    "handled": false,
+    "wrist": false,
+    "privileged": true,
+    "history": 1,
+    "max_half_size": null,
+    "perception": "experiments/perception/pose_cnn_wrist_dagger.pt",
+    "clutter": 3,
+    "wall_seconds": 103.9,
     "source": "src/policies/scripted_expert.py"
   },
   "epochs": 60,
-  "wall_seconds": 83.8
+  "wall_seconds": 24.3
 }

@@ -107,6 +107,13 @@ def main() -> None:
                         help="low and high of the start-progress band, so every "
                              "batch spans the whole task rather than one stage "
                              "at a time")
+    parser.add_argument("--start-anneal", action="store_true",
+                        help="walk the start distribution back to the true "
+                             "start over training, which is what makes it a "
+                             "*curriculum* rather than a fixed mid-task start. "
+                             "The band always begins at 0, so late batches "
+                             "still contain the stages already learned and no "
+                             "stage can be overwritten by the next")
     parser.add_argument("--observe-latch", action="store_true",
                         help="append the lift latch to the observation, "
                              "making the place task Markovian")
@@ -202,6 +209,17 @@ def main() -> None:
             "speed": float(info.get("object_speed", 0.0)),
         })
         obs = next_obs
+
+        if args.start_anneal and args.start_range is not None:
+            # Florensa et al. start near a state where the task is achieved and
+            # walk outward. Holding the start distribution fixed trains a policy
+            # that finishes the job and never starts it -- which is exactly what
+            # the fixed-band runs did: they scored at 50k and decayed to zero,
+            # while evaluation always began at the true start.
+            frac = min(1.0, step / max(1, int(0.8 * args.steps)))
+            hi = float(args.start_range[1]) * (1.0 - frac)
+            env.start_progress_range = (0.0, hi) if hi > 1e-3 else None
+            env.start_progress = 0.0
 
         if terminated or truncated:
             for i, tr in enumerate(episode):

@@ -28,9 +28,14 @@ demonstration transitions is about 25 minutes, while 200 000 environment steps
 of RL would be over four hours. So the runs here are cloning, and from-scratch
 RL through the camera is left undone rather than claimed.
 
-The estimator is frozen. Fine-tuning it against the policy's own state
-distribution is the obvious next thing and is not done here, so the numbers this
-produces are a floor rather than the best a pipeline could do.
+The estimator is frozen, and unfreezing it was tried. Retraining on 12 000
+frames from a trained policy's own state distribution improves its error from
+0.0499 m to 0.0477 m and the policy from 0.728 to 0.734 -- nothing, on
+overlapping intervals. The collection report says why: on-policy frames flag
+0.0% as hard, because a trained policy keeps the box in view. DAgger's premise
+is that the learner wanders where the demonstrator never went; here it wanders
+somewhere easier. `scripts/collect_pose_data.py --policy` is the machinery if a
+harder camera ever makes it worth revisiting.
 """
 
 from __future__ import annotations

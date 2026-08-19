@@ -511,10 +511,16 @@ limitation and a worse-sounding one.
   threw the structure away. Still short of 0.973 on ground truth, the estimator
   is frozen, and a step costs 75.9 ms against 0.3 ms, so from-scratch RL through
   the camera is left undone rather than claimed.
-* **Dense hand-designed reward, and it does not generalise** — it solves
-  lift-and-hold. On pick-and-place, seven designs, a tripled budget and two
-  curricula all fail while cloning succeeds immediately. Shaping here buys
-  segments and does not chain them.
+* **The dense reward was never the way to chain the task** — on pick-and-place,
+  seven shaped designs, a tripled budget and two curricula all score **0.000**
+  from scratch. A *sparse* binary reward with hindsight relabelling and a start
+  curriculum that anneals back to the true start reaches **0.944**
+  [0.914, 0.974], above the 0.916 of the demonstration-seeded pipeline, with no
+  demonstrations and no shaping. Every ablation is at zero: hindsight alone
+  0.000, a fixed (non-annealed) start band 0.003, both together but without
+  annealing 0.000. The curriculum needs scripted task knowledge, so this is
+  cheaper than demonstrations rather than free — and it is measured on the
+  nominal world only.
 * **No hardware, and the sensing gap costs about 60%** — `shifted` is a proxy
   for a real robot. At the pose error this repository's own camera estimator
   produces (0.0513 m against the 0.004-0.010 m it randomises over), every

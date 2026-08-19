@@ -1,0 +1,70 @@
+{
+  "label": "herfinal_s2",
+  "checkpoint": "policy.pt",
+  "episodes_per_seed": 100,
+  "eval_levels": [
+    "none"
+  ],
+  "n_seeds": 1,
+  "single_seed_warning": "one seed only: this is an anecdote, not a result",
+  "runs": [
+    {
+      "run": "experiments/runs/herfinal_s2",
+      "train_randomisation": "none",
+      "seed": 2,
+      "levels": {
+        "none": {
+          "successes": 93,
+          "episodes": 100,
+          "success_rate": 0.93,
+          "grasp_rate": 1.0,
+          "mean_return": 756.8153934718508,
+          "mean_max_lift": 0.06999762565917945
+        }
+      }
+    }
+  ],
+  "aggregate": {
+    "none": {
+      "across_seeds": {
+        "point": 0.93,
+        "low": NaN,
+        "high": NaN,
+        "n": 1,
+        "method": "t"
+      },
+      "across_seeds_bootstrap": {
+        "point": 0.93,
+        "low": 0.93,
+        "high": 0.93,
+        "n": 1,
+        "method": "bootstrap"
+      },
+      "pooled_wilson": {
+        "point": 0.93,
+        "low": 0.8625048526092651,
+        "high": 0.9656807389327273,
+        "n": 100,
+        "method": "wilson"
+      },
+      "per_seed": [
+        {
+          "point": 0.93,
+          "low": 0.8625048526092651,
+          "high": 0.9656807389327273,
+          "n": 100,
+          "method": "wilson"
+        }
+      ],
+      "per_seed_rates": [
+        0.93
+      ],
+      "n_seeds": 1,
+      "episodes_per_seed": [
+        100
+      ],
+      "mean_grasp_rate": 1.0
+    }
+  },
+  "wall_seconds": 12.5
+}

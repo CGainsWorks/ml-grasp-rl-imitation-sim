@@ -833,12 +833,67 @@ that failed before the current one worked.
 
 The control is what makes that readable. Both arms at zero means the sparse task
 is not being solved at this budget; had the control scored anything, the right
-conclusion would have been a bug in the relabelling instead. What this does
-*not* establish is that hindsight replay fails on this task in general — it is
-one configuration at one budget, and the original paper uses far more compute
-than a CPU evening. The relabelling itself is tested: goal entries, the derived
-goal-minus-object entries and the recomputed reward, against the simulator's
-true object position rather than the noisy observed one.
+conclusion would have been a bug in the relabelling instead.
+
+#### It does chain, and everything above was diagnosing the wrong thing
+
+The paragraphs above, and the note in `place_reward.py` calling hindsight
+*structurally inapplicable*, are wrong. The task chains from a sparse binary
+reward with no demonstrations and no shaping:
+
+| 5 seeds, 100 episodes, evaluated from the true start | success |
+| --- | ---: |
+| **sparse + hindsight + annealed start curriculum** | **0.944** [0.914, 0.974] |
+| sparse + hindsight, fixed start band | 0.000 |
+| sparse + fixed start band, no hindsight | 0.003 |
+| sparse + hindsight, no curriculum | 0.000 |
+| *for reference:* demonstration-seeded BC + RL | 0.916 |
+| *for reference:* seven shaped from-scratch designs | 0.000 |
+
+It reaches a task the nine-term shaped reward never solved from scratch, and
+slightly exceeds the demonstration-seeded pipeline. Three corrections got there,
+and each was a different kind of mistake.
+
+**The structural claim was false.** `train_her.py` already stored ``lifted``
+per transition and recomputed the success condition with it, so the latch did
+travel with the relabelled transition. "The latch is history" was confused with
+"the latch is unavailable"; only the first is true. The latch is now also part
+of the observation (`--observe-latch`), which the policy needs anyway -- without
+it the place task is partially observed, since the policy cannot tell whether it
+has already lifted the box.
+
+**The zero was exploration, and that is measurable separately.**
+`scripts/her_relabel_probe.py` runs a *random* policy, so the number is about
+the relabeller rather than any agent:
+
+| | relabelled successes | latch set on |
+| --- | ---: | ---: |
+| no curriculum | 0 / 16 000 | 0.00 of frames |
+| curriculum 0.2-0.8 | 7 961 / 16 000 | 0.57 of frames |
+
+The first row reproduces the documented zero and shows its cause in the second
+column: the box is never lifted, so every relabelled goal is scored against
+``lifted = 0``. Hindsight reinterprets experience; it cannot invent it.
+
+**A fixed start band is not a curriculum.** The first attempt drew start states
+from a fixed 0.2-0.8 band and called that reverse curriculum generation. It is
+not: Florensa et al. walk the start distribution *back to the true start* as the
+policy improves. A fixed mid-task band trains a policy that finishes the job and
+never starts it, which is exactly what the numbers showed -- 0.100 at 50 000
+steps decaying to 0.000 by 100 000, while evaluation always began at the true
+start. Annealing the band's upper bound to zero over the first 80% of training,
+with the band always anchored at 0 so earlier stages stay in every batch, is the
+difference between 0.000 and 0.944.
+
+Two things this does not claim. The curriculum needs ``start_progress``, which
+is scripted knowledge of the task -- cheaper than 200 demonstrations, and not
+nothing, so "no demonstrations" is not "no prior knowledge". And this is the
+nominal world: whether it survives randomisation is untested, and every other
+method in this repository degrades sharply when it meets `medium`.
+
+The relabelling itself is tested: goal entries, the derived goal-minus-object
+entries and the recomputed reward, against the simulator's true object position
+rather than the noisy observed one.
 
 ## The results are honest but small
 

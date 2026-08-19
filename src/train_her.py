@@ -170,6 +170,14 @@ def main() -> None:
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
         json.dump({"algorithm": "sac+her" if args.her else "sac",
                    "reward": "sparse", "her": args.her, "her_k": args.her_k,
+                   # Everything evaluate.py needs to rebuild this environment.
+                   # observe_latch changes the observation *width*, so leaving
+                   # it out does not mis-score a policy, it fails inside the
+                   # normaliser -- which is better than silent, and worse than
+                   # simply recording it.
+                   "task": args.task, "observe_latch": args.observe_latch,
+                   "start_progress": args.start_progress,
+                   "start_anneal": args.start_anneal,
                    "steps": args.steps, "seed": args.seed,
                    "randomisation": args.randomisation,
                    "sac": cfg.to_dict()}, fh, indent=2)

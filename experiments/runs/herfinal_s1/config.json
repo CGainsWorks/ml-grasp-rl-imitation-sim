@@ -33,6 +33,7 @@
   },
   "task": "place",
   "observe_latch": true,
-  "start_anneal": false,
+  "start_anneal": true,
+  "start_progress": 0.0,
   "backfilled": "train_her did not record these until after these runs finished"
 }

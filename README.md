@@ -518,9 +518,12 @@ limitation and a worse-sounding one.
   [0.914, 0.974], above the 0.916 of the demonstration-seeded pipeline, with no
   demonstrations and no shaping. Every ablation is at zero: hindsight alone
   0.000, a fixed (non-annealed) start band 0.003, both together but without
-  annealing 0.000. The curriculum needs scripted task knowledge, so this is
-  cheaper than demonstrations rather than free — and it is measured on the
-  nominal world only.
+  annealing 0.000. **It does not survive randomisation** — the same recipe at
+  `medium` scores **0.000** on all five seeds, the steepest fall of any method
+  here, because the policy grasps on at most 13% of episodes there and
+  relabelling starves for want of a lifted transition. The curriculum also
+  needs scripted task knowledge, so this is cheaper than demonstrations rather
+  than free.
 * **No hardware, and the sensing gap costs about 60%** — `shifted` is a proxy
   for a real robot. At the pose error this repository's own camera estimator
   produces (0.0513 m against the 0.004-0.010 m it randomises over), every

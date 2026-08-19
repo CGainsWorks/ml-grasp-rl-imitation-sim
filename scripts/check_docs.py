@@ -67,6 +67,8 @@ CLAIMS = [
      "held-anchor RL with the wrist at cap 0.024"),
     ("nowristbc", "wrist_bench", ["docs/limitations.md"],
      "no wrist at cap 0.024"),
+    ("herfinal", "none", ["README.md", "docs/limitations.md"],
+     "sparse reward with hindsight and an annealed start curriculum"),
     ("percbc", "none", ["README.md", "docs/limitations.md"],
      "cloning with the pose estimator in the loop"),
     ("wristcam", "none", ["README.md", "docs/limitations.md"],
@@ -95,6 +97,15 @@ CLAIMS = [
 # Phrasings that were true once. Each is a regex, the files it must not appear
 # in, and the result that retired it.
 RETIRED = [
+    (r"Shaping here buys segments and does not chain them",
+     ["README.md", "docs/limitations.md"],
+     "sparse reward plus hindsight plus an annealed start curriculum "
+     "reaches 0.944, above the demonstration-seeded 0.916"),
+    (r"hindsight experience replay inapplicable",
+     ["docs/limitations.md"],
+     "the relabeller always carried the latch; the zero was "
+     "exploration, and with a curriculum it fires on half of all "
+     "transitions"),
     (r"[Pp]erception is a pipeline, on the easy camera",
      ["README.md"],
      "the wrist camera with clutter reaches 0.960 at nominal dynamics "

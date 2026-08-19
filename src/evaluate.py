@@ -92,6 +92,8 @@ def evaluate_run(
     # it was never trained on, and would flatter it.
     perception = config.get("perception")
     clutter = int(config.get("clutter", 0) or 0)
+    observe_latch = bool(config.get("observe_latch", False))
+    task = config.get("task", task)
     # Same rule for the robot itself. An arm-trained policy evaluated on
     # the welded hand does not fail -- the observation widths coincide --
     # it just reports a number for a different robot. Taking these from
@@ -114,6 +116,7 @@ def evaluate_run(
                            arm=arm, travel_range=place_travel, history=history,
                            max_half_size=max_half_size,
                            clutter=clutter,
+                           observe_latch=observe_latch,
                            handled=handled, wrist=wrist)
         result = evaluate_policy(
             env, torch_policy(actor, deterministic=True),

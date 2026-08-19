@@ -30,5 +30,9 @@
     "bc_q_filter": false,
     "bc_decay_steps": 0,
     "demo_sample_fraction": 0.0
-  }
+  },
+  "task": "place",
+  "observe_latch": true,
+  "start_anneal": false,
+  "backfilled": "train_her did not record these until after these runs finished"
 }

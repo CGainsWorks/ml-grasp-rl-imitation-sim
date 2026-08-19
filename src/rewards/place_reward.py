@@ -128,17 +128,25 @@ class PlaceRewardConfig:
     # without the pick is a different task, and without this a policy scores by
     # shoving the box along the table.
     #
-    # It also makes hindsight experience replay inapplicable, which is worth
-    # stating precisely because it is a real tension rather than an oversight.
-    # Hindsight works by relabelling a failed episode as a success for the goal
-    # it *did* achieve, which requires success to be a function of the achieved
-    # state. The lift latch is a function of the episode's *history*: it records
-    # that the object was once 4 cm off the table. Relabelling can move the
-    # target to wherever the box ended up; it cannot retroactively pick the box
-    # up. Measured rather than argued -- with the latch, 16 000 relabelled
-    # transitions across a run yield exactly zero successes, so the hindsight arm
-    # trains on a buffer of uniformly-zero reward and looks identical to a method
-    # that simply did not help.
+    # This comment used to say the latch made hindsight experience replay
+    # inapplicable: relabelling can move the target to wherever the box ended
+    # up, but cannot retroactively pick the box up. That was wrong, and the
+    # error is worth leaving on the record because it was confidently argued
+    # from a real measurement.
+    #
+    # The measurement was right -- 16 000 relabelled transitions, zero
+    # successes -- and the explanation was not. `train_her.py` stores `lifted`
+    # per transition and recomputes this condition with it, so the latch does
+    # travel with the relabelled transition. What produced the zero is that a
+    # sparse from-scratch policy never lifts the box at all, so every relabelled
+    # goal is scored against `lifted = 0`. "The latch is history" was confused
+    # with "the latch is unavailable".
+    #
+    # Give the policy start states where the lift has already happened and
+    # relabelling fires on half of all transitions
+    # (`scripts/her_relabel_probe.py`), and sparse reward plus hindsight plus an
+    # annealed start curriculum reaches 0.944 -- above the demonstration-seeded
+    # pipeline, on a task no shaped reward here ever solved from scratch.
     #
     # False exists so that claim can be tested rather than asserted, and it is
     # not a task anyone should report numbers on.

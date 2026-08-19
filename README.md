@@ -519,9 +519,12 @@ this summary.
   random noise of the same magnitude gives **0.406** [0.345, 0.467], disjoint.
   A CNN returns the same wrong pose for the same scene, and a policy learns to
   invert a repeatable distortion; `measured_camera` matched the magnitude and
-  threw the structure away. Still short of 0.973 on ground truth, the estimator
-  is frozen, and a step costs 75.9 ms against 0.3 ms, so from-scratch RL through
-  the camera is left undone rather than claimed.
+  threw the structure away. From-scratch RL through the camera reaches **0.950**
+  [0.875, 1.000] — higher than cloning through it, level with ground truth, and
+  with no demonstrator. That experiment had been declined on cost; the real
+  obstacle was that `train_rl` had no `--perception` flag. What the 75.9 ms per
+  step still buys is scope: the randomised levels have not been tried through
+  the camera.
 * **The dense reward was never the way to chain the task** — on pick-and-place,
   seven shaped designs, a tripled budget and two curricula all score **0.000**
   from scratch. A *sparse* binary reward with hindsight relabelling and a start

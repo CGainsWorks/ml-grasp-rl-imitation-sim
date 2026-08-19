@@ -477,6 +477,17 @@ Several of these used to be "the repository does not do X". Most are now "the
 repository does X and here is what it cost", which is a more useful kind of
 limitation and a worse-sounding one.
 
+Four of them also changed *meaning* once they were measured rather than
+asserted, and in each case the cause was not the one stated here. The arm's
+collapse under randomisation was a position servo whose gain was scaled without
+its bias. Every wrist-versus-no-wrist number compared two different object-size
+distributions, because the size cap moved with the wrist flag. The sensing
+noise model turned out harsher than the estimator it was calibrated from. And
+pick-and-place does chain from a sparse reward -- hindsight was never
+inapplicable, it was starved of a single lifted transition. Those corrections
+are the reason to read [docs/limitations.md](docs/limitations.md) rather than
+this summary.
+
 * **The default hand has no arm** — it floats on a mocap weld, and every
   headline number was produced that way. A six-jointed arm variant exists and
   now has a four-level grid of its own. With demonstrations and a held anchor it

@@ -114,6 +114,15 @@ def main() -> None:
                              "The band always begins at 0, so late batches "
                              "still contain the stages already learned and no "
                              "stage can be overwritten by the next")
+    parser.add_argument("--randomisation-anneal", action="store_true",
+                        help="widen the randomisation from nominal to the "
+                             "named level over training. The sparse recipe "
+                             "fails at `medium` because the policy never "
+                             "grasps reliably there, so relabelling starves "
+                             "for want of a lifted transition -- the same "
+                             "failure as having no start curriculum, reached "
+                             "from the other direction. This learns the skill "
+                             "where it can, then widens.")
     parser.add_argument("--observe-latch", action="store_true",
                         help="append the lift latch to the observation, "
                              "making the place task Markovian")
@@ -164,6 +173,10 @@ def main() -> None:
                         reward_config=sparse_cfg,
                         observe_latch=args.observe_latch)
 
+    base_scale = float(getattr(env.rand_cfg, "scale", 1.0))
+    if args.randomisation_anneal:
+        env.rand_cfg.scale = 0.0
+
     cfg = SACConfig(hidden=(args.hidden, args.hidden), alpha_floor=args.alpha_floor)
     agent = SAC(env.obs_dim, env.act_dim, cfg, seed=args.seed)
 
@@ -178,6 +191,7 @@ def main() -> None:
                    "task": args.task, "observe_latch": args.observe_latch,
                    "start_progress": args.start_progress,
                    "start_anneal": args.start_anneal,
+                   "randomisation_anneal": args.randomisation_anneal,
                    "steps": args.steps, "seed": args.seed,
                    "randomisation": args.randomisation,
                    "sac": cfg.to_dict()}, fh, indent=2)
@@ -217,6 +231,14 @@ def main() -> None:
             "speed": float(info.get("object_speed", 0.0)),
         })
         obs = next_obs
+
+        if args.randomisation_anneal:
+            # Scale the whole config, which is exactly what the level files do
+            # to each other: `low` is `medium` at 0.4. So this walks through
+            # the repository's own difficulty ladder rather than inventing a
+            # new one.
+            frac = min(1.0, step / max(1, int(0.7 * args.steps)))
+            env.rand_cfg.scale = base_scale * frac
 
         if args.start_anneal and args.start_range is not None:
             # Florensa et al. start near a state where the task is achieved and

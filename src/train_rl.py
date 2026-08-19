@@ -34,6 +34,8 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from envs.mujoco.perception_env import (  # noqa: E402
+    DEFAULT_CHECKPOINT as PERCEPTION_DEFAULT, make_perception_env)
 from envs.mujoco.grasp_env import make_env  # noqa: E402
 from src.policies.sac import SAC, SACConfig  # noqa: E402
 from src.randomisation.domain_rand import load_randomisation  # noqa: E402
@@ -76,22 +78,18 @@ def train(args: argparse.Namespace) -> Dict:
         demo_sample_fraction=args.demo_fraction,
     )
 
-    env = make_env(args.randomisation, seed=args.seed, max_steps=args.max_steps,
-                   wrist=args.wrist or args.handled, task=args.task,
-                   arm=args.arm, handled=args.handled, history=args.history,
-                   max_half_size=args.max_half_size,
-                   travel_range=args.place_travel,
-                   start_progress=args.place_start_progress,
-                   start_progress_range=args.place_start_range,
-                   reward_config=args.reward_config)
-    eval_env = make_env(args.randomisation, seed=args.seed + 999, max_steps=args.max_steps,
-                        wrist=args.wrist or args.handled, task=args.task,
-                        arm=args.arm, handled=args.handled, history=args.history,
-                        max_half_size=args.max_half_size,
-                        travel_range=args.place_travel,
-                        start_progress=args.place_start_progress,
-                        start_progress_range=args.place_start_range,
-                        reward_config=args.reward_config)
+    factory = make_perception_env if args.perception else make_env
+    pextra = {"checkpoint": args.perception} if args.perception else {}
+    common = dict(
+        max_steps=args.max_steps, wrist=args.wrist or args.handled,
+        task=args.task, arm=args.arm, handled=args.handled,
+        history=args.history, max_half_size=args.max_half_size,
+        clutter=args.clutter, travel_range=args.place_travel,
+        start_progress=args.place_start_progress,
+        start_progress_range=args.place_start_range,
+        reward_config=args.reward_config, **pextra)
+    env = factory(args.randomisation, seed=args.seed, **common)
+    eval_env = factory(args.randomisation, seed=args.seed + 999, **common)
 
     obs_dim, act_dim = env.obs_dim, env.act_dim
     agent = SAC(obs_dim, act_dim, cfg, seed=args.seed)
@@ -151,6 +149,8 @@ def train(args: argparse.Namespace) -> Dict:
         "wrist": args.wrist,
         "history": args.history,
         "max_half_size": args.max_half_size,
+        "perception": args.perception,
+        "clutter": args.clutter,
         "task": args.task,
         "place_travel": args.place_travel,
         "place_start_progress": args.place_start_progress,
@@ -289,6 +289,13 @@ def build_parser() -> argparse.ArgumentParser:
                         help="how far the place target sits from the object, in "
                              "metres. Shorter ranges decompose the task rather "
                              "than ease it: see PLACE_TRAVEL_LADDER")
+    parser.add_argument("--perception", nargs="?", const=PERCEPTION_DEFAULT,
+                        default=None,
+                        help="put the pose CNN in the loop. About 250x slower "
+                             "per step, which is why this is not the default "
+                             "path for RL")
+    parser.add_argument("--clutter", type=int, default=0,
+                        help="distractor objects on the table, up to 3")
     parser.add_argument("--max-half-size", type=float, default=None,
                         help="cap on object half-size in metres. The "
                              "default (0.024) sits below the band where "

@@ -512,12 +512,27 @@ error is small enough to servo on: at 0.0066 m the scripted expert works
 unchanged, which is why this needed ordinary demonstrations where
 `measured_camera` needed privileged ones.
 
-The cost is speed. A step through the wrapper takes **75.9 ms** against roughly
-0.3 ms for the state environment, and it is the render rather than the 200k
-parameter network. That is why these are cloning runs: 20 000 demonstration
-transitions is 25 minutes, and 200 000 steps of RL through a renderer would be
-over four hours. From-scratch RL through the camera is left undone rather than
-claimed.
+**From-scratch RL through the camera works, and the reason it had not been run
+was not the one given.** This section used to end by declining the experiment on
+cost: a step costs 75.9 ms against roughly 0.3 ms for the state environment, so
+200 000 steps through a renderer is over four hours. That arithmetic is right
+and it was not the obstacle. `train_rl.py` had no `--perception` flag at all --
+the wrapper was plumbed into recording and cloning only -- so the run was not
+expensive, it was impossible. With the flag, 150 000 steps finishes comfortably:
+
+| through the fixed camera, no demonstrations | success |
+| --- | ---: |
+| **SAC from scratch, camera in the loop** | **0.950** [0.875, 1.000] |
+| cloning through the same camera | 0.934 [0.900, 0.968] |
+| cloning on ground truth, for reference | ~0.973 |
+
+Higher than cloning and level with ground truth. A policy can learn this task
+from CNN pose estimates without ever seeing the simulator's state, and without a
+demonstrator.
+
+The speed figure still governs what is comfortable: 150 000 steps is about three
+hours per seed, so the camera path is not the default for RL and the randomised
+levels have not been tried through it.
 
 ### Grasp-point selection
 

@@ -71,6 +71,8 @@ CLAIMS = [
      "the sparse recipe under medium randomisation, where it collapses"),
     ("herfinal", "none", ["README.md", "docs/limitations.md"],
      "sparse reward with hindsight and an annealed start curriculum"),
+    ("percscratch", "none", ["README.md", "docs/limitations.md"],
+     "from-scratch RL with the camera in the loop"),
     ("percbc", "none", ["README.md", "docs/limitations.md"],
      "cloning with the pose estimator in the loop"),
     ("wristcam", "none", ["README.md", "docs/limitations.md"],
@@ -99,6 +101,10 @@ CLAIMS = [
 # Phrasings that were true once. Each is a regex, the files it must not appear
 # in, and the result that retired it.
 RETIRED = [
+    (r"from-scratch RL through the camera is left undone",
+     ["README.md", "docs/limitations.md"],
+     "it reaches 0.950 [0.875, 1.000]; the obstacle was a "
+     "missing --perception flag on train_rl, not the cost"),
     (r"Shaping here buys segments and does not chain them",
      ["README.md", "docs/limitations.md"],
      "sparse reward plus hindsight plus an annealed start curriculum "

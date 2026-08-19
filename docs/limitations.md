@@ -401,8 +401,35 @@ the broken servo had erased the effect completely. The weld shows the same
 ordering; the arm now agrees with it.
 
 What is still true: the arm is worse than the weld. 0.530 against 0.973 at
-`none` is roughly half, and the gap is the cost of the abstraction the headline
-numbers use. Every number produced on the weld should be read as an upper bound
+`none` is roughly half, and the remaining gap is now *located* rather than
+attributed to the abstraction in general.
+
+The scripted expert through the arm scores 0.650 at `none`, and its
+ever-grasped rate is **also** 0.650 -- identical, on 40 episodes. Whenever the
+arm grasps, it succeeds; the whole deficit is episodes where it never closes on
+the box. Splitting those by where the hand ends up:
+
+| | closest lateral approach | closest vertical |
+| --- | ---: | ---: |
+| succeeded | 0.0007 m | 0.0208 m |
+| failed | 0.0032 m | **0.1157 m** |
+
+The failures are laterally aligned to 3 mm and stall **116 mm above** the box.
+The arm reaches the right place over the table and does not descend.
+
+Three explanations were tested and rejected. It is not IK precision: sweeping
+the damped-least-squares solver from (0.08, 20 iterations) down to (0.01, 100)
+makes it monotonically *worse*, 0.633 to 0.500, so the shipped setting is
+already the best of those tried. It is not workspace: successes average 0.726 m
+from the arm base and failures 0.725 m, with fully overlapping ranges. And it is
+not lateral alignment, per the table above.
+
+What it is has not been established. The IK is collision-blind -- the reset path
+already retries up to 120 times to find a contact-free pose, which is the
+repository's own evidence that the solver regularly proposes poses that fold
+through the table -- so a descent blocked by a colliding solution is the obvious
+next hypothesis and is untested. Stated as a located failure with three
+eliminated causes rather than as a solved one. Every number produced on the weld should be read as an upper bound
 on what the same recipe does through six joints, IK, joint limits and
 self-collision. But "an upper bound about twice as high" is a different claim
 from "the arm falls apart", and only the first one is supported.

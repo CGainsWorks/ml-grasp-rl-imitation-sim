@@ -436,10 +436,19 @@ produced *identical* success at every level (0.650 / 0.575 / 0.525 / 0.350).
 The limit-pinning is a symptom of a stalled descent, not its cause, and the
 change was reverted rather than kept as a no-op.
 
-So: a located failure with five eliminated causes and no established one. The
-arm reaches over the box, is laterally aligned to 3 mm, spends the rest of the
-episode 116 mm too high, and none of IK precision, workspace, lateral
-alignment, collision, or infeasible solver iterates explains it. Every number produced on the weld should be read as an upper bound
+It is also **not the expert's logic** -- the scripted controller enters all four
+of its phases in failed episodes exactly as in successful ones, so it commands
+the descent and the arm does not follow -- and **not time**: closest vertical
+approach is identical at 100, 150, 250 and 400 steps (0.0535 m), so the arm
+converges to a pose above the box and stays there.
+
+So: a located failure with six eliminated causes and no established one. The
+arm reaches over the box, aligns laterally to 3 mm, is commanded down, and
+settles ~50 mm high in about a third of configurations. Not IK precision, not
+workspace, not lateral alignment, not collision, not infeasible solver iterates,
+not episode length. What remains is a steady-state property of this arm, its
+damped-least-squares controller and its servo gains together, and separating
+those three needs a different experiment than any run here. Every number produced on the weld should be read as an upper bound
 on what the same recipe does through six joints, IK, joint limits and
 self-collision. But "an upper bound about twice as high" is a different claim
 from "the arm falls apart", and only the first one is supported.

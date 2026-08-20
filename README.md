@@ -235,6 +235,33 @@ The same ablation for the imitation-plus-RL variant, which starts from a cloned 
 
 <!-- RESULTS:END -->
 
+### Isaac Lab, the same grid in a second simulator
+
+Five seeds per cell, 4 000 steps at 512 environments, 95% t intervals across
+seeds. These are Isaac's own numbers rather than MuJoCo policies evaluated
+there, and they are quoted here so this README is no longer MuJoCo-only.
+
+| level | SAC from scratch | demonstration-seeded |
+| --- | --- | --- |
+| `none` | **0.000** [0.000, 0.000] | **0.969** [0.902, 1.000] |
+| `low` | **0.000** [0.000, 0.000] | **0.519** [0.451, 0.586] |
+| `medium` | **0.000** [0.000, 0.000] | **0.275** [0.182, 0.368] |
+| `high` | **0.000** [0.000, 0.000] | **0.041** [0.025, 0.056] |
+
+Two things make these comparable to the tables above rather than merely
+adjacent to them. The budget is matched on **gradient updates**, not
+transitions or wall-clock — 4 000 steps at 512 environments against MuJoCo's
+200 000 — because matching updates is what made the two simulators agree at
+`none` in the first place. And the place-task reward computed inside Isaac on
+the GPU agrees with the shared numpy implementation to 6.9e-08 on the same
+states, so "it is the same task" is measured rather than asserted.
+
+The from-scratch column is 0.000 on all twenty runs with zero-width intervals,
+which is this repository's central claim reproducing in a second simulator
+across a full randomisation sweep. The demonstration column falls faster than
+MuJoCo's does over the same range, and that comparison is between these two
+configurations rather than between the simulators.
+
 ### What these say
 
 The short version, with the reasoning and the caveats in
@@ -550,8 +577,9 @@ this summary.
   0.947, so a window has nothing independent to average. The
   headline numbers here were still produced under sensing five to thirteen
   times better than the perception stack in the same repository delivers.
-* **Isaac Lab runs both tasks and now carries a full randomisation sweep** —
-  four levels, five seeds per arm, forty runs. From-scratch RL is **0.000 at
+* **Isaac Lab contributes headline numbers now** — its four-level, five-seed
+  sweep is quoted in the Results section above rather than only in the
+  limitations, so this README is no longer MuJoCo-only. From-scratch RL is **0.000 at
   every level**, with zero-width intervals; demonstration-seeding goes
   **0.969 → 0.519 → 0.275 → 0.041** across `none`/`low`/`medium`/`high`. At
   `high` the grasp rate is 0.08-0.10, so the policy fails to close on the box
@@ -560,7 +588,9 @@ this summary.
   environments against MuJoCo's 200 000), so the steeper collapse describes
   these configurations rather than the simulators. Every success rate quoted in
   *this* README was still produced in MuJoCo, and two of the mapped
-  randomisation parameters are analogues rather than translations.
+  randomisation parameters are analogues rather than translations. Its grid is
+  now quoted in the Results section above, so the README is no longer
+  MuJoCo-only.
 * **Cross-simulator transfer is poor, narrowed to contact, and not tunable at
   the extremes** — not control gain, not grip force, not friction, not vertical
   positioning. What remains is the contact model, and a four-corner sweep of

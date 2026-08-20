@@ -155,13 +155,23 @@ def build_events(level: str):
     """Build Isaac Lab event terms from the shared randomisation config.
 
     Mapped through Isaac's own event manager: object mass, object and table
-    friction, and gripper actuator gains. Gravity is applied per-scene rather
-    than per-environment, so it is left at nominal. ``hand_compliance`` has no
-    Isaac analogue (it is a property of the MuJoCo weld), ``action_latency``
-    would need a command queue in this class, and ``object_half_size`` needs a
-    pre-startup scale term; those four are not mapped and are listed as such in
-    envs/isaac/README.md. Sensing and action noise are applied through the
-    environment's noise models rather than events -- see ``GraspTaskCfg``.
+    friction, object scale, gravity, arm compliance and gripper actuator gains.
+    ``action_latency`` is mapped too, but in the class rather than here -- it
+    needs a per-environment command queue, which ``_action_queue`` is. Sensing
+    and action noise go through the environment's noise models rather than
+    events; see ``GraspTaskCfg``.
+
+    An earlier version of this docstring said four of those were *not* mapped:
+    hand_compliance, action_latency, object_half_size and gravity. All four are,
+    and have been for long enough that the claim was repeated into
+    envs/isaac/README.md and the top-level README. It is corrected here because
+    a stale "not supported" note is worse than a missing one -- it stops anyone
+    looking, including whoever wrote it.
+
+    One mapping is an analogue rather than a translation, and it is
+    ``hand_compliance``: MuJoCo's is the solref of the weld that drags the hand,
+    there is no weld here, and the closest honest equivalent is the arm's joint
+    stiffness. The inversion is deliberate and documented at the term itself.
     """
     if not ISAAC_AVAILABLE:
         return None

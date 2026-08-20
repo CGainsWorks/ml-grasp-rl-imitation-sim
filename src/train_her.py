@@ -131,6 +131,11 @@ def main() -> None:
                              "from a policy that already solves the nominal "
                              "world is a different experiment from annealing "
                              "the randomisation, and the one not yet tried")
+    parser.add_argument("--anchor-coef", type=float, default=0.0,
+                        help="hold the fine-tuned policy toward the checkpoint "
+                             "it started from. Without it, fine-tuning at "
+                             "`medium` from a policy that transfers at 0.200 "
+                             "reaches 0.000 within 50 000 steps")
     parser.add_argument("--observe-latch", action="store_true",
                         help="append the lift latch to the observation, "
                              "making the place task Markovian")
@@ -185,7 +190,9 @@ def main() -> None:
     if args.randomisation_anneal:
         env.rand_cfg.scale = 0.0
 
-    cfg = SACConfig(hidden=(args.hidden, args.hidden), alpha_floor=args.alpha_floor)
+    cfg = SACConfig(hidden=(args.hidden, args.hidden),
+                    alpha_floor=args.alpha_floor,
+                    anchor_coef=args.anchor_coef)
     agent = SAC(env.obs_dim, env.act_dim, cfg, seed=args.seed)
 
     if args.init_from:
@@ -196,6 +203,9 @@ def main() -> None:
                            weights_only=False)
         agent.load_state_dict(state)
         print("initialised from {}".format(args.init_from), flush=True)
+        if args.anchor_coef > 0.0:
+            agent.freeze_anchor()
+            print("anchored to it at {}".format(args.anchor_coef), flush=True)
 
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
         json.dump({"algorithm": "sac+her" if args.her else "sac",

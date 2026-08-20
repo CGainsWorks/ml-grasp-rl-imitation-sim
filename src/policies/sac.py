@@ -67,6 +67,7 @@ class SACConfig:
     # Off by default; the reasoning is in ``update`` below.
     bc_q_filter: bool = False
     bc_decay_steps: int = 0           # linear decay of bc_coef to zero over N steps
+    anchor_coef: float = 0.0          # weight on a frozen-policy anchor
     demo_sample_fraction: float = 0.0  # share of each batch drawn from demos
 
     def to_dict(self) -> Dict:
@@ -194,6 +195,8 @@ class SAC:
         self.critic_target = copy.deepcopy(self.critic)
         for p in self.critic_target.parameters():
             p.requires_grad_(False)
+        # Set by `freeze_anchor()` when fine-tuning from a checkpoint.
+        self._anchor = None
 
         self.actor_opt = torch.optim.Adam(self.actor.parameters(), lr=self.cfg.lr_actor)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=self.cfg.lr_critic)
@@ -226,6 +229,18 @@ class SAC:
         self.critic_target.norm.var.copy_(self.critic.norm.var)
 
     # ------------------------------------------------------------------
+    def freeze_anchor(self) -> None:
+        """Snapshot the current actor as the reference for the anchor term.
+
+        Called after loading a checkpoint and before training starts, so the
+        anchor is what the policy knew on arrival rather than whatever it
+        drifts into.
+        """
+        self._anchor = copy.deepcopy(self.actor)
+        for p in self._anchor.parameters():
+            p.requires_grad_(False)
+        self._anchor.eval()
+
     def update(self, step: int) -> Dict[str, float]:
         cfg = self.cfg
         batch, n_demo = self.buffer.sample_mixed(
@@ -288,11 +303,30 @@ class SAC:
         # error attached, and the cloned policy is destroyed within a couple of
         # thousand updates. Dividing by the mean absolute Q, as TD3+BC does,
         # makes the coefficient mean what it says.
-        if bc_coef > 0.0:
+        if bc_coef > 0.0 or cfg.anchor_coef > 0.0:
             q_weight = cfg.bc_q_scale / q_pi.abs().mean().detach().clamp(min=1e-6)
         else:
             q_weight = torch.ones((), device=self.device)
         actor_loss = (self.alpha.detach() * logp - q_weight * q_pi).mean()
+
+        if cfg.anchor_coef > 0.0 and self._anchor is not None:
+            # A frozen-policy anchor, for fine-tuning from a checkpoint rather
+            # than from demonstrations. The behaviour-cloning term above needs
+            # expert actions in the batch; when the initialisation is a trained
+            # policy there are none, and this repository's own measurements say
+            # what happens then: starting SAC at `medium` from a nominal
+            # checkpoint that transfers at 0.200 leaves it at 0.000 within
+            # 50 000 steps. Unanchored RL walks away from a good initialisation
+            # and the entropy term is what walks it.
+            #
+            # Same normalisation as the BC term, and for the same reason: an
+            # unnormalised sum is the Q term with a rounding error attached.
+            with torch.no_grad():
+                ref_act, _ = self._anchor(obs, deterministic=True,
+                                          with_logprob=False)
+            pi_all, _ = self.actor(obs, deterministic=True, with_logprob=False)
+            anchor_loss = (pi_all - ref_act).pow(2).mean()
+            actor_loss = actor_loss + cfg.anchor_coef * anchor_loss
 
         if bc_coef > 0.0 and n_demo > 0:
             # Behaviour-cloning term, on the demonstration slice of the batch.

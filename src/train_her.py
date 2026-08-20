@@ -123,6 +123,14 @@ def main() -> None:
                              "failure as having no start curriculum, reached "
                              "from the other direction. This learns the skill "
                              "where it can, then widens.")
+    parser.add_argument("--init-from", default=None,
+                        help="start from a trained checkpoint (actor, critic "
+                             "and entropy coefficient). Training at `medium` "
+                             "from scratch fails because the policy never "
+                             "grasps there, so relabelling starves; starting "
+                             "from a policy that already solves the nominal "
+                             "world is a different experiment from annealing "
+                             "the randomisation, and the one not yet tried")
     parser.add_argument("--observe-latch", action="store_true",
                         help="append the lift latch to the observation, "
                              "making the place task Markovian")
@@ -180,6 +188,15 @@ def main() -> None:
     cfg = SACConfig(hidden=(args.hidden, args.hidden), alpha_floor=args.alpha_floor)
     agent = SAC(env.obs_dim, env.act_dim, cfg, seed=args.seed)
 
+    if args.init_from:
+        # Whole agent, not just the actor: what a trained policy knows about
+        # this task is mostly in the critic, and carrying the actor alone makes
+        # the critic re-derive it from a buffer that is empty at step zero.
+        state = torch.load(args.init_from, map_location="cpu",
+                           weights_only=False)
+        agent.load_state_dict(state)
+        print("initialised from {}".format(args.init_from), flush=True)
+
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
         json.dump({"algorithm": "sac+her" if args.her else "sac",
                    "reward": "sparse", "her": args.her, "her_k": args.her_k,
@@ -191,6 +208,7 @@ def main() -> None:
                    "task": args.task, "observe_latch": args.observe_latch,
                    "start_progress": args.start_progress,
                    "start_anneal": args.start_anneal,
+                   "init_from": args.init_from,
                    "randomisation_anneal": args.randomisation_anneal,
                    "steps": args.steps, "seed": args.seed,
                    "randomisation": args.randomisation,

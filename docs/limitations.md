@@ -973,10 +973,39 @@ curriculum at all, arrived at from the other direction. The curriculum supplies
 lifted *start* states, but the policy still has to reproduce the lift itself
 once the band anneals away, and under randomisation it never learns to.
 
-So the honest scope is narrow and worth stating exactly: **a sparse binary
-reward chains pick-and-place on the nominal world, better than demonstrations,
-and not at all under the randomisation this repository treats as the realistic
-case.**
+**It transfers partially, and fine-tuning destroys it.** "Does not survive
+randomisation" is true of *training* there and too strong as a statement about
+the policy. The nominal policies evaluated directly on wider worlds, five seeds,
+100 episodes:
+
+| the nominal sparse policy, zero-shot | success |
+| --- | ---: |
+| `none` (where it was trained) | 0.944 [0.914, 0.974] |
+| `low` | 0.264 [0.209, 0.319] |
+| `medium` | **0.080** [0.054, 0.106] |
+| `high` | 0.044 [0.033, 0.055] |
+
+0.080 at `medium` is small and it is not zero, against exactly 0.000 for
+training there from scratch. The skill is not unlearnable under randomisation;
+it is undiscoverable there.
+
+Which makes fine-tuning the obvious repair, and it fails in an instructive way.
+Starting SAC at `medium` from a nominal checkpoint -- whole agent, actor,
+critic and entropy coefficient -- begins at 0.200 success and 0.400 grasp
+within 300 steps, and is at **0.000** by 50 000. Fine-tuning leaves the policy
+*worse than not fine-tuning at all*.
+
+That is the same mechanism this repository already documents for the cloning
+anchor: unanchored RL walks away from a good initialisation, and the entropy
+term is what walks it. There the fix was to hold the anchor rather than decay
+it; here there is no anchor to hold, because the initialisation is a checkpoint
+rather than a demonstration set. Adding a regulariser toward the initial policy
+is the obvious next thing and is not done.
+
+So the scope, stated exactly: **a sparse binary reward chains pick-and-place on
+the nominal world, better than demonstrations; the resulting policy transfers to
+`medium` at 0.080 rather than zero; training there from scratch reaches 0.000;
+and fine-tuning there destroys what transfer there was.**
 
 The relabelling itself is tested: goal entries, the derived goal-minus-object
 entries and the recomputed reward, against the simulator's true object position

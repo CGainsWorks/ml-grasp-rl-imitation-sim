@@ -355,7 +355,12 @@ level actually on the config.
    success *worse* (0.010 against 0.131). So the mechanism is identified and
    fixable, and it is not the cause. What is left is upstream of the optimiser:
    the reward, or the randomisation ranges as this port applies them.
-3. **The unmapped randomisation parameters** listed above.
+3. **The two analogue mappings** listed above -- `hand_compliance` onto arm
+   joint stiffness, and `gravity` at scene rather than environment
+   granularity. Both are labelled at the term itself. Neither is an
+   omission: the first has no weld to map onto and the second is an
+   Isaac architectural fact, so they are caveats on comparability rather
+   than work outstanding.
 4. **A proper sim-to-sim ablation** — cross-simulator transfer is measured for
    one policy, not across the randomisation levels.
 

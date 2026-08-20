@@ -563,9 +563,12 @@ this summary.
   `medium` scores **0.000** on all five seeds, because the policy grasps on at
   most 13% of episodes there and relabelling starves for want of a lifted
   transition. The *policy* transfers better than that: zero-shot it reaches
-  **0.080** at `medium` and 0.264 at `low`. Fine-tuning at `medium` makes it
-  worse, not better — 0.200 at 300 steps, 0.000 by 50 000, which is the
-  held-anchor finding again with no anchor available to hold. The curriculum also
+  **0.080** at `medium` and 0.264 at `low`. Nothing recovers more than that transfer:
+  unanchored fine-tuning at `medium` destroys it (0.000), and a frozen-policy
+  anchor — added for this — preserves it at **0.100** [0.054, 0.146] without
+  beating the 0.080 you get by not training at all. The anchor converts a
+  collapse into a plateau, which confirms the held-anchor mechanism a fourth
+  time and does not rescue `medium`. The curriculum also
   needs scripted task knowledge, so this is cheaper than demonstrations rather
   than free.
 * **No hardware, and the sensing gap costs about 60%** — `shifted` is a proxy

@@ -998,9 +998,35 @@ within 300 steps, and is at **0.000** by 50 000. Fine-tuning leaves the policy
 That is the same mechanism this repository already documents for the cloning
 anchor: unanchored RL walks away from a good initialisation, and the entropy
 term is what walks it. There the fix was to hold the anchor rather than decay
-it; here there is no anchor to hold, because the initialisation is a checkpoint
-rather than a demonstration set. Adding a regulariser toward the initial policy
-is the obvious next thing and is not done.
+it. The equivalent for a checkpoint is a frozen-policy anchor -- regularise the
+actor toward the policy it started from -- and `SACConfig.anchor_coef` with
+`SAC.freeze_anchor()` is that, added because this measurement asked for it.
+
+It works, and it is not enough. Five seeds, 100 episodes at `medium`:
+
+| | success |
+| --- | ---: |
+| training from scratch there | 0.000 [0.000, 0.000] |
+| fine-tuning, unanchored | 0.000 [0.000, 0.000] |
+| **zero-shot, no training at all** | **0.080** [0.054, 0.106] |
+| fine-tuning, anchored | 0.100 [0.054, 0.146] |
+
+The anchor does one thing cleanly: it converts a collapse into a plateau, 0.000
+against 0.100 on identical seeds, checkpoints and curriculum, differing only in
+whether the anchor is on. That confirms the mechanism a fourth time, alongside
+the arm, the wrist and Isaac.
+
+What it does **not** do is beat doing nothing. 0.100 against a 0.080 zero-shot
+baseline, on intervals that overlap almost entirely, means 200 000 steps of
+anchored fine-tuning at `medium` buys nothing over deploying the nominal policy
+unchanged. Every route into `medium` measured here -- from scratch, unanchored,
+anchored -- ends at or below the transfer number.
+
+So the scope, stated exactly: **a sparse binary reward chains pick-and-place on
+the nominal world, better than demonstrations; the policy transfers to `medium`
+at 0.080 rather than zero; and nothing tried recovers more than that. Training
+there from scratch reaches 0.000, unanchored fine-tuning destroys the transfer,
+and anchored fine-tuning preserves it without improving on it.**
 
 So the scope, stated exactly: **a sparse binary reward chains pick-and-place on
 the nominal world, better than demonstrations; the resulting policy transfers to

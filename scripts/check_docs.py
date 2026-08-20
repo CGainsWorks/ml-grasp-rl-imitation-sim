@@ -67,6 +67,8 @@ CLAIMS = [
      "held-anchor RL with the wrist at cap 0.024"),
     ("nowristbc", "wrist_bench", ["docs/limitations.md"],
      "no wrist at cap 0.024"),
+    ("heranchor", "medium", ["README.md", "docs/limitations.md"],
+     "anchored fine-tuning at medium"),
     ("hermed", "medium", ["docs/limitations.md"],
      "the sparse recipe under medium randomisation, where it collapses"),
     ("herfinal", "none", ["README.md", "docs/limitations.md"],

@@ -424,12 +424,22 @@ already the best of those tried. It is not workspace: successes average 0.726 m
 from the arm base and failures 0.725 m, with fully overlapping ranges. And it is
 not lateral alignment, per the table above.
 
-What it is has not been established. The IK is collision-blind -- the reset path
-already retries up to 120 times to find a contact-free pose, which is the
-repository's own evidence that the solver regularly proposes poses that fold
-through the table -- so a descent blocked by a colliding solution is the obvious
-next hypothesis and is untested. Stated as a located failure with three
-eliminated causes rather than as a solved one. Every number produced on the weld should be read as an upper bound
+Two further explanations were tested and also rejected. It is **not collision**:
+counting arm-to-table contacts over 50 episodes gives 0.0 per episode for both
+successes and failures, so the collision-blind IK is not folding the arm through
+the table on the way down. And it is **not the solver leaving the feasible set**:
+failing episodes do spend 87.4 frames per episode pinned at a joint limit
+against 22.8 for successes, which looked like the cause, but clamping the IK
+iteration inside the joint ranges -- so it searches only reachable
+configurations instead of relying on the actuators to clip afterwards --
+produced *identical* success at every level (0.650 / 0.575 / 0.525 / 0.350).
+The limit-pinning is a symptom of a stalled descent, not its cause, and the
+change was reverted rather than kept as a no-op.
+
+So: a located failure with five eliminated causes and no established one. The
+arm reaches over the box, is laterally aligned to 3 mm, spends the rest of the
+episode 116 mm too high, and none of IK precision, workspace, lateral
+alignment, collision, or infeasible solver iterates explains it. Every number produced on the weld should be read as an upper bound
 on what the same recipe does through six joints, IK, joint limits and
 self-collision. But "an upper bound about twice as high" is a different claim
 from "the arm falls apart", and only the first one is supported.

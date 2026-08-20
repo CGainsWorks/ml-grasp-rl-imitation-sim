@@ -576,9 +576,30 @@ Higher than cloning and level with ground truth. A policy can learn this task
 from CNN pose estimates without ever seeing the simulator's state, and without a
 demonstrator.
 
-The speed figure still governs what is comfortable: 150 000 steps is about three
-hours per seed, so the camera path is not the default for RL and the randomised
-levels have not been tried through it.
+**And the randomised levels have now been tried through it, which is where the
+camera stops.** Three seeds, 120 000 steps, evaluated at `medium`:
+
+| at `medium` | success | grasp rate |
+| --- | ---: | ---: |
+| ground-truth state | 0.582 | -- |
+| camera in the loop | **0.000** [0.000, 0.000] | 0.55-0.65 |
+
+Zero on every seed, and the grasp column says it is not a perception failure:
+the policy closes on the box in more than half of episodes, so it is finding the
+box through the estimator and then failing to lift and hold it under randomised
+mass, friction and latency. Perception and randomisation together cost far more
+than either alone -- ground truth loses 0.39 over that range while the camera
+path loses everything.
+
+That is a third distinct failure mode in this document, and the three are worth
+separating because they look identical in a success column: the arm at `none`
+cannot *reach* (stalls 116 mm up), the sparse recipe at `medium` cannot *grasp*
+(0.13 at best), and the camera at `medium` grasps at 0.55-0.65 and cannot
+*hold*. Each needs a different fix and none of them is the reward.
+
+The speed figure governs what is comfortable rather than what is possible:
+150 000 steps is about three hours a seed, so the camera path is not the default
+for RL.
 
 ### Grasp-point selection
 
@@ -1433,9 +1454,9 @@ left on it.
    further simulation closes that.
 
 Everything that *was* on this list is now a finding rather than a plan, and is
-written up above rather than promised here. Four of them changed meaning when
-they were finally measured, and in every case the cause was different from the
-one this document had blamed:
+written up above rather than promised here. Five changed meaning when they were
+finally measured, and in every case the cause was different from the one this
+document had blamed:
 
 * **Chaining segments without demonstrations** — **solved on the nominal world,
   and the old explanation was wrong.** Seven shaped designs, a tripled budget and
@@ -1466,8 +1487,19 @@ one this document had blamed:
 * **Grasp-point selection** — built and learned: 0/30 for the naive strategy,
   0.896 cloned, 0.996 demonstration-seeded.
 
-Two further items were closed by finding bugs rather than by running more
-compute, which is worth recording as a pattern: the arm's collapse under
-randomisation was a position servo whose gain was scaled without its bias, and
-every wrist-versus-no-wrist number in this repository's history compared two
-different object-size distributions because the cap moved with the wrist flag.
+Three further items were closed by finding bugs rather than by running more
+compute, which is worth recording as a pattern. The arm's collapse under
+randomisation was a position servo whose gain was scaled without its bias. Every
+wrist-versus-no-wrist number in this repository's history compared two different
+object-size distributions, because the cap moved with the wrist flag. And
+from-scratch RL through the camera was declined on cost -- 75.9 ms a step, four
+hours for 200 000 -- when the actual obstacle was that `train_rl.py` had no
+`--perception` flag; with one, it reaches 0.950.
+
+What is left is a boundary rather than a queue. Three failure modes are located
+and unfixed, and they look identical in a success column: the arm cannot
+**reach** (it stalls 116 mm above the box, with six causes eliminated), the
+sparse recipe at `medium` cannot **grasp** (0.13 at best, so relabelling
+starves), and the camera at `medium` grasps at 0.55-0.65 and cannot **hold**.
+None of them is the reward. Each would need a different fix, and none of those
+fixes is more simulation.

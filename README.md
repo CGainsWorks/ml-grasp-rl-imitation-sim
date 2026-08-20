@@ -495,25 +495,23 @@ tests/               environment contract, reward parity, learning machinery
 
 ---
 
-## Limitations
+## What was measured, and what it cost
 
-Stated in full in [docs/limitations.md](docs/limitations.md). The ones that
-change how the numbers should be read:
+Each of these used to read "the repository does not do X". Each is now a
+measured result with its price attached, which is more useful to a reader and
+worse-sounding to an author. They are findings rather than open work: nothing
+below is waiting to be run.
 
-Several of these used to be "the repository does not do X". Most are now "the
-repository does X and here is what it cost", which is a more useful kind of
-limitation and a worse-sounding one.
-
-Four of them also changed *meaning* once they were measured rather than
-asserted, and in each case the cause was not the one stated here. The arm's
-collapse under randomisation was a position servo whose gain was scaled without
-its bias. Every wrist-versus-no-wrist number compared two different object-size
-distributions, because the size cap moved with the wrist flag. The sensing
-noise model turned out harsher than the estimator it was calibrated from. And
-pick-and-place does chain from a sparse reward -- hindsight was never
-inapplicable, it was starved of a single lifted transition. Those corrections
-are the reason to read [docs/limitations.md](docs/limitations.md) rather than
-this summary.
+Five changed *meaning* once measured, and in every case the cause was not the
+one previously blamed. The arm's collapse under randomisation was a position
+servo whose gain was scaled without its bias. Every wrist-versus-no-wrist number
+compared two different object-size distributions, because the size cap moved
+with the wrist flag. The sensing noise model was harsher than the estimator it
+was calibrated from. Pick-and-place does chain from a sparse reward -- hindsight
+was never inapplicable, it was starved of a single lifted transition. And
+from-scratch RL through the camera was declined on cost when the real obstacle
+was a missing flag. Stated in full in
+[docs/limitations.md](docs/limitations.md).
 
 * **The default hand has no arm** — it floats on a mocap weld, and every
   headline number was produced that way. A six-jointed arm variant exists and
@@ -549,9 +547,10 @@ this summary.
   threw the structure away. From-scratch RL through the camera reaches **0.950**
   [0.875, 1.000] — higher than cloning through it, level with ground truth, and
   with no demonstrator. That experiment had been declined on cost; the real
-  obstacle was that `train_rl` had no `--perception` flag. What the 75.9 ms per
-  step still buys is scope: the randomised levels have not been tried through
-  the camera.
+  obstacle was that `train_rl` had no `--perception` flag. Randomisation is where the camera stops:
+  at `medium` it scores **0.000** on all three seeds while still grasping on
+  0.55-0.65 of episodes, against 0.582 for ground-truth state over the same
+  range. It finds the box and cannot hold it.
 * **The dense reward was never the way to chain the task** — on pick-and-place,
   seven shaped designs, a tripled budget and two curricula all score **0.000**
   from scratch. A *sparse* binary reward with hindsight relabelling and a start
@@ -571,18 +570,6 @@ this summary.
   time and does not rescue `medium`. The curriculum also
   needs scripted task knowledge, so this is cheaper than demonstrations rather
   than free.
-* **No hardware, and the sensing gap costs about 60%** — `shifted` is a proxy
-  for a real robot. At the pose error this repository's own camera estimator
-  produces (0.0513 m against the 0.004-0.010 m it randomises over), every
-  policy trained the ordinary way scores **~0.00**, and so does the scripted
-  expert. One method clears it: a demonstrator that reads true state teaching a
-  policy that only ever sees the noisy view reaches **0.406** [0.345, 0.467]
-  against **0.204** [0.136, 0.272] for the same pipeline with an ordinary
-  demonstrator, so the demonstrator's sight is doing the work. Stacking four
-  observation frames instead scores **0.000** — the error is autocorrelated at
-  0.947, so a window has nothing independent to average. The
-  headline numbers here were still produced under sensing five to thirteen
-  times better than the perception stack in the same repository delivers.
 * **Isaac Lab contributes headline numbers now** — its four-level, five-seed
   sweep is quoted in the Results section above rather than only in the
   limitations, so this README is no longer MuJoCo-only. From-scratch RL is **0.000 at
@@ -608,6 +595,32 @@ this summary.
   will run in.
 
 ---
+
+## Limitations
+
+One, and no amount of further simulation removes it.
+
+* **No hardware, and the sensing gap costs about 60%** — `shifted` is a proxy
+  for a real robot. At the pose error this repository's own camera estimator
+  produces (0.0513 m against the 0.004-0.010 m it randomises over), every
+  policy trained the ordinary way scores **~0.00**, and so does the scripted
+  expert. One method clears it: a demonstrator that reads true state teaching a
+  policy that only ever sees the noisy view reaches **0.406** [0.345, 0.467]
+  against **0.204** [0.136, 0.272] for the same pipeline with an ordinary
+  demonstrator, so the demonstrator's sight is doing the work. Stacking four
+  observation frames instead scores **0.000** — the error is autocorrelated at
+  0.947, so a window has nothing independent to average. The
+  headline numbers here were still produced under sensing five to thirteen
+  times better than the perception stack in the same repository delivers.
+
+  Everything else that was on this list has been measured rather than removed,
+  and is above. Three separate failure modes were located along the way and they
+  look identical in a success column: the arm cannot *reach* (it stalls 116 mm
+  above the box), the sparse recipe at `medium` cannot *grasp* (0.13 at best),
+  and the camera at `medium` grasps at 0.55-0.65 and cannot *hold*. None of
+  them is the reward, and none of them is fixed by more simulation. A survey is
+  not a robot, `shifted` is a proxy, and measured ranges from real hardware are
+  the only thing that closes the distance.
 
 ## Licence
 

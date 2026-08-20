@@ -73,6 +73,8 @@ CLAIMS = [
      "the sparse recipe under medium randomisation, where it collapses"),
     ("herfinal", "none", ["README.md", "docs/limitations.md"],
      "sparse reward with hindsight and an annealed start curriculum"),
+    ("percmed", "medium", ["docs/limitations.md"],
+     "camera-in-the-loop RL under medium randomisation"),
     ("percscratch", "none", ["README.md", "docs/limitations.md"],
      "from-scratch RL with the camera in the loop"),
     ("percbc", "none", ["README.md", "docs/limitations.md"],
@@ -103,6 +105,9 @@ CLAIMS = [
 # Phrasings that were true once. Each is a regex, the files it must not appear
 # in, and the result that retired it.
 RETIRED = [
+    (r"randomised levels have not been tried through the camera",
+     ["README.md", "docs/limitations.md"],
+     "they have: 0.000 at `medium` with grasp 0.55-0.65"),
     (r"from-scratch RL through the camera is left undone",
      ["README.md", "docs/limitations.md"],
      "it reaches 0.950 [0.875, 1.000]; the obstacle was a "

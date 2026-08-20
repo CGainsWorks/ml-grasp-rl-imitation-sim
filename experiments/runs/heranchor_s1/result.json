@@ -1,0 +1,11 @@
+{
+  "final_success_rate": 0.16666666666666666,
+  "best_success_rate": 0.16666666666666666,
+  "steps": 200000,
+  "seed": 1,
+  "her": true,
+  "reward": "sparse",
+  "relabelled_success_fraction": 0.125585,
+  "relabelled_transitions": 800000,
+  "wall_seconds": 2644.0
+}

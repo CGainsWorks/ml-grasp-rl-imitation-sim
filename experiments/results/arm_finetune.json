@@ -31,7 +31,7 @@
       "single_seed_warning": null,
       "runs": [
         {
-          "run": "experiments/runs\\arm_fthold_s0",
+          "run": "experiments/runs/arm_fthold_s0",
           "train_randomisation": "medium",
           "seed": 0,
           "levels": {
@@ -54,7 +54,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_fthold_s1",
+          "run": "experiments/runs/arm_fthold_s1",
           "train_randomisation": "medium",
           "seed": 1,
           "levels": {
@@ -77,7 +77,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_fthold_s2",
+          "run": "experiments/runs/arm_fthold_s2",
           "train_randomisation": "medium",
           "seed": 2,
           "levels": {
@@ -100,7 +100,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_fthold_s3",
+          "run": "experiments/runs/arm_fthold_s3",
           "train_randomisation": "medium",
           "seed": 3,
           "levels": {
@@ -123,7 +123,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_fthold_s4",
+          "run": "experiments/runs/arm_fthold_s4",
           "train_randomisation": "medium",
           "seed": 4,
           "levels": {
@@ -314,7 +314,7 @@
       "single_seed_warning": null,
       "runs": [
         {
-          "run": "experiments/runs\\arm_ftwarmup_s0",
+          "run": "experiments/runs/arm_ftwarmup_s0",
           "train_randomisation": "medium",
           "seed": 0,
           "levels": {
@@ -337,7 +337,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftwarmup_s1",
+          "run": "experiments/runs/arm_ftwarmup_s1",
           "train_randomisation": "medium",
           "seed": 1,
           "levels": {
@@ -360,7 +360,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftwarmup_s2",
+          "run": "experiments/runs/arm_ftwarmup_s2",
           "train_randomisation": "medium",
           "seed": 2,
           "levels": {
@@ -383,7 +383,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftwarmup_s3",
+          "run": "experiments/runs/arm_ftwarmup_s3",
           "train_randomisation": "medium",
           "seed": 3,
           "levels": {
@@ -406,7 +406,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftwarmup_s4",
+          "run": "experiments/runs/arm_ftwarmup_s4",
           "train_randomisation": "medium",
           "seed": 4,
           "levels": {
@@ -597,7 +597,7 @@
       "single_seed_warning": null,
       "runs": [
         {
-          "run": "experiments/runs\\arm_ftentropy_s0",
+          "run": "experiments/runs/arm_ftentropy_s0",
           "train_randomisation": "medium",
           "seed": 0,
           "levels": {
@@ -620,7 +620,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftentropy_s1",
+          "run": "experiments/runs/arm_ftentropy_s1",
           "train_randomisation": "medium",
           "seed": 1,
           "levels": {
@@ -643,7 +643,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftentropy_s2",
+          "run": "experiments/runs/arm_ftentropy_s2",
           "train_randomisation": "medium",
           "seed": 2,
           "levels": {
@@ -666,7 +666,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftentropy_s3",
+          "run": "experiments/runs/arm_ftentropy_s3",
           "train_randomisation": "medium",
           "seed": 3,
           "levels": {
@@ -689,7 +689,7 @@
           }
         },
         {
-          "run": "experiments/runs\\arm_ftentropy_s4",
+          "run": "experiments/runs/arm_ftentropy_s4",
           "train_randomisation": "medium",
           "seed": 4,
           "levels": {

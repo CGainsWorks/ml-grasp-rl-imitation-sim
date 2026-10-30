@@ -9,7 +9,7 @@
   "single_seed_warning": null,
   "runs": [
     {
-      "run": "experiments/runs\\camhist_s0",
+      "run": "experiments/runs/camhist_s0",
       "train_randomisation": "measured_camera",
       "seed": 0,
       "levels": {
@@ -24,7 +24,7 @@
       }
     },
     {
-      "run": "experiments/runs\\camhist_s1",
+      "run": "experiments/runs/camhist_s1",
       "train_randomisation": "measured_camera",
       "seed": 1,
       "levels": {
@@ -39,7 +39,7 @@
       }
     },
     {
-      "run": "experiments/runs\\camhist_s2",
+      "run": "experiments/runs/camhist_s2",
       "train_randomisation": "measured_camera",
       "seed": 2,
       "levels": {

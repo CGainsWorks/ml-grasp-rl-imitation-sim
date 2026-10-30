@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import argparse
 import glob
-import json
 import os
 import sys
 from typing import Dict, List
@@ -31,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.evaluate import evaluate_run  # noqa: E402
 from src.utils.stats import summarise_seeds, welch_t  # noqa: E402
+from src.utils.paths import dump_json  # noqa: E402
 
 RUNS = os.path.join("experiments", "runs")
 RESULTS = os.path.join("experiments", "results")
@@ -114,7 +114,7 @@ def main() -> None:
     }
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as fh:
-        json.dump(blob, fh, indent=2)
+        dump_json(blob, fh, indent=2)
     print("wrote " + args.output)
 
 

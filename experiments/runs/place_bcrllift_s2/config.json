@@ -114,7 +114,7 @@
   "max_steps": 100,
   "eval_episodes": 30,
   "eval_every": 25000,
-  "demos": "demonstrations\\expert_place_low.npz",
+  "demos": "demonstrations/expert_place_low.npz",
   "demo_meta": {
     "episodes_requested": 200,
     "episodes_attempted": 200,
@@ -130,7 +130,7 @@
     "source": "src/policies/scripted_place_expert.py",
     "transitions_loaded": 20000
   },
-  "init_actor": "experiments\\runs\\place_bc_s2\\policy.pt",
+  "init_actor": "experiments/runs/place_bc_s2/policy.pt",
   "obs_dim": 32,
   "act_dim": 4,
   "wrist": false,

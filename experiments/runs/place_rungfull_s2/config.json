@@ -91,7 +91,7 @@
   },
   "exploration": "white",
   "alpha_floor": 0.15,
-  "reward_config": "src\\rewards\\configs\\place_noapproach.json",
+  "reward_config": "src/rewards/configs/place_noapproach.json",
   "reward_weights": {
     "w_reach": 1.0,
     "w_align": 0.3,

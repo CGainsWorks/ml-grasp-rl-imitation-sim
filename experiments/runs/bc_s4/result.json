@@ -17,7 +17,7 @@
   ],
   "seed": 4,
   "randomisation": "low",
-  "demos": "demonstrations\\expert_low.npz",
+  "demos": "demonstrations/expert_low.npz",
   "demo_meta": {
     "episodes_requested": 200,
     "episodes_attempted": 201,

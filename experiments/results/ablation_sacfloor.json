@@ -8,16 +8,16 @@
       "level": "none",
       "n_seeds": 10,
       "runs": [
-        "experiments\\runs\\sacfloor_none_s0",
-        "experiments\\runs\\sacfloor_none_s1",
-        "experiments\\runs\\sacfloor_none_s2",
-        "experiments\\runs\\sacfloor_none_s3",
-        "experiments\\runs\\sacfloor_none_s4",
-        "experiments\\runs\\sacfloor_none_s5",
-        "experiments\\runs\\sacfloor_none_s6",
-        "experiments\\runs\\sacfloor_none_s7",
-        "experiments\\runs\\sacfloor_none_s8",
-        "experiments\\runs\\sacfloor_none_s9"
+        "experiments/runs/sacfloor_none_s0",
+        "experiments/runs/sacfloor_none_s1",
+        "experiments/runs/sacfloor_none_s2",
+        "experiments/runs/sacfloor_none_s3",
+        "experiments/runs/sacfloor_none_s4",
+        "experiments/runs/sacfloor_none_s5",
+        "experiments/runs/sacfloor_none_s6",
+        "experiments/runs/sacfloor_none_s7",
+        "experiments/runs/sacfloor_none_s8",
+        "experiments/runs/sacfloor_none_s9"
       ],
       "train_level": {
         "across_seeds": {
@@ -262,7 +262,7 @@
       "gap": 0.993,
       "per_run_detail": [
         {
-          "run": "experiments\\runs\\sacfloor_none_s0",
+          "run": "experiments/runs/sacfloor_none_s0",
           "train_randomisation": "none",
           "seed": 0,
           "levels": {
@@ -285,7 +285,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s1",
+          "run": "experiments/runs/sacfloor_none_s1",
           "train_randomisation": "none",
           "seed": 1,
           "levels": {
@@ -308,7 +308,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s2",
+          "run": "experiments/runs/sacfloor_none_s2",
           "train_randomisation": "none",
           "seed": 2,
           "levels": {
@@ -331,7 +331,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s3",
+          "run": "experiments/runs/sacfloor_none_s3",
           "train_randomisation": "none",
           "seed": 3,
           "levels": {
@@ -354,7 +354,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s4",
+          "run": "experiments/runs/sacfloor_none_s4",
           "train_randomisation": "none",
           "seed": 4,
           "levels": {
@@ -377,7 +377,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s5",
+          "run": "experiments/runs/sacfloor_none_s5",
           "train_randomisation": "none",
           "seed": 5,
           "levels": {
@@ -400,7 +400,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s6",
+          "run": "experiments/runs/sacfloor_none_s6",
           "train_randomisation": "none",
           "seed": 6,
           "levels": {
@@ -423,7 +423,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s7",
+          "run": "experiments/runs/sacfloor_none_s7",
           "train_randomisation": "none",
           "seed": 7,
           "levels": {
@@ -446,7 +446,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s8",
+          "run": "experiments/runs/sacfloor_none_s8",
           "train_randomisation": "none",
           "seed": 8,
           "levels": {
@@ -469,7 +469,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_none_s9",
+          "run": "experiments/runs/sacfloor_none_s9",
           "train_randomisation": "none",
           "seed": 9,
           "levels": {
@@ -497,16 +497,16 @@
       "level": "low",
       "n_seeds": 10,
       "runs": [
-        "experiments\\runs\\sacfloor_low_s0",
-        "experiments\\runs\\sacfloor_low_s1",
-        "experiments\\runs\\sacfloor_low_s2",
-        "experiments\\runs\\sacfloor_low_s3",
-        "experiments\\runs\\sacfloor_low_s4",
-        "experiments\\runs\\sacfloor_low_s5",
-        "experiments\\runs\\sacfloor_low_s6",
-        "experiments\\runs\\sacfloor_low_s7",
-        "experiments\\runs\\sacfloor_low_s8",
-        "experiments\\runs\\sacfloor_low_s9"
+        "experiments/runs/sacfloor_low_s0",
+        "experiments/runs/sacfloor_low_s1",
+        "experiments/runs/sacfloor_low_s2",
+        "experiments/runs/sacfloor_low_s3",
+        "experiments/runs/sacfloor_low_s4",
+        "experiments/runs/sacfloor_low_s5",
+        "experiments/runs/sacfloor_low_s6",
+        "experiments/runs/sacfloor_low_s7",
+        "experiments/runs/sacfloor_low_s8",
+        "experiments/runs/sacfloor_low_s9"
       ],
       "train_level": {
         "across_seeds": {
@@ -751,7 +751,7 @@
       "gap": 0.33499999999999996,
       "per_run_detail": [
         {
-          "run": "experiments\\runs\\sacfloor_low_s0",
+          "run": "experiments/runs/sacfloor_low_s0",
           "train_randomisation": "low",
           "seed": 0,
           "levels": {
@@ -774,7 +774,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s1",
+          "run": "experiments/runs/sacfloor_low_s1",
           "train_randomisation": "low",
           "seed": 1,
           "levels": {
@@ -797,7 +797,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s2",
+          "run": "experiments/runs/sacfloor_low_s2",
           "train_randomisation": "low",
           "seed": 2,
           "levels": {
@@ -820,7 +820,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s3",
+          "run": "experiments/runs/sacfloor_low_s3",
           "train_randomisation": "low",
           "seed": 3,
           "levels": {
@@ -843,7 +843,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s4",
+          "run": "experiments/runs/sacfloor_low_s4",
           "train_randomisation": "low",
           "seed": 4,
           "levels": {
@@ -866,7 +866,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s5",
+          "run": "experiments/runs/sacfloor_low_s5",
           "train_randomisation": "low",
           "seed": 5,
           "levels": {
@@ -889,7 +889,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s6",
+          "run": "experiments/runs/sacfloor_low_s6",
           "train_randomisation": "low",
           "seed": 6,
           "levels": {
@@ -912,7 +912,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s7",
+          "run": "experiments/runs/sacfloor_low_s7",
           "train_randomisation": "low",
           "seed": 7,
           "levels": {
@@ -935,7 +935,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s8",
+          "run": "experiments/runs/sacfloor_low_s8",
           "train_randomisation": "low",
           "seed": 8,
           "levels": {
@@ -958,7 +958,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_low_s9",
+          "run": "experiments/runs/sacfloor_low_s9",
           "train_randomisation": "low",
           "seed": 9,
           "levels": {
@@ -986,16 +986,16 @@
       "level": "medium",
       "n_seeds": 10,
       "runs": [
-        "experiments\\runs\\sacfloor_medium_s0",
-        "experiments\\runs\\sacfloor_medium_s1",
-        "experiments\\runs\\sacfloor_medium_s2",
-        "experiments\\runs\\sacfloor_medium_s3",
-        "experiments\\runs\\sacfloor_medium_s4",
-        "experiments\\runs\\sacfloor_medium_s5",
-        "experiments\\runs\\sacfloor_medium_s6",
-        "experiments\\runs\\sacfloor_medium_s7",
-        "experiments\\runs\\sacfloor_medium_s8",
-        "experiments\\runs\\sacfloor_medium_s9"
+        "experiments/runs/sacfloor_medium_s0",
+        "experiments/runs/sacfloor_medium_s1",
+        "experiments/runs/sacfloor_medium_s2",
+        "experiments/runs/sacfloor_medium_s3",
+        "experiments/runs/sacfloor_medium_s4",
+        "experiments/runs/sacfloor_medium_s5",
+        "experiments/runs/sacfloor_medium_s6",
+        "experiments/runs/sacfloor_medium_s7",
+        "experiments/runs/sacfloor_medium_s8",
+        "experiments/runs/sacfloor_medium_s9"
       ],
       "train_level": {
         "across_seeds": {
@@ -1240,7 +1240,7 @@
       "gap": 0.378,
       "per_run_detail": [
         {
-          "run": "experiments\\runs\\sacfloor_medium_s0",
+          "run": "experiments/runs/sacfloor_medium_s0",
           "train_randomisation": "medium",
           "seed": 0,
           "levels": {
@@ -1263,7 +1263,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s1",
+          "run": "experiments/runs/sacfloor_medium_s1",
           "train_randomisation": "medium",
           "seed": 1,
           "levels": {
@@ -1286,7 +1286,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s2",
+          "run": "experiments/runs/sacfloor_medium_s2",
           "train_randomisation": "medium",
           "seed": 2,
           "levels": {
@@ -1309,7 +1309,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s3",
+          "run": "experiments/runs/sacfloor_medium_s3",
           "train_randomisation": "medium",
           "seed": 3,
           "levels": {
@@ -1332,7 +1332,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s4",
+          "run": "experiments/runs/sacfloor_medium_s4",
           "train_randomisation": "medium",
           "seed": 4,
           "levels": {
@@ -1355,7 +1355,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s5",
+          "run": "experiments/runs/sacfloor_medium_s5",
           "train_randomisation": "medium",
           "seed": 5,
           "levels": {
@@ -1378,7 +1378,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s6",
+          "run": "experiments/runs/sacfloor_medium_s6",
           "train_randomisation": "medium",
           "seed": 6,
           "levels": {
@@ -1401,7 +1401,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s7",
+          "run": "experiments/runs/sacfloor_medium_s7",
           "train_randomisation": "medium",
           "seed": 7,
           "levels": {
@@ -1424,7 +1424,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s8",
+          "run": "experiments/runs/sacfloor_medium_s8",
           "train_randomisation": "medium",
           "seed": 8,
           "levels": {
@@ -1447,7 +1447,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_medium_s9",
+          "run": "experiments/runs/sacfloor_medium_s9",
           "train_randomisation": "medium",
           "seed": 9,
           "levels": {
@@ -1475,16 +1475,16 @@
       "level": "high",
       "n_seeds": 10,
       "runs": [
-        "experiments\\runs\\sacfloor_high_s0",
-        "experiments\\runs\\sacfloor_high_s1",
-        "experiments\\runs\\sacfloor_high_s2",
-        "experiments\\runs\\sacfloor_high_s3",
-        "experiments\\runs\\sacfloor_high_s4",
-        "experiments\\runs\\sacfloor_high_s5",
-        "experiments\\runs\\sacfloor_high_s6",
-        "experiments\\runs\\sacfloor_high_s7",
-        "experiments\\runs\\sacfloor_high_s8",
-        "experiments\\runs\\sacfloor_high_s9"
+        "experiments/runs/sacfloor_high_s0",
+        "experiments/runs/sacfloor_high_s1",
+        "experiments/runs/sacfloor_high_s2",
+        "experiments/runs/sacfloor_high_s3",
+        "experiments/runs/sacfloor_high_s4",
+        "experiments/runs/sacfloor_high_s5",
+        "experiments/runs/sacfloor_high_s6",
+        "experiments/runs/sacfloor_high_s7",
+        "experiments/runs/sacfloor_high_s8",
+        "experiments/runs/sacfloor_high_s9"
       ],
       "train_level": {
         "across_seeds": {
@@ -1729,7 +1729,7 @@
       "gap": 0.21899999999999997,
       "per_run_detail": [
         {
-          "run": "experiments\\runs\\sacfloor_high_s0",
+          "run": "experiments/runs/sacfloor_high_s0",
           "train_randomisation": "high",
           "seed": 0,
           "levels": {
@@ -1752,7 +1752,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s1",
+          "run": "experiments/runs/sacfloor_high_s1",
           "train_randomisation": "high",
           "seed": 1,
           "levels": {
@@ -1775,7 +1775,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s2",
+          "run": "experiments/runs/sacfloor_high_s2",
           "train_randomisation": "high",
           "seed": 2,
           "levels": {
@@ -1798,7 +1798,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s3",
+          "run": "experiments/runs/sacfloor_high_s3",
           "train_randomisation": "high",
           "seed": 3,
           "levels": {
@@ -1821,7 +1821,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s4",
+          "run": "experiments/runs/sacfloor_high_s4",
           "train_randomisation": "high",
           "seed": 4,
           "levels": {
@@ -1844,7 +1844,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s5",
+          "run": "experiments/runs/sacfloor_high_s5",
           "train_randomisation": "high",
           "seed": 5,
           "levels": {
@@ -1867,7 +1867,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s6",
+          "run": "experiments/runs/sacfloor_high_s6",
           "train_randomisation": "high",
           "seed": 6,
           "levels": {
@@ -1890,7 +1890,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s7",
+          "run": "experiments/runs/sacfloor_high_s7",
           "train_randomisation": "high",
           "seed": 7,
           "levels": {
@@ -1913,7 +1913,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s8",
+          "run": "experiments/runs/sacfloor_high_s8",
           "train_randomisation": "high",
           "seed": 8,
           "levels": {
@@ -1936,7 +1936,7 @@
           }
         },
         {
-          "run": "experiments\\runs\\sacfloor_high_s9",
+          "run": "experiments/runs/sacfloor_high_s9",
           "train_randomisation": "high",
           "seed": 9,
           "levels": {

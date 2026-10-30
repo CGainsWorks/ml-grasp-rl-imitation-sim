@@ -52,7 +52,6 @@ wrong.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 import time
@@ -71,6 +70,7 @@ from src.rewards.place_reward import (  # noqa: E402
     place_success_condition,
 )
 from src.utils.rollout import evaluate_policy  # noqa: E402
+from src.utils.paths import dump_json  # noqa: E402
 
 GOAL = slice(26, 29)
 GOAL_MINUS_OBJ = slice(29, 32)
@@ -208,7 +208,7 @@ def main() -> None:
             print("anchored to it at {}".format(args.anchor_coef), flush=True)
 
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
-        json.dump({"algorithm": "sac+her" if args.her else "sac",
+        dump_json({"algorithm": "sac+her" if args.her else "sac",
                    "reward": "sparse", "her": args.her, "her_k": args.her_k,
                    # Everything evaluate.py needs to rebuild this environment.
                    # observe_latch changes the observation *width*, so leaving
@@ -345,7 +345,7 @@ def main() -> None:
                             n_episodes=args.eval_episodes, seed=10_000)
     torch.save(agent.state_dict(), os.path.join(args.output, "policy.pt"))
     with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh:
-        json.dump({"final_success_rate": final["success_rate"],
+        dump_json({"final_success_rate": final["success_rate"],
                    "best_success_rate": best, "steps": args.steps,
                    "seed": args.seed, "her": args.her,
                    "reward": "sparse",

@@ -38,6 +38,7 @@ from src.policies.scripted_expert import ScriptedExpert
 from src.policies.scripted_place_expert import ScriptedPlaceExpert  # noqa: E402
 from src.utils.rollout import evaluate_policy, torch_policy  # noqa: E402
 from src.utils.stats import summarise_seeds  # noqa: E402
+from src.utils.paths import dump_json  # noqa: E402
 
 FINAL_SEED_BLOCK = 900_000  # held apart from training resets and training-time evals
 
@@ -241,7 +242,7 @@ def main() -> None:
     if args.output:
         os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
         with open(args.output, "w", encoding="utf-8") as fh:
-            json.dump(blob, fh, indent=2)
+            dump_json(blob, fh, indent=2)
 
     print("{}  ({} seeds x {} episodes)".format(blob["label"], len(policy_runs), args.episodes))
     for level in args.eval_levels:

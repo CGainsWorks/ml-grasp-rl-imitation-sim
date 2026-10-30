@@ -17,7 +17,7 @@
   ],
   "seed": 4,
   "randomisation": "none",
-  "demos": "demonstrations\\expert_arm_none.npz",
+  "demos": "demonstrations/expert_arm_none.npz",
   "demo_meta": {
     "episodes_requested": 200,
     "episodes_attempted": 298,

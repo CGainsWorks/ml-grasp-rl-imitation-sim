@@ -9,7 +9,7 @@
   "single_seed_warning": null,
   "runs": [
     {
-      "run": "experiments/runs\\percbc_s0",
+      "run": "experiments/runs/percbc_s0",
       "train_randomisation": "none",
       "seed": 0,
       "levels": {
@@ -24,7 +24,7 @@
       }
     },
     {
-      "run": "experiments/runs\\percbc_s1",
+      "run": "experiments/runs/percbc_s1",
       "train_randomisation": "none",
       "seed": 1,
       "levels": {
@@ -39,7 +39,7 @@
       }
     },
     {
-      "run": "experiments/runs\\percbc_s2",
+      "run": "experiments/runs/percbc_s2",
       "train_randomisation": "none",
       "seed": 2,
       "levels": {
@@ -54,7 +54,7 @@
       }
     },
     {
-      "run": "experiments/runs\\percbc_s3",
+      "run": "experiments/runs/percbc_s3",
       "train_randomisation": "none",
       "seed": 3,
       "levels": {
@@ -69,7 +69,7 @@
       }
     },
     {
-      "run": "experiments/runs\\percbc_s4",
+      "run": "experiments/runs/percbc_s4",
       "train_randomisation": "none",
       "seed": 4,
       "levels": {

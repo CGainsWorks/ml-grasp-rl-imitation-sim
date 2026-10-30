@@ -38,6 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from envs.mujoco.grasp_env import ACT_DIM, OBS_DIM  # noqa: E402
 from src.evaluate import load_actor  # noqa: E402
+from src.utils.paths import dump_json  # noqa: E402
 
 OBS_LAYOUT = [
     ("grip_pos", 0, 3, "grip site position, world frame, metres"),
@@ -139,7 +140,7 @@ def main() -> None:
         ),
     }
     with open(base + ".meta.json", "w", encoding="utf-8") as fh:
-        json.dump(meta, fh, indent=2)
+        dump_json(meta, fh, indent=2)
 
     if args.verify:
         loaded = torch.jit.load(ts_path)

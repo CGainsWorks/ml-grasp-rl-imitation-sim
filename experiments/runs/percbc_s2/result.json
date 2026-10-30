@@ -35,7 +35,7 @@
     "privileged": false,
     "history": 1,
     "max_half_size": null,
-    "perception": "experiments\\perception\\pose_cnn.pt",
+    "perception": "experiments/perception/pose_cnn.pt",
     "wall_seconds": 1802.7,
     "source": "src/policies/scripted_expert.py"
   },

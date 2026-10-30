@@ -26,7 +26,7 @@
       "single_seed_warning": null,
       "runs": [
         {
-          "run": "experiments/runs\\budget_medium_s0",
+          "run": "experiments/runs/budget_medium_s0",
           "train_randomisation": "medium",
           "seed": 0,
           "levels": {
@@ -49,7 +49,7 @@
           }
         },
         {
-          "run": "experiments/runs\\budget_medium_s1",
+          "run": "experiments/runs/budget_medium_s1",
           "train_randomisation": "medium",
           "seed": 1,
           "levels": {
@@ -72,7 +72,7 @@
           }
         },
         {
-          "run": "experiments/runs\\budget_medium_s2",
+          "run": "experiments/runs/budget_medium_s2",
           "train_randomisation": "medium",
           "seed": 2,
           "levels": {
@@ -227,7 +227,7 @@
       "single_seed_warning": null,
       "runs": [
         {
-          "run": "experiments/runs\\budget_high_s0",
+          "run": "experiments/runs/budget_high_s0",
           "train_randomisation": "high",
           "seed": 0,
           "levels": {
@@ -250,7 +250,7 @@
           }
         },
         {
-          "run": "experiments/runs\\budget_high_s1",
+          "run": "experiments/runs/budget_high_s1",
           "train_randomisation": "high",
           "seed": 1,
           "levels": {
@@ -273,7 +273,7 @@
           }
         },
         {
-          "run": "experiments/runs\\budget_high_s2",
+          "run": "experiments/runs/budget_high_s2",
           "train_randomisation": "high",
           "seed": 2,
           "levels": {

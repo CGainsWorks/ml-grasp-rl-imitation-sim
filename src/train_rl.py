@@ -43,6 +43,7 @@ from src.rewards.grasp_reward import load_reward_config  # noqa: E402
 from src.rewards.place_reward import load_place_config  # noqa: E402
 from src.utils.exploration import ColoredNoiseProcess  # noqa: E402
 from src.utils.rollout import evaluate_policy, torch_policy  # noqa: E402
+from src.utils.paths import dump_json  # noqa: E402
 
 EVAL_SEED_BLOCK = 500_000   # evaluation episodes during training
 TRAIN_SEED_BLOCK = 0        # training resets
@@ -158,7 +159,7 @@ def train(args: argparse.Namespace) -> Dict:
         "arm": args.arm,
     }
     with open(os.path.join(args.output, "config.json"), "w", encoding="utf-8") as fh:
-        json.dump(config_blob, fh, indent=2)
+        dump_json(config_blob, fh, indent=2)
 
     progress_path = os.path.join(args.output, "progress.csv")
     with open(progress_path, "w", encoding="utf-8") as fh:
@@ -257,7 +258,7 @@ def train(args: argparse.Namespace) -> Dict:
         "randomisation": args.randomisation,
     }
     with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh:
-        json.dump(summary, fh, indent=2)
+        dump_json(summary, fh, indent=2)
     env.close()
     eval_env.close()
     return summary

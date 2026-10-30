@@ -9,7 +9,7 @@
   "single_seed_warning": null,
   "runs": [
     {
-      "run": "experiments/runs\\dagger_s0",
+      "run": "experiments/runs/dagger_s0",
       "train_randomisation": "measured_camera_realsensor",
       "seed": 0,
       "levels": {
@@ -24,7 +24,7 @@
       }
     },
     {
-      "run": "experiments/runs\\dagger_s1",
+      "run": "experiments/runs/dagger_s1",
       "train_randomisation": "measured_camera_realsensor",
       "seed": 1,
       "levels": {
@@ -39,7 +39,7 @@
       }
     },
     {
-      "run": "experiments/runs\\dagger_s2",
+      "run": "experiments/runs/dagger_s2",
       "train_randomisation": "measured_camera_realsensor",
       "seed": 2,
       "levels": {
@@ -54,7 +54,7 @@
       }
     },
     {
-      "run": "experiments/runs\\dagger_s3",
+      "run": "experiments/runs/dagger_s3",
       "train_randomisation": "measured_camera_realsensor",
       "seed": 3,
       "levels": {
@@ -69,7 +69,7 @@
       }
     },
     {
-      "run": "experiments/runs\\dagger_s4",
+      "run": "experiments/runs/dagger_s4",
       "train_randomisation": "measured_camera_realsensor",
       "seed": 4,
       "levels": {

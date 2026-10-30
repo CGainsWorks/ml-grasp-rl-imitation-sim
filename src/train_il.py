@@ -51,6 +51,7 @@ from src.policies.behaviour_cloning import fit  # noqa: E402
 from src.policies.networks import SquashedGaussianActor  # noqa: E402
 from src.policies.scripted_expert import ScriptedExpert  # noqa: E402
 from src.utils.rollout import evaluate_policy, torch_policy  # noqa: E402
+from src.utils.paths import dump_json  # noqa: E402
 
 EVAL_SEED_BLOCK = 500_000
 
@@ -211,7 +212,7 @@ def train(args: argparse.Namespace) -> Dict:
     # cloned wrist or windowed policy can be scored without being told twice.
     with open(os.path.join(args.output, "config.json"), "w",
               encoding="utf-8") as fh:
-        json.dump({"algorithm": "dagger" if args.dagger else "bc",
+        dump_json({"algorithm": "dagger" if args.dagger else "bc",
                    "seed": args.seed, "randomisation": args.randomisation,
                    "arm": args.arm, "handled": args.handled,
                    "wrist": args.handled or args.wrist,
@@ -221,7 +222,7 @@ def train(args: argparse.Namespace) -> Dict:
                    "clutter": args.clutter,
                    "demos": args.demos}, fh, indent=2)
     with open(os.path.join(args.output, "result.json"), "w", encoding="utf-8") as fh:
-        json.dump(summary, fh, indent=2)
+        dump_json(summary, fh, indent=2)
     with open(os.path.join(args.output, "progress.csv"), "w", encoding="utf-8") as fh:
         fh.write("round,transitions,train_mse,val_mse,success_rate,grasp_rate\n")
         for row in history:

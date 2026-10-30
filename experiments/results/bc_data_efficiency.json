@@ -1,5 +1,5 @@
 {
-  "demos": "demonstrations\\expert_low.npz",
+  "demos": "demonstrations/expert_low.npz",
   "eval_level": "low",
   "episodes_per_seed": 50,
   "seeds": [

@@ -64,7 +64,7 @@
   "wrist": false,
   "history": 1,
   "max_half_size": null,
-  "perception": "experiments\\perception\\pose_cnn.pt",
+  "perception": "experiments/perception/pose_cnn.pt",
   "clutter": 0,
   "task": "lift",
   "place_travel": null,

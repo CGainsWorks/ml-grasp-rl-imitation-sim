@@ -34,3 +34,8 @@ videos/*.mp4
 # not done here.
 demonstrations/*.npz
 experiments/perception/*.npz
+
+# colcon output, from building ros2/ at the repository root
+/build/
+/install/
+/log/

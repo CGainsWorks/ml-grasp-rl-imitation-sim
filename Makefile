@@ -15,6 +15,10 @@
 #   RENDER    needs a GL context, so not in CI.
 #               make videos
 #
+#   ROS 2     the policy server in ros2/, built and tested in the official
+#             ROS 2 Humble image (needs Docker). CI runs the same steps.
+#               make ros-test  make stream
+#
 # `make check` runs the FAST class and is what CI does.
 
 SHELL := /bin/sh
@@ -52,7 +56,7 @@ docs-check:  ## Do the documents still agree with the results they quote?
 	$(PYTHON) scripts/check_docs.py
 
 lint:  ## Formatting and obvious errors
-	$(PYTHON) -m flake8 src/ envs/ tests/ analysis/ experiments/ scripts/
+	$(PYTHON) -m flake8 src/ envs/ tests/ analysis/ experiments/ scripts/ ros2/
 
 .PHONY: demo
 demo:  ## Scripted expert on the nominal world, printing success and reward terms
@@ -138,6 +142,14 @@ readme:  ## Rewrite the README results tables from experiments/results
 # ---------------------------------------------------------------------------
 # Render
 # ---------------------------------------------------------------------------
+
+.PHONY: stream
+stream:  ## Re-record the ROS 2 node's replay fixture from one simulated episode
+	$(PYTHON) scripts/record_observation_stream.py
+
+.PHONY: ros-test
+ros-test:  ## Build and test the ROS 2 policy server in ros:humble-ros-base-jammy
+	docker run --rm -v "$$PWD":/src:ro ros:humble-ros-base-jammy bash /src/scripts/ros_test.sh
 
 .PHONY: videos
 videos:  ## Rollout GIFs and MP4s (needs a GL context)

@@ -2,13 +2,23 @@ name: ci
 
 # What CI can and cannot do here.
 #
-# It runs the whole fast tier: linting, the unit tests, the reward parity check
-# between numpy and torch, and a short scripted-expert rollout that is the
-# environment's smoke test.
+# `check` runs the whole MuJoCo path on CPU: linting, the unit tests, the
+# documents-against-results check, the scripted expert and a short end-to-end
+# chain of the learning pipeline: SAC training, evaluation with the same
+# protocol the README uses, TorchScript export, a closed-loop episode recorded
+# from the exported policy and behaviour cloning from freshly recorded
+# demonstrations. The training runs are smoke runs (2 000 steps, 3 epochs):
+# they prove the loop works, not that it learns. A full run is half an hour of
+# CPU per seed and lives behind `make experiments`.
 #
-# It does not train and it does not render. A full training run is half an hour
-# of CPU per seed, and rendering needs a GL context. Those live behind
-# `make experiments` and `make videos` and are run by hand.
+# `ros2` builds the colcon package in ros2/ on ROS 2 Humble and runs its unit
+# tests and its launch test, which replays a recorded observation stream
+# through the live policy server node.
+#
+# Not run here: rendering (needs a GL context, `make videos`) and the Isaac Lab
+# port, which needs an NVIDIA RTX GPU and Isaac Sim. Its import-level tests run
+# in `check`; everything else about it was run by hand and is listed in
+# envs/isaac/README.md.
 
 on:
   push:
@@ -16,9 +26,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -35,16 +50,18 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
 
       - name: Lint
-        run: python -m flake8 src/ envs/ tests/ analysis/ experiments/ scripts/
+        run: python -m flake8 src/ envs/ tests/ analysis/ experiments/ scripts/ ros2/
 
       - name: Tests
         run: python -m pytest tests/ -q
 
       - name: Documents agree with results
+        # Headline claims, other quoted values, the README tables and the
+        # test counts, all recomputed from the committed files.
         run: python scripts/check_docs.py
 
       - name: Scripted expert smoke test
@@ -55,6 +72,21 @@ jobs:
           python src/train_rl.py --steps 2000 --start-steps 500 \
             --eval-every 1000 --eval-episodes 5 --output /tmp/ci_run
           test -f /tmp/ci_run/result.json
+          test -f /tmp/ci_run/policy.pt
+
+      - name: Evaluation smoke test
+        run: |
+          python src/evaluate.py --runs /tmp/ci_run --eval-levels none medium shifted \
+            --episodes 5 --label ci_smoke --output /tmp/ci_eval.json
+          python -c "import json; d = json.load(open('/tmp/ci_eval.json')); assert d['n_seeds'] == 1 and set(d['aggregate']) == {'none', 'medium', 'shifted'}"
+
+      - name: Export, then drive the environment with the exported policy
+        run: |
+          python src/export_policy.py --run /tmp/ci_run --output /tmp/ci_policy/ci_smoke
+          python scripts/record_observation_stream.py --policy /tmp/ci_policy/ci_smoke.ts.pt \
+            --output /tmp/ci_stream.json
+          PYTHONPATH=ros2/grasp_policy_server python -m pytest -q \
+            ros2/grasp_policy_server/test/test_core.py
 
       - name: Imitation smoke test
         run: |
@@ -63,3 +95,46 @@ jobs:
           python src/train_il.py --demos /tmp/ci_demos.npz --epochs 3 \
             --eval-episodes 5 --output /tmp/ci_bc
           test -f /tmp/ci_bc/result.json
+
+  ros2:
+    name: ROS 2 Humble policy server (colcon, launch_testing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: ros:humble-ros-base-jammy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: /root/.cache/pip
+          key: ros-humble-torch-2.13.0-cpu
+
+      - name: Install
+        shell: bash
+        # PyTorch has no rosdep key, so it comes from the CPU wheel index.
+        # --no-deps keeps pip from replacing Jammy's setuptools, which colcon
+        # needs for ament_python builds; torch's own runtime dependencies are
+        # installed explicitly instead.
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            python3-pip python3-pytest python3-colcon-common-extensions
+          pip install --no-deps torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install filelock "typing-extensions>=4.10" "sympy>=1.13.3" \
+            "networkx>=2.5.1" jinja2 "fsspec>=0.8.5"
+
+      - name: Build
+        shell: bash
+        run: |
+          source /opt/ros/humble/setup.bash
+          colcon build --base-paths ros2
+
+      - name: Unit tests and launch test
+        shell: bash
+        timeout-minutes: 8
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          colcon test --base-paths ros2 --event-handlers console_direct+
+          colcon test-result --verbose

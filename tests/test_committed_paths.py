@@ -1,7 +1,7 @@
 """Committed run records name files by repository-relative POSIX paths only.
 
-Every number in the README traces to a JSON or CSV file under ``experiments/``,
-and those files record which run, checkpoint and dataset produced them. Runs
+Every number in the README traces to a JSON or CSV file under ``experiments/``;
+those files record which run, checkpoint and dataset produced them. Runs
 made on Windows used to record ``experiments/runs\\sac_none_s0``; worse, the same
 mechanism is how an absolute local path ends up in a public file. This walks
 every record and fails on either.

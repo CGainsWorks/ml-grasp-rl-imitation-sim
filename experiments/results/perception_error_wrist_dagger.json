@@ -1,0 +1,21 @@
+{
+  "frames_validation": 6400,
+  "mean_position_error_m": 0.04766377434134483,
+  "median_position_error_m": 0.03882431983947754,
+  "error_visible_m": 0.04466298222541809,
+  "error_occluded_m": 0.09139060229063034,
+  "occluded_fraction": 0.06421875,
+  "lag1_autocorrelation_xy": [
+    0.936018008575216,
+    0.9488457500536299
+  ],
+  "label": "wrist camera, clutter, DAgger on policy states",
+  "modelled": {
+    "obs_noise_pos_m": [
+      0.004,
+      0.01
+    ],
+    "obs_noise_corr": 0.9,
+    "occlusion_dependence": "not modelled"
+  }
+}

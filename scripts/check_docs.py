@@ -36,6 +36,7 @@ import math
 import os
 import re
 import statistics as st
+import subprocess
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -167,6 +168,131 @@ RETIRED = [
 ]
 
 
+def _results(name: str):
+    with io.open(os.path.join(REPO, "experiments", "results", name),
+                 encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _arm(name: str, arm: str, key: str = "point") -> float:
+    blob = _results(name)
+    return next(a for a in blob["arms"] if a["arm"] == arm)["across_seeds"][key]
+
+
+def _method(method: str, level: str) -> float:
+    return _results("summary.json")["methods"][method]["levels"][level][
+        "across_seeds"]["point"]
+
+
+# Numbers quoted in prose that are not a mean over an *_eval.json, each with the
+# function that recomputes it from the committed file and the format it is
+# quoted in. Added when an audit found three of them stale: the README quoted a
+# five-seed figure beside the ten-seed table, the Isaac place grid had been
+# rerun at 512 environments without its tables being updated and the fixed
+# camera's error statistics had been overwritten by a later run's.
+ISAAC_DOCS = ["README.md"]
+VALUE_CLAIMS = [
+    ("sacfloor_none at none, ten seeds", lambda: _method("sacfloor_none", "none"),
+     "{:.3f}", ["README.md"]),
+    ("sacfloor_none at medium, ten seeds", lambda: _method("sacfloor_none", "medium"),
+     "{:.3f}", ["README.md"]),
+    ("arm cloning on the corrected servo", lambda: aggregate("arm2nonebc", "none")[0],
+     "{:.3f}", ["README.md", "docs/limitations.md"]),
+    ("arm cloning before the servo fix", lambda: aggregate("arm_bcnom", "none")[0],
+     "{:.3f}", ["README.md", "docs/limitations.md"]),
+    ("Isaac lift, seeded, none", lambda: _arm("isaac_seed_grid.json", "bcrl"),
+     "{:.3f}", ISAAC_DOCS),
+    ("Isaac lift, seeded, none, lower bound",
+     lambda: _arm("isaac_seed_grid.json", "bcrl", "low"), "{:.3f}", ISAAC_DOCS),
+    ("Isaac lift, seeded, low", lambda: _arm("isaac_seed_grid_low.json", "bcrl"),
+     "{:.3f}", ISAAC_DOCS),
+    ("Isaac lift, seeded, medium", lambda: _arm("isaac_seed_grid_medium.json", "bcrl"),
+     "{:.3f}", ISAAC_DOCS),
+    ("Isaac lift, seeded, high", lambda: _arm("isaac_seed_grid_high.json", "bcrl"),
+     "{:.3f}", ISAAC_DOCS),
+    ("Isaac lift, from scratch, none", lambda: _arm("isaac_seed_grid.json", "scratch"),
+     "{:.3f}", ISAAC_DOCS),
+    ("Isaac lift, from scratch, high", lambda: _arm("isaac_seed_grid_high.json", "scratch"),
+     "{:.3f}", ISAAC_DOCS),
+    ("Isaac place, seeded, 64 environments",
+     lambda: st.mean(_results("isaac_place_grid_64env.json")["results"]["bcrl"]),
+     "{:.3f}", ["README.md", "envs/isaac/README.md", "docs/results.md",
+                "docs/limitations.md"]),
+    ("Isaac place, seeded, 512 environments",
+     lambda: st.mean(_results("isaac_place_grid.json")["results"]["bcrl"]),
+     "{:.3f}", ["README.md", "envs/isaac/README.md", "docs/results.md",
+                "docs/limitations.md"]),
+    ("fixed-camera estimator error, metres",
+     lambda: _results("perception_error.json")["mean_position_error_m"],
+     "{:.4f}", ["docs/limitations.md"]),
+    ("fixed-camera error autocorrelation",
+     lambda: _results("perception_error.json")["lag1_autocorrelation_xy"][0],
+     "{:.3f}", ["README.md", "docs/limitations.md"]),
+    ("wrist-camera estimator error, metres",
+     lambda: _results("perception_error_wrist.json")["mean_position_error_m"],
+     "{:.4f}", ["README.md", "docs/limitations.md"]),
+]
+
+
+def collected_tests(*paths: str, pythonpath: str = "") -> int:
+    """How many tests pytest collects, which is the number the documents quote."""
+    env = dict(os.environ)
+    if pythonpath:
+        env["PYTHONPATH"] = os.pathsep.join(
+            p for p in (os.path.join(REPO, pythonpath), env.get("PYTHONPATH", "")) if p)
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider",
+         *paths], cwd=REPO, capture_output=True, text=True, env=env)
+    m = re.search(r"(\d+) tests? collected", proc.stdout)
+    if not m:
+        raise RuntimeError("could not count tests:\n" + proc.stdout + proc.stderr)
+    return int(m.group(1))
+
+
+def check_test_counts(failures: list) -> None:
+    unit = collected_tests("tests")
+    core = collected_tests("ros2/grasp_policy_server/test/test_core.py",
+                           pythonpath="ros2/grasp_policy_server")
+    launch_file = os.path.join(REPO, "ros2", "grasp_policy_server", "test",
+                               "test_policy_server_launch.py")
+    with io.open(launch_file, encoding="utf-8") as fh:
+        launch_checks = len(re.findall(r"^\s+def test_", fh.read(), re.M))
+    wanted = [
+        # \s+ rather than spaces: hard-wrapped prose breaks lines anywhere.
+        ("README.md", r"\b(\d+)\s+unit\s+tests\b", unit),
+        ("STATUS.md", r"\b(\d+)\s+unit\s+tests\s+in\s+`tests/`", unit),
+        ("STATUS.md", r"\b(\d+)\s+unit\s+tests\s+of\s+the\s+policy\s+wrapper\b", core),
+        ("STATUS.md", r"\blaunch\s+test\s+with\s+(\d+)\s+checks\b", launch_checks),
+    ]
+    for rel, pattern, n in wanted:
+        if not os.path.exists(os.path.join(REPO, rel)):
+            failures.append("{} is missing; it states the test counts".format(rel))
+            continue
+        with io.open(os.path.join(REPO, rel), encoding="utf-8") as fh:
+            quoted = [int(x) for x in re.findall(pattern, fh.read())]
+        if not quoted:
+            failures.append("{} does not state the count matching /{}/ ({} now)".format(
+                rel, pattern, n))
+        for q in quoted:
+            if q != n:
+                failures.append("{} says {} where /{}/ now counts {}".format(
+                    rel, q, pattern, n))
+
+
+def check_results_block(failures: list) -> None:
+    """The README tables must be exactly what analysis/readme_tables.py writes."""
+    sys.path.insert(0, os.path.join(REPO, "analysis"))
+    import readme_tables
+
+    with io.open(os.path.join(REPO, "README.md"), encoding="utf-8") as fh:
+        text = fh.read()
+    current = text.split(readme_tables.START, 1)[1].split(readme_tables.END, 1)[0]
+    if current.strip() != readme_tables.build().strip():
+        failures.append("README.md results tables differ from what "
+                        "analysis/readme_tables.py builds from experiments/results; "
+                        "run `make readme`")
+
+
 def aggregate(label: str, level: str):
     """Mean and 95% interval across seeds, or None if the file is absent."""
     path = os.path.join(REPO, "experiments", "results", label + "_eval.json")
@@ -206,6 +332,17 @@ def main() -> int:
                     "{} [{:.3f}, {:.3f}] and does not appear".format(
                         rel, prose, label, n, wanted, lo, hi))
 
+    for prose, compute, fmt, files in VALUE_CLAIMS:
+        wanted = fmt.format(compute())
+        for rel in files:
+            text = io.open(os.path.join(REPO, rel), encoding="utf-8").read()
+            if wanted not in text:
+                failures.append("{} quotes {} but the committed value {} does not "
+                                "appear".format(rel, prose, wanted))
+
+    check_results_block(failures)
+    check_test_counts(failures)
+
     for pattern, files, why in RETIRED:
         for rel in files:
             text = io.open(os.path.join(REPO, rel), encoding="utf-8").read()
@@ -242,8 +379,9 @@ def main() -> int:
               "scripts/check_docs.py is.".format(len(failures)))
         return 1
 
-    print("checked {} headline claims and {} retired phrasings: consistent"
-          .format(len(CLAIMS), len(RETIRED)))
+    print("checked {} headline claims, {} other quoted values, the README tables, "
+          "the test counts and {} retired phrasings: consistent".format(
+              len(CLAIMS), len(VALUE_CLAIMS), len(RETIRED)))
     print("{} evaluated groups are not quoted by any document"
           .format(len(unregistered)))
     return 0

@@ -1352,8 +1352,9 @@ Both tasks run there: the bring-up checks pass at `none` and `medium` for
 lift-and-hold, and all eight pass at both levels for pick-and-place, whose
 reward agrees with the shared numpy implementation to 6.9e-08 on the GPU.
 
-**It reproduces the second task's finding on a different robot** — 0.419
-demonstration-seeded against 0.000 from scratch, three seeds each, with the
+**It reproduces the second task's finding on a different robot**: 0.419
+demonstration-seeded at 64 parallel environments and 0.825 rerun at 512, against
+0.000 from scratch in both, three seeds each, with the
 prediction recorded in `experiments/isaac_place_grid.py` before the runs. What it
 still does not do is contribute to the README's headline tables, which remain
 MuJoCo throughout. That includes the one the port exists for: the reward computed

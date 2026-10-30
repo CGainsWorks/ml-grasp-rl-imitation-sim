@@ -753,7 +753,8 @@ In rough order of expected effect:
 
   | | Isaac | MuJoCo |
   | --- | ---: | ---: |
-  | demonstration-seeded RL | **0.419** (0.414, 0.461, 0.383) | 0.870-0.973 |
+  | demonstration-seeded RL, 64 environments | **0.419** (0.414, 0.461, 0.383) | 0.870-0.973 |
+  | demonstration-seeded RL, rerun at 512 environments | **0.825** (0.910, 0.838, 0.727) | 0.870-0.973 |
   | from scratch | **0.000** (0.000, 0.000, 0.000) | ≤0.007 over seven designs |
 
   The prediction was recorded in `experiments/isaac_place_grid.py` before the

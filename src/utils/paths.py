@@ -3,7 +3,7 @@
 Run directories and dataset paths reach the JSON records through ``glob`` and
 ``os.path.join``, so a run made on Windows used to record
 ``experiments/runs\\sac_none_s0`` and one made on Linux ``experiments/runs/...``.
-The committed records are read on both, and a mixed separator is also how an
+The committed records are read on both. A mixed separator is also how an
 absolute local path slips into a public file unnoticed. ``tests/test_committed_paths.py``
 holds the committed files to this; :func:`dump_json` keeps new ones to it.
 """

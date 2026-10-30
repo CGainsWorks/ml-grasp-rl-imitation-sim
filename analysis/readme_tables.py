@@ -44,6 +44,11 @@ def _cell(interval: Dict) -> str:
     return "**{:.3f}** [{:.3f}, {:.3f}]".format(point, low, high)
 
 
+def _seeds(n: int) -> str:
+    # Ten-seed cells are bold so they stand out from the five-seed ones.
+    return "**{}**".format(n) if n >= 10 else str(n)
+
+
 def headline_table(summary: Dict) -> List[str]:
     levels = summary["levels"]
     lines = [
@@ -64,7 +69,7 @@ def headline_table(summary: Dict) -> List[str]:
     for key, method in summary["methods"].items():
         cells = [_cell(method["levels"][lv]["across_seeds"]) for lv in levels]
         lines.append("| {} | {} | {} |".format(
-            method.get("label", key), method["n_seeds"], " | ".join(cells)))
+            method.get("label", key), _seeds(method["n_seeds"]), " | ".join(cells)))
 
     lines += [
         "",
@@ -75,7 +80,8 @@ def headline_table(summary: Dict) -> List[str]:
     return lines
 
 
-def ablation_table(ablation: Dict, title: str, note: str) -> List[str]:
+def ablation_table(ablation: Dict, title: str, note: str,
+                   after: Optional[List[str]] = None) -> List[str]:
     lines = [
         "### " + title,
         "",
@@ -86,7 +92,7 @@ def ablation_table(ablation: Dict, title: str, note: str) -> List[str]:
     ]
     for row in ablation["rows"]:
         lines.append("| `{}` | {} | {} | {} | {:+.3f} |".format(
-            row["level"], row["n_seeds"],
+            row["level"], _seeds(row["n_seeds"]),
             _cell(row["train_level"]["across_seeds"]),
             _cell(row["shifted"]["across_seeds"]),
             row["gap"]))
@@ -96,6 +102,8 @@ def ablation_table(ablation: Dict, title: str, note: str) -> List[str]:
         for name, stat in comparisons.items():
             lines.append("* `{}`: difference {:+.3f} in mean success, Welch t = {:.2f}".format(
                 name, stat["diff"], stat["t"]))
+    if after:
+        lines += [""] + after
     return lines
 
 
@@ -145,15 +153,36 @@ def build() -> str:
             "Fixing the collapse roughly triples the own-distribution column and "
             "leaves the gap where it was, which is worth knowing: the poor transfer "
             "is not an artefact of an undertrained baseline.",
+            after=[
+                "Ten seeds per cell, not five. Doubling them barely moved the point "
+                "estimates and roughly halved the interval widths, which is the useful "
+                "outcome: the randomised cells really are that spread and the spread is "
+                "*bimodal* (a seed either finds the behaviour or collapses) rather than "
+                "noise around a mean. That is the case where five samples mislead most; "
+                "it is why the shape comparison below was also taken to ten.",
+            ],
         )))
 
-    ablation_bcrl = _load("ablation_bcrl.json")
+    # The four-level grid is five seeds per cell. Only `medium` was rerun at
+    # ten, into ablation_bcrl.json, which used to overwrite the grid itself.
+    ablation_bcrl = _load("ablation_bcrl_5seed.json")
+    bcrl_ten = _load("ablation_bcrl.json")
+    after = []
+    if bcrl_ten:
+        for row in bcrl_ten["rows"]:
+            after.append(
+                "`{}` was rerun at {} seeds: {} on its own distribution and {} on "
+                "`shifted` (`experiments/results/ablation_bcrl.json`).".format(
+                    row["level"], row["n_seeds"],
+                    _cell(row["train_level"]["across_seeds"]),
+                    _cell(row["shifted"]["across_seeds"])))
     if ablation_bcrl:
         blocks.append("\n".join(ablation_table(
             ablation_bcrl,
             "Randomisation ablation: imitation-seeded SAC",
             "The same ablation for the imitation-plus-RL variant, which starts from a "
             "cloned policy and keeps the demonstrations pinned in the replay buffer.",
+            after=after,
         )))
 
     baseline = _load("expert_baseline.json")
@@ -181,7 +210,7 @@ def main() -> None:
         raise SystemExit("README.md is missing the {} / {} markers".format(START, END))
     head, rest = text.split(START, 1)
     _, tail = rest.split(END, 1)
-    with open(README, "w", encoding="utf-8") as fh:
+    with open(README, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(head + START + "\n\n" + tables + "\n\n" + END + tail)
     print("rewrote the results section of README.md")
 

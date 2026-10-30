@@ -112,17 +112,20 @@ CLIPS = [
         "policy": "experiments/runs/arm_bcnom_s0/policy.pt",
         "args": ["--arm", "--randomisation", "none", "--episodes", "3",
                  "--seed", "90000"],
-        "why": "a clone of that expert, 0.448 across five seeds. From-scratch RL "
-               "through the arm never closes the fingers at all",
+        "why": "a clone of that expert, trained before the position-servo fix, "
+               "0.448 across five seeds then. From-scratch RL through the arm "
+               "never closes the fingers at all",
     },
     # --- grasp-point selection
     {
         "name": "arm_hold",
-        "policy": "experiments/runs/armgridnonehold_s0/policy.pt",
+        # The clip in videos/ was re-rendered from the corrected-servo grid
+        # (commit 61069a5); this entry still named the pre-fix armgrid run.
+        "policy": "experiments/runs/arm2nonehold_s0/policy.pt",
         "args": ["--randomisation", "none", "--episodes", "3",
                  "--seed", "90000"],
-        "why": "the arm with a held cloning anchor, 0.522 -- the best the arm "
-               "reaches, against 0.448 for cloning alone and 0.000 from scratch",
+        "why": "the arm with a held cloning anchor on the corrected servo, "
+               "0.530, against 0.402 for cloning alone and 0.000 from scratch",
     },
     # --- the wrist, matched
     {

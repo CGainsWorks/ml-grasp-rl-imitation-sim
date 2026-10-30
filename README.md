@@ -19,20 +19,24 @@ a bimodal one from five is worse.
 
 The second task is the interesting one. Pick-and-place was added specifically to
 test whether the reward design *method* generalises, and it does not. Imitation
-carried over to it unchanged at 0.978. From-scratch RL has now been through
-**seven reward designs, a tripled budget and a task decomposition** without
-clearing 0.05, and the diagnosis is that shaping of this kind buys *segments* —
-put a maximum where a segment ends and the policy learns that segment and stops
-there. Reaching, grasping, lifting and carrying were each bought that way;
-chaining them was not.
+carried over to it unchanged at 0.978. From-scratch RL on a *dense, shaped*
+reward has been through **seven reward designs, a tripled budget and a task
+decomposition** without clearing 0.05. The diagnosis is that shaping of this
+kind buys *segments*: put a maximum where a segment ends and the policy learns
+that segment and stops there. Reaching, grasping, lifting and carrying were each
+bought that way; chaining them was not. A *sparse* reward with hindsight
+relabelling and an annealed start curriculum does chain it from scratch, at
+0.944 (below, under "What was measured"), so the finding is about dense shaping
+rather than about RL.
 
-Six controlled experiments stand behind that — seven reward designs, a tripled
-budget, a task decomposition, a staged reverse curriculum, a mixed-start
-curriculum, and a seeded combination of the two halves — and **the Isaac port
-reproduces it on a different robot** (0.419 demonstration-seeded against 0.000
-from scratch, with the prediction recorded before the runs). A second simulator
-agreeing is worth more than an eighth reward design on the first, because it
-could have disagreed. Written up rather than buried, in
+Six controlled experiments stand behind the shaping result (seven reward
+designs, a tripled budget, a task decomposition, a staged reverse curriculum, a
+mixed-start curriculum and a seeded combination of the two halves) and **the
+Isaac port reproduces it on a different robot**: demonstration-seeded RL scores
+0.419 at 64 parallel environments and 0.825 when rerun at 512, against 0.000
+from scratch in both, with the prediction recorded before the runs. A second
+simulator agreeing is worth more than an eighth reward design on the first,
+because it could have disagreed. Written up rather than buried, in
 [docs/results.md](docs/results.md) §7 and
 [docs/limitations.md](docs/limitations.md).
 
@@ -82,7 +86,7 @@ them are the failures in the tables. Nothing here is a highlight reel.
 | **Perception** | A CNN pose estimator from 64x64 renders, used to check the sensing noise model rather than replace it — two of its three claims held, one was refuted |
 | **Arm** | An optional six-jointed UR5-proportioned arm with joint limits, self-collision and damped-least-squares IK, in place of the mocap weld |
 | **Reporting** | 10 seeds x 100 episodes for the headline grid and the shape comparison, 5 elsewhere; mean with a 95% t interval across seeds |
-| **Isaac Lab** | Ported and **working on Isaac Sim 5.1**: all 7 bring-up checks pass, including reward parity with the MuJoCo implementation to ~5e-08 and randomisation driven by the same JSON — [envs/isaac/README.md](envs/isaac/README.md) |
+| **Isaac Lab** | Ported and **working on Isaac Sim 5.1**: all 7 bring-up checks pass, including reward parity with the MuJoCo implementation to ~5e-08 and randomisation driven by the same JSON. **Run by hand on a local RTX 4060, never in CI**; what has and has not been run is listed in [envs/isaac/README.md](envs/isaac/README.md) |
 
 Nothing here has touched hardware. `shifted` is a **proxy** for a real robot,
 never called a real-robot number: [docs/sim-to-real.md](docs/sim-to-real.md).
@@ -106,13 +110,38 @@ prints a success rate with a confidence interval, and fails loudly if the scene
 has been broken.
 
 ```bash
-make check                  # lint + 82 unit tests, what CI runs
+make check                  # lint + 98 unit tests + the documents check
 make data                   # demonstrations + the perception frames (~10 min)
 make experiments            # the whole grid: 50 runs, about 3 hours on 8 cores
 make plots readme           # regenerate every figure and every table here
 make videos                 # rollout clips (needs a GL context)
 make export RUN=experiments/runs/bcrl_medium_s0   # TorchScript for deployment
+make ros-test               # the ROS 2 policy server, built and tested in Docker
 ```
+
+**What CI runs.** Two jobs on every push. The first is the MuJoCo path on CPU:
+lint, the unit tests, `scripts/check_docs.py` (every headline number, the
+README tables and the test counts recomputed from the committed results), the
+scripted expert and a short chain of SAC training, evaluation, TorchScript
+export, a closed-loop episode driven by the exported policy, demonstration
+recording and behaviour cloning. The training runs are 2 000-step smoke runs:
+they show the pipeline works end to end, not that it learns; every learned
+number above comes from the committed run records instead. The second job
+builds the ROS 2 package below on Humble and runs its launch test. Not in CI:
+rendering and the Isaac Lab port, which needs an RTX GPU and was run by hand
+([what was run](envs/isaac/README.md#what-has-been-run-and-how)).
+
+### ROS 2 policy server
+
+`ros2/grasp_policy_server` is a colcon package with an `rclpy` node that loads
+an exported TorchScript policy and serves a 4-value grasp action for every
+32-value observation, over `std_msgs/Float32MultiArray` topics. A
+`launch_testing` test replays an observation stream recorded from one simulated
+MuJoCo episode and requires the node to return the actions the policy produced
+in simulation. It is written so the policy could be offered to the arm cell in
+`CGainsWorks/ros2-industrial-arm-cell-sim`; **it has not been connected to
+that cell or to any robot**. Interface, failure behaviour and what connecting
+it would take: [docs/ros2-policy-server.md](docs/ros2-policy-server.md).
 
 **Datasets are not in the repository and `make data` rebuilds them.** The
 demonstration archives and the 20 000-frame perception sets were 50 MB of
@@ -200,12 +229,10 @@ The same runs as the table above with one line changed -- a floor under the entr
 | `medium` | **10** | **0.382** [0.201, 0.563] | **0.004** [0.000, 0.009] | +0.378 |
 | `high` | **10** | **0.230** [0.123, 0.337] | **0.011** [0.002, 0.020] | +0.219 |
 
-Ten seeds per cell, not five. Doubling them barely moved the point estimates and
-roughly halved the interval widths, which is the useful outcome: the randomised
-cells really are that spread, and the spread is *bimodal* -- a seed either finds
-the behaviour or collapses -- rather than noise around a mean. That is the case
-where five samples mislead most, and it is why the shape comparison below was
-also taken to ten.
+* `shifted_high_vs_none`: difference +0.011 in mean success, Welch t = 2.70
+* `shifted_medium_vs_none`: difference +0.004 in mean success, Welch t = 1.81
+
+Ten seeds per cell, not five. Doubling them barely moved the point estimates and roughly halved the interval widths, which is the useful outcome: the randomised cells really are that spread and the spread is *bimodal* (a seed either finds the behaviour or collapses) rather than noise around a mean. That is the case where five samples mislead most; it is why the shape comparison below was also taken to ten.
 
 ### Randomisation ablation: imitation-seeded SAC
 
@@ -220,6 +247,8 @@ The same ablation for the imitation-plus-RL variant, which starts from a cloned 
 
 * `shifted_high_vs_none`: difference +0.070 in mean success, Welch t = 8.49
 * `shifted_medium_vs_none`: difference +0.030 in mean success, Welch t = 2.55
+
+`medium` was rerun at 10 seeds: **0.734** [0.698, 0.770] on its own distribution and **0.034** [0.018, 0.050] on `shifted` (`experiments/results/ablation_bcrl.json`).
 
 ### Scripted expert, for reference
 
@@ -282,9 +311,10 @@ The short version, with the reasoning and the caveats in
   to zero. [docs/exploration.md](docs/exploration.md) is the whole
   investigation, including the two conclusions along the way that were wrong.
 * **Demonstrations buy sample efficiency, not feasibility.** At an identical
-  200 000-step budget, from-scratch SAC with a tuned floor scores **0.986** on
+  200 000-step budget, from-scratch SAC with a tuned floor scores **0.993** on
   the nominal world against 1.000 for the demonstration-seeded version, and
-  **0.640** on `medium` against its 0.516 — from scratch is *ahead* on the
+  **0.658** on `medium` against its 0.516 (ten seeds against five; the first
+  five seeds alone gave 0.986 and 0.640): from scratch is *ahead* on the
   harder evaluation. What demonstrations still buy is speed and the absence of a
   hyperparameter: they reach it inside 30 000 steps, and nobody has to know that
   the floor exists or what value it wants. Before the collapse was diagnosed
@@ -445,7 +475,7 @@ in them are the failures in the tables. `make videos` regenerates all of them.
 | ![bc+sac wide on shifted](videos/bcrl_high_shifted.gif) | **BC + SAC, wide randomisation**, on the held-out shifted worlds |
 | ![bc+sac none on shifted](videos/bcrl_none_shifted.gif) | **The same method trained without randomisation**, on the same worlds |
 | ![place bc+sac](videos/place_bcrl.gif) | **BC + SAC on pick-and-place**, 0.916 across five seeds — the task from-scratch RL never solved |
-| ![arm clone](videos/arm_clone.gif) | **A clone driving the six-jointed arm**, 0.448. From-scratch RL through the arm never closes the fingers at all; with a held anchor the same arm reaches 0.522 |
+| ![arm clone](videos/arm_clone.gif) | **A clone driving the six-jointed arm**, trained before the position-servo fix, when cloning scored 0.448. On the corrected servo cloning scores 0.402 and a held anchor 0.530 (the clip at the top). From-scratch RL through the arm never closes the fingers at all |
 | ![handled clone](videos/handled_clone.gif) | **A clone finding the handle** from an observation that never states where it is — 0.896, against 0/30 for aiming at the reported pose |
 
 `videos/expert_nominal.gif` and `videos/expert_shifted.gif` show the scripted
@@ -475,6 +505,7 @@ experiments/         run driver, ablation, aggregation, results
 analysis/            every figure in this README
 docs/                design notes, evaluation protocol, limitations
 tests/               environment contract, reward parity, learning machinery
+ros2/grasp_policy_server/  ROS 2 Humble node serving an exported policy (colcon)
 ```
 
 ### Documentation
@@ -491,6 +522,8 @@ tests/               environment contract, reward parity, learning machinery
 | [docs/evaluation.md](docs/evaluation.md) | the protocol, and which confidence interval answers which question |
 | [docs/sim-to-real.md](docs/sim-to-real.md) | why `shifted` is a proxy and what it is missing |
 | [docs/limitations.md](docs/limitations.md) | read before the results |
+| [docs/ros2-policy-server.md](docs/ros2-policy-server.md) | the ROS 2 node: topics, observation and action layouts, tests and what is missing to drive a real cell |
+| [STATUS.md](STATUS.md) | what is done, what is not and what has only been run by hand |
 | [envs/isaac/README.md](envs/isaac/README.md) | the Isaac Lab port: bring-up results, what was wrong when it was written blind, and the open control problem |
 
 ---
